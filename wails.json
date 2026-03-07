@@ -1,0 +1,13 @@
+{
+  "$schema": "https://wails.io/schemas/config.v2.json",
+  "name": "contrails",
+  "outputfilename": "contrails",
+  "frontend:install": "yarn --ignore-scripts",
+  "frontend:build": "yarn build",
+  "frontend:dev:watcher": "yarn dev",
+  "frontend:dev:serverUrl": "auto",
+  "author": {
+    "name": "ThreePalmTrees",
+    "email": "foo@example.com"
+  }
+}
