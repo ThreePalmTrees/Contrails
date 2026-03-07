@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Contrails - Preserve your coding agent trails</title>
+  <meta name="description" content="Contrails watches your coding agent chat sessions (GitHub Copilot, Claude Code & Cursor) and saves them as clean Markdown in your project repos. Never lose the reasoning behind a fix again." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+  <!-- icon -->
+  <link rel="icon" type="image/png" href="icons/logo_white.png" />
+</head>
+<body>
+
+  <!-- ─── Nav ─── -->
+  <nav class="nav">
+    <div class="nav-inner">
+      <a href="#" class="nav-logo">
+        <img src="icons/logo_white.png" alt="Contrails" class="nav-icon" style="width: 42px;" />
+        <span style="margin-left: -16px; margin-top: 2px;">Contrails</span>
+      </a>
+      <div class="nav-links">
+        <a href="#features">Features</a>
+        <a href="#how-it-works">How It Works</a>
+        <a href="#agents">Agents</a>
+        <a href="https://github.com/ThreePalmTrees/contrails" target="_blank" rel="noopener" class="nav-link-docs">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+          Docs
+        </a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ─── Hero ─── -->
+  <section class="hero">
+    <div class="hero-glow"></div>
+    <div class="container">
+      <div class="hero-badges">
+        <div class="hero-badge">
+          <img src="icons/gh-copilot.png" alt="GitHub Copilot" style="filter: invert(1); width: 34px" class="hero-badge-icon" />
+          GitHub Copilot
+        </div>
+        <div class="hero-badge">
+          <img src="icons/claude.png" alt="Claude Code" class="hero-badge-icon-wide" />
+          Claude Code
+        </div>
+        <div class="hero-badge">
+          <img src="icons/cursor.png" alt="Cursor" class="hero-badge-icon" />
+          Cursor
+        </div>
+      </div>
+      <h1 class="hero-title">
+        Preserve your coding agent trails
+      </h1>
+      <p class="hero-subtitle">
+        Every wrong assumption, every self-correction, every reasoning chain - saved as clean Markdown, right inside your repo.
+        <br />
+        So the next session doesn't repeat the same mistakes.
+      </p>
+      <div class="hero-actions">
+        <a href="#download" class="btn btn-primary">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Download for macOS
+        </a>
+        <a href="https://github.com/ThreePalmTrees/contrails" target="_blank" rel="noopener" class="btn btn-secondary">
+          <svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+          View on GitHub
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── Preview ─── -->
+  <section class="preview">
+    <div class="container">
+      <p class="preview-caption">An agent tried the obvious fix, ran the tests, realized it didn't work, and self-corrected. All of that reasoning - including the wrong turns - is now part of the repo.</p>
+      <div class="preview-window">
+        <div class="preview-bar">
+          <span class="preview-dot red"></span>
+          <span class="preview-dot yellow"></span>
+          <span class="preview-dot green"></span>
+          <span class="preview-bar-title">contrails/Fixing duplicate payment charges on retry.md</span>
+        </div>
+
+        <div style="display: flex;">
+          <!-- File tree showing the contrail in the repo -->
+          <!-- Thinking wheter to add this or remove it.. -->
+              <div class="filetree-body">
+                <div class="ft-row"><span class="ft-indent"></span><span class="ft-icon ft-folder"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevron-down-icon lucide-chevron-down"><path d="m6 9 6 6 6-6"></path></svg></span> <span class="ft-name">checkout</span></div>
+                <div class="ft-row"><span class="ft-indent i1"></span><span class="ft-icon ft-folder-open"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevron-down-icon lucide-chevron-down"><path d="m6 9 6 6 6-6"></path></svg><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-folder-icon lucide-folder"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"></path></svg></span> <span class="ft-name ft-name-contrails">contrails</span></div>
+                <div class="ft-row ft-row-new" style="margin-left: 36px"></span><span class="ft-icon ft-file"><svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" viewBox="0 0 24 24" style="fill: #3799ff; margin-top: -4px;">
+                  <title>markdown</title>
+                  <rect width="24" height="24" fill="none"></rect>
+                  <path d="M2,16V8H4l3,3,3-3h2v8H10V10.83l-3,3-3-3V16H2M16,8h3v4h2.5l-4,4.5-4-4.5H16Z"></path></svg></span> <span class="ft-name ft-name-new">Fixing duplicate payment charges on retry.md</span>
+                </div>
+                <div class="ft-row"><span class="ft-indent i1"></span><span class="ft-icon ft-folder"><span class="ft-icon ft-folder"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevron-right-icon lucide-chevron-right"><path d="m9 18 6-6-6-6"/></svg><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-folder-icon lucide-folder"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"></path></svg></span></span> <span class="ft-name ft-dim">node_modules</span></div>
+                <div class="ft-row"><span class="ft-indent i1"></span><span class="ft-icon ft-folder"><span class="ft-icon ft-folder"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevron-right-icon lucide-chevron-right"><path d="m9 18 6-6-6-6"/></svg><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-folder-icon lucide-folder"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"></path></svg></span></span> <span class="ft-name">src</span></div>
+                <div class="ft-row"><span class="ft-indent i1"></span><span class="ft-icon ft-folder"><span class="ft-icon ft-folder"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevron-right-icon lucide-chevron-right"><path d="m9 18 6-6-6-6"/></svg><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-folder-icon lucide-folder"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"></path></svg></span></span> <span class="ft-name">tests</span></div>
+                <div class="ft-row"><span class="ft-indent i1"></span><span class="ft-icon ft-file"><span class="ft-icon ft-file"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-file-braces-corner-icon lucide-file-braces-corner"><path d="M14 22h4a2 2 0 0 0 2-2V8a2.4 2.4 0 0 0-.706-1.706l-3.588-3.588A2.4 2.4 0 0 0 14 2H6a2 2 0 0 0-2 2v6"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/><path d="M5 14a1 1 0 0 0-1 1v2a1 1 0 0 1-1 1 1 1 0 0 1 1 1v2a1 1 0 0 0 1 1"/><path d="M9 22a1 1 0 0 0 1-1v-2a1 1 0 0 1 1-1 1 1 0 0 1-1-1v-2a1 1 0 0 0-1-1"/></svg></span></span> <span class="ft-name ft-dim">package.json</span></div>
+                <div class="ft-row"><span class="ft-indent i1"></span><span class="ft-icon ft-file"><span class="ft-icon ft-file"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-file-braces-corner-icon lucide-file-braces-corner"><path d="M14 22h4a2 2 0 0 0 2-2V8a2.4 2.4 0 0 0-.706-1.706l-3.588-3.588A2.4 2.4 0 0 0 14 2H6a2 2 0 0 0-2 2v6"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/><path d="M5 14a1 1 0 0 0-1 1v2a1 1 0 0 1-1 1 1 1 0 0 1 1 1v2a1 1 0 0 0 1 1"/><path d="M9 22a1 1 0 0 0 1-1v-2a1 1 0 0 1 1-1 1 1 0 0 1-1-1v-2a1 1 0 0 0-1-1"/></svg></span></span> <span class="ft-name ft-dim">tsconfig.json</span></div>
+              </div>
+        <div class="preview-body">
+<pre><code><span class="md-h1"># Fixing duplicate payment charges on retry</span>
+
+<span class="md-meta">- **Created:** <span id="preview-date"></span></span>
+<span class="md-meta">- **Agent:** GitHub Copilot</span>
+<span class="md-meta">- **Model:** claude-opus-4.6</span>
+
+<span class="md-hr">---------------------------------------</span>
+
+<span class="md-h2">## 🧑 User</span>
+
+Can you please fix the duplicate charge bug on payment retry?
+
+<span class="md-attach">**Attachments:** `charge.ts`, `stripe.ts`</span>
+
+<span class="md-hr">---------------------------------------</span>
+
+<span class="md-h2">## 🤖 Assistant</span>
+
+Let me look into this.
+
+<span class="md-tool">### Tool Calls</span>
+<span class="md-tool">- **readFile**: `charge.ts`, `stripe.ts`, `Order.ts`</span>
+<span class="md-tool">- **editFile**: `charge.ts` - added status check guard</span>
+<span class="md-tool">- **runTerminal**: `npm test`</span>
+
+<span class="md-err">1 test failed - race condition: two concurrent requests
+both read `pending` before either writes.</span>
+
+<span class="md-tool">### Tool Calls</span>
+<span class="md-tool">- **readFile**: `Order.ts`</span>
+<span class="md-tool">- **editFile**: `charge.ts` - added DB-level lock</span>
+<span class="md-tool">- **runTerminal**: `npm test`</span>
+
+<span class="md-err">1 test failed - same issue, lock doesn't cover the
+webhook path.</span>
+
+<span class="md-tool">### Tool Calls</span>
+<span class="md-tool">- **readFile**: `stripe.ts`, `Order.ts`</span>
+<span class="md-tool">- **editFile**: `charge.ts` - atomic status transition</span>
+<span class="md-tool">- **editFile**: `stripe.ts` - skip already-processed</span>
+<span class="md-tool">- **runTerminal**: `npm test`</span>
+
+✅ All tests pass.
+
+**Summary:**
+The duplicate charge happened because retry
+created a second PaymentIntent while the first was still
+in flight. A simple status check didn't work because both
+requests read `pending` at the same time. The fix was an
+atomic `pending → processing` transition so only one
+request can proceed, plus an idempotency key so Stripe
+deduplicates on their end.</code></pre>
+        </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── Features ─── -->
+  <section id="features" class="features">
+    <div class="container">
+      <div class="section-title-wrapper">
+        <h2 class="section-title">Set it and forget it</h2>
+        <span class="section-title-line"></span>
+      </div>
+      <p class="section-subtitle">Contrails runs in the background. You code with your agent as usual - it handles the rest.</p>
+      <div class="features-grid">
+        <div class="feature-card" style="color:#50e12f">
+          <div class="feature-icon" style="color: #50e12f; background: #50e12f17;">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          </div>
+          <h3>Real-Time Watching</h3>
+          <p>Detects new or modified chat sessions instantly.</p>
+        </div>
+        <div class="feature-card" style="color:#ffe662">
+          <div class="feature-icon" style="color: #ffe662; background: #ffe6621a;">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+          </div>
+          <h3>Clean Markdown Output</h3>
+          <p>Chats are parsed into structured Markdown with all the details.</p>
+        </div>
+        <div class="feature-card" style="color:#7c6ef0">
+          <div class="feature-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+          </div>
+          <h3>Lives in Your Repo</h3>
+          <p>Outputs parsed chats to <code>contrails/</code> directory in your project.</p>
+        </div>
+        <div class="feature-card" style="color:#1e83f1">
+          <div class="feature-icon" style="color: #1e83f1; background: #1e83f11c;">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+          </div>
+          <h3>Incremental Processing</h3>
+          <p>Processes new chats only, or all chats anytime.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── How It Works ─── -->
+  <section id="how-it-works" class="how-it-works">
+    <div class="container" style="    border-bottom: 1px solid #403a79; border-radius: 36px; padding-bottom: 36px; background: linear-gradient(to top, #0c101c, transparent);">
+      <div class="section-title-wrapper">
+        <h2 class="section-title">How it works</h2>
+        <span class="section-title-line"></span>
+      </div>
+      <p class="section-subtitle">Three steps. No configuration files. No CLI commands.</p>
+      <div class="steps-row">
+        <div class="step-card">
+          <div class="step-card-header">
+            <span class="step-card-num">01</span>
+          </div>
+          <h3>Add a project</h3>
+          <p>Contrails discovers projects with agent chat sessions automatically. Pick one, or browse to a custom path.</p>
+        </div>
+        <div class="step-arrow">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="14 7 19 12 14 17"/></svg>
+        </div>
+        <div class="step-card">
+          <div class="step-card-header">
+            <span class="step-card-num">02</span>
+          </div>
+          <h3>Watch automatically</h3>
+          <p>File watchers start immediately. Every new or modified chat session is detected in real-time and queued for processing.</p>
+        </div>
+        <div class="step-arrow">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="14 7 19 12 14 17"/></svg>
+        </div>
+        <div class="step-card">
+          <div class="step-card-header">
+            <span class="step-card-num">03</span>
+          </div>
+          <h3>Markdown in your repo</h3>
+          <p>Clean <code>.md</code> files land in <code>contrails/</code> inside your project, named after the session title, with full history preserved.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── Use Cases ─── -->
+  <section class="use-cases">
+    <div class="container">
+      <div class="section-title-wrapper">
+        <h2 class="section-title">Why keep your agent trails?</h2>
+        <span class="section-title-line"></span>
+      </div>
+      <p class="section-subtitle">Agents forget everything between sessions. Your repo shouldn't.</p>
+      <div class="use-cases-grid">
+        <div class="use-case-card" style="color: #7c6ef0;">
+          <div class="use-case-emoji">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-brain-circuit-icon lucide-brain-circuit" style="
+              color: #7c6ef0;
+              height: 46px;
+              aspect-ratio: 1/1;"><path d="M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18Z"></path><path d="M9 13a4.5 4.5 0 0 0 3-4"></path><path d="M6.003 5.125A3 3 0 0 0 6.401 6.5"></path><path d="M3.477 10.896a4 4 0 0 1 .585-.396"></path><path d="M6 18a4 4 0 0 1-1.967-.516"></path><path d="M12 13h4"></path><path d="M12 18h6a2 2 0 0 1 2 2v1"></path><path d="M12 8h8"></path><path d="M16 8V5a2 2 0 0 1 2-2"></path><circle cx="16" cy="13" r=".5"></circle><circle cx="18" cy="3" r=".5"></circle><circle cx="20" cy="21" r=".5"></circle><circle cx="20" cy="8" r=".5"></circle>
+            </svg>
+          </div>
+          <h3>Give agents memory</h3>
+          <p>Agents start every session with a blank slate. Attach a contrail and they inherit the full context - what was tried, what worked, and why.</p>
+        </div>
+        <div class="use-case-card" style="color: #df3b3b;">
+          <div class="use-case-emoji">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-ban-icon lucide-ban" style="
+              color: #df3b3b;
+              height: 46px;
+              aspect-ratio: 1 / 1;"><circle cx="12" cy="12" r="10"></circle><path d="M4.929 4.929 19.07 19.071"></path>
+            </svg>
+          </div>
+          <h3>Don't repeat mistakes</h3>
+          <p>The agent tried a simple status check last time and it failed under concurrency. That's in the contrail now - the next session won't make the same wrong assumption.</p>
+        </div>
+        <div class="use-case-card" style="color: #24bedf;">
+          <div class="use-case-emoji">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-users-icon lucide-users" style="
+              color: #24bedf;
+              height: 46px;
+              aspect-ratio: 1 / 1;"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><path d="M16 3.128a4 4 0 0 1 0 7.744"></path><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><circle cx="9" cy="7" r="4"></circle>
+            </svg>
+          </div>
+          <h3>Onboard teammates</h3>
+          <p>New to the codebase? Read the contrails. They show not just <em>what</em> changed, but the reasoning, the dead ends, and the final approach.</p>
+        </div>
+        <div class="use-case-card" style="color: #dccd6c;">
+          <div class="use-case-emoji">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-notepad-text-icon lucide-notepad-text" style="
+              color: #dccd6c;
+              height: 46px;
+              aspect-ratio: 1 / 1;"><path d="M8 2v4"></path><path d="M12 2v4"></path><path d="M16 2v4"></path><rect width="16" height="18" x="4" y="4" rx="2"></rect><path d="M8 10h6"></path><path d="M8 14h8"></path><path d="M8 18h5"></path>
+            </svg>
+          </div>
+          <h3>Audit AI decisions</h3>
+          <p>Which model was used? What tools did it call? Did it self-correct? A permanent, version-controlled record of every AI-assisted decision.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── Coming Soon ─── -->
+  <section id="agents" class="coming-soon">
+    <div class="container">
+      <div class="section-title-wrapper">
+        <h2 class="section-title">Agent support</h2>
+        <span class="section-title-line"></span>
+      </div>
+      <p class="section-subtitle">Works with GitHub Copilot, Claude Code, and Cursor.</p>
+      <div class="agents-grid">
+        <div class="agent-card">
+          <img src="icons/gh-copilot.png" alt="GitHub Copilot" style="filter: invert(1);" class="agent-icon" />
+          <span class="agent-name">GitHub Copilot</span>
+          <span class="agent-badge agent-badge-supported">Supported</span>
+        </div>
+        <div class="agent-card">
+          <img src="icons/claude.png" alt="Claude Code" class="agent-icon agent-icon-wide" />
+          <span class="agent-name">Claude Code</span>
+          <span class="agent-badge agent-badge-supported">Supported</span>
+        </div>
+        <div class="agent-card">
+          <img src="icons/cursor.png" alt="Cursor" class="agent-icon" />
+          <span class="agent-name">Cursor</span>
+          <span class="agent-badge agent-badge-supported">Supported</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── CTA / Download ─── -->
+  <section id="download" class="cta">
+    <div class="container">
+      <h2 class="cta-title">Stop losing your agent's reasoning</h2>
+      <p class="cta-subtitle">Free, open source, and runs entirely on your machine.</p>
+      <div class="hero-actions">
+        <a href="#download" class="btn btn-primary">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Download for macOS
+        </a>
+        <a href="https://github.com/ThreePalmTrees/contrails" target="_blank" rel="noopener" class="btn btn-secondary">
+          <svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+          View Source
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── Footer ─── -->
+  <footer class="footer">
+    <div class="container footer-disclaimer">
+      <p>Contrails is an independent, open-source project and is not affiliated with, endorsed by, or sponsored by any company mentioned on this page. All product names, logos, and trademarks are the property of their respective owners.</p>
+    </div>
+  </footer>
+
+  <script>
+    const d = new Date();
+    const pad = n => String(n).padStart(2, '0');
+    document.getElementById('preview-date').textContent =
+      `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  </script>
+</body>
+</html>
