@@ -1,0 +1,4 @@
+{"kind":0,"v":{"version":3,"creationDate":1708000000000,"initialLocation":"panel","responderUsername":"GitHub Copilot","sessionId":"jsonl-titled-456","hasPendingEdits":false,"requests":[],"inputState":{"inputText":"What is Go?","selectedModel":{"identifier":"copilot/gpt-4o","metadata":{"name":"GPT-4o","auth":{"accountLabel":"TestUser"}}}}}}
+{"kind":1,"k":["customTitle"],"v":"My Custom JSONL Title"}
+{"kind":2,"k":["requests"],"v":[{"requestId":"req-001","timestamp":1708000030000,"modelId":"copilot/gpt-4o","responseId":"resp-001","modelState":{"value":0},"response":[{"value":"Go is a statically typed language.","supportThemeIcons":false}],"message":{"text":"What is Go?","parts":[{"range":{"start":0,"endExclusive":11},"text":"What is Go?","kind":"text"}]},"variableData":{"variables":[]}}]}
+{"kind":1,"k":["requests",0,"modelState"],"v":{"value":1,"completedAt":1708000060000}}

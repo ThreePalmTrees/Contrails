@@ -1,0 +1,2 @@
+{"type":"user","uuid":"user-001","sessionId":"session-empty","timestamp":"2026-02-15T10:30:00.000Z","message":{"role":"user","content":"Hello, can you help me?"}}
+{"type":"assistant","uuid":"asst-001","parentUuid":"user-001","sessionId":"session-empty","timestamp":"2026-02-15T10:30:02.000Z","message":{"role":"assistant","model":"claude-sonnet-4-20250514","content":"Of course! What would you like help with?","stop_reason":"end_turn"}}

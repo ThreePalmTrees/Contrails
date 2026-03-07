@@ -1,0 +1,191 @@
+{
+  "version": 3,
+  "responderUsername": "GitHub Copilot",
+  "responderAvatarIconUri": {
+    "id": "copilot"
+  },
+  "initialLocation": "panel",
+  "requests": [
+    {
+      "requestId": "request_1b2abfe7-e20f-475a-835c-2dd48e61c3d2",
+      "message": {
+        "parts": [
+          {
+            "range": {
+              "start": 0,
+              "endExclusive": 2
+            },
+            "editorRange": {
+              "startLineNumber": 1,
+              "startColumn": 1,
+              "endLineNumber": 1,
+              "endColumn": 3
+            },
+            "text": "Hi",
+            "kind": "text"
+          }
+        ],
+        "text": "Hi"
+      },
+      "variableData": {
+        "variables": []
+      },
+      "response": [
+        {
+          "kind": "mcpServersStarting",
+          "didStartServerIds": []
+        },
+        {
+          "kind": "thinking",
+          "value": "**Finalizing greeting suggestions**\n\nI’m thinking about how to offer suggestions to the user on what they might want to do in the repo. I want to keep it minimal and helpful, so I'm going to say something like, \"Hi — how can I help you today?\" or \"What would you like to work on today?\" I want to make sure it’s concise and to the point. I’ll finalize the wording to make it even simpler!",
+          "id": "1iFOkaw/YuQikgRChErETRJ/B67mU68cdPAL8jES1TINnEOnj8T76jIkWPOojl/ZSXBENDM7zeDKKmN+bJYNDkhkCoHKQbPb9Bz3r72dQ==",
+          "generatedTitle": "Finalizing greeting suggestions"
+        },
+        {
+          "kind": "thinking",
+          "value": "",
+          "id": "oIx4RZohVezlChR0Bv+LuCq13/ey898asdNYDUto5Q/kdqM84LZGLnv4yA80vJwkT1VGYNcHi+AUUwasAl6zE27Jfyxj=="
+        },
+        {
+          "kind": "thinking",
+          "value": "",
+          "id": "",
+          "metadata": {
+            "vscodeReasoningDone": true,
+            "stopReason": "text"
+          }
+        },
+        {
+          "value": "Hi — what would you like to work on today?",
+          "supportThemeIcons": false,
+          "supportHtml": false,
+          "baseUri": {
+            "$mid": 1,
+            "path": "/Users/admin/Documents/projects/kye/",
+            "scheme": "file"
+          }
+        }
+      ],
+      "agent": {
+        "extensionId": {
+          "value": "GitHub.copilot-chat",
+          "_lower": "github.copilot-chat"
+        },
+        "extensionVersion": "0.36.2",
+        "publisherDisplayName": "GitHub",
+        "extensionPublisherId": "GitHub",
+        "extensionDisplayName": "GitHub Copilot Chat",
+        "id": "github.copilot.editsAgent",
+        "description": "Edit files in your workspace in agent mode",
+        "when": "config.chat.agent.enabled",
+        "metadata": {
+          "themeIcon": {
+            "id": "tools"
+          },
+          "hasFollowups": false,
+          "supportIssueReporting": false
+        },
+        "name": "agent",
+        "fullName": "GitHub Copilot",
+        "isDefault": true,
+        "locations": [
+          "panel"
+        ],
+        "modes": [
+          "agent"
+        ],
+        "slashCommands": [],
+        "disambiguation": []
+      },
+      "timestamp": 1772147926365,
+      "modelId": "copilot/gpt-5-mini",
+      "responseId": "response_b0cb932f-00d2-43e4-abe8-cc545fb368d5",
+      "result": {
+        "timings": {
+          "firstProgress": 5930,
+          "totalElapsed": 6031
+        },
+        "metadata": {
+          "codeBlocks": [],
+          "renderedUserMessage": [
+            {
+              "type": 1,
+              "text": "<context>\nThe current date is February 27, 2026.\nTerminals:\nTerminal: zsh\n\n</context>\n<reminderInstructions>\n</reminderInstructions>\n<userRequest>\nHi\n</userRequest>\n"
+            }
+          ],
+          "cacheKey": "file:///Users/admin/Documents/projects/kye",
+          "toolCallRounds": [
+            {
+              "response": "Hi — what would you like to work on today?",
+              "toolCalls": [],
+              "toolInputRetry": 0,
+              "id": "460b6dbb-9cda-42c7-b79c-9efe268ec187",
+              "statefulMarker": "RSck",
+              "thinking": {
+                "id": "qpcV",
+                "text": "**Finalizing greeting suggestions**\n\nI’m thinking about how to offer suggestions to the user on what they might want to do in the repo. I want to keep it minimal and helpful, so I'm going to say something like, \"Hi — how can I help you today?\" or \"What would you like to work on today?\" I want to make sure it’s concise and to the point. I’ll finalize the wording to make it even simpler!",
+                "encrypted": "7Y",
+                "tokens": 256
+              }
+            }
+          ],
+          "modelMessageId": "feae5ffa-c0f4-4da8-8cbe-f1151d9d9077",
+          "responseId": "5e52ab77-84fc-4b90-97b9-3880e9d3e650",
+          "sessionId": "22ba67c3-1aea-4e8e-99d3-edbb7fffb295",
+          "agentId": "github.copilot.editsAgent"
+        },
+        "details": "GPT-5 mini • 1x"
+      },
+      "responseMarkdownInfo": [],
+      "followups": [],
+      "modelState": {
+        "value": 1,
+        "completedAt": 1772147932429
+      },
+      "contentReferences": [],
+      "codeCitations": [],
+      "timeSpentWaiting": 0
+    }
+  ],
+  "sessionId": "b4f38011-2e7a-4ef1-9ae0-274197e8c8c6",
+  "creationDate": 1772147921220,
+  "lastMessageDate": 1772147926365,
+  "customTitle": "General greeting inquiry",
+  "hasPendingEdits": false,
+  "inputState": {
+    "contrib": {
+      "chatDynamicVariableModel": []
+    },
+    "attachments": [],
+    "mode": {
+      "id": "agent",
+      "kind": "agent"
+    },
+    "selectedModel": {
+      "identifier": "copilot/gpt-5-mini",
+      "metadata": {
+        "extension": {
+          "value": "GitHub.copilot-chat"
+        },
+        "id": "gpt-5-mini",
+        "vendor": "copilot",
+        "name": "GPT-5 mini",
+        "family": "gpt-5-mini",
+        "detail": "1x",
+        "auth": {
+          "providerLabel": "GitHub Copilot Chat",
+          "accountLabel": "UserName"
+        },
+        "isDefault": true,
+        "isUserSelectable": true,
+        "capabilities": {
+          "vision": true,
+          "toolCalling": true,
+          "agentMode": true
+        }
+      }
+    },
+    "inputText": "",
+    "selections": []
+  }
+}

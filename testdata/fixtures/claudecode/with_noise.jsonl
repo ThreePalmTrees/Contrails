@@ -1,0 +1,6 @@
+{"type":"user","uuid":"user-meta","sessionId":"session-meta","timestamp":"2026-02-15T10:00:00.000Z","isMeta":true,"message":{"role":"user","content":"System prompt goes here"}}
+{"type":"user","uuid":"user-001","sessionId":"session-meta","timestamp":"2026-02-15T10:00:01.000Z","message":{"role":"user","content":[{"type":"text","text":"What is Go?"}]}}
+{"type":"progress","uuid":"progress-001","sessionId":"session-meta","timestamp":"2026-02-15T10:00:02.000Z"}
+{"type":"assistant","uuid":"asst-001","parentUuid":"user-001","sessionId":"session-meta","timestamp":"2026-02-15T10:00:03.000Z","message":{"role":"assistant","model":"claude-sonnet-4-20250514","content":[{"type":"text","text":"Go is a statically typed, compiled programming language designed at Google."}],"stop_reason":"end_turn"}}
+{"type":"queue-operation","uuid":"queue-001","sessionId":"session-meta","operation":"enqueue"}
+{"type":"file-history-snapshot","uuid":"fhs-001","sessionId":"session-meta","messageId":"asst-001","snapshot":{}}
