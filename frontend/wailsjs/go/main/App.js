@@ -6,6 +6,10 @@ export function AddProject(arg1) {
   return window['go']['main']['App']['AddProject'](arg1);
 }
 
+export function ApplyAppUpdate(arg1) {
+  return window['go']['main']['App']['ApplyAppUpdate'](arg1);
+}
+
 export function BrowseClaudeCodeProjects() {
   return window['go']['main']['App']['BrowseClaudeCodeProjects']();
 }
@@ -16,6 +20,10 @@ export function BrowseCursorProjects() {
 
 export function BrowseWorkspaceStorages() {
   return window['go']['main']['App']['BrowseWorkspaceStorages']();
+}
+
+export function CheckForAppUpdate() {
+  return window['go']['main']['App']['CheckForAppUpdate']();
 }
 
 export function EmitFileProcessed(arg1, arg2) {
@@ -40,6 +48,10 @@ export function GetDefaultOutputDir(arg1) {
 
 export function GetProjects() {
   return window['go']['main']['App']['GetProjects']();
+}
+
+export function GetVersion() {
+  return window['go']['main']['App']['GetVersion']();
 }
 
 export function GetWorkspaceStoragePath() {

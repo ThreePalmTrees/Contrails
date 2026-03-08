@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { ExternalLink, X, AlertCircle } from "lucide-react";
+import { ExternalLink, X, AlertCircle, Download } from "lucide-react";
 import { ContrailsIcon } from "./components/ContrailsIcon";
 import { ProjectList } from "./components/ProjectList";
 import { ProjectDetail } from "./components/ProjectDetail";
@@ -7,8 +7,8 @@ import { AddProjectDialog } from "./components/AddProjectDialog";
 import { OnboardingTour } from "./components/OnboardingTour";
 import { useProjects } from "./hooks/useProjects";
 import { Project } from "./types";
-import { BrowserOpenURL } from "../wailsjs/runtime/runtime";
-import { GetAnalyticsEnabled, SetAnalyticsEnabled } from "../wailsjs/go/main/App";
+import { BrowserOpenURL, EventsOn } from "../wailsjs/runtime/runtime";
+import { GetAnalyticsEnabled, SetAnalyticsEnabled, ApplyAppUpdate } from "../wailsjs/go/main/App";
 import "./App.css";
 
 function App() {
@@ -35,9 +35,21 @@ function App() {
   const [editProject, setEditProject] = useState<Project | null>(null);
   const [editTab, setEditTab] = useState<"vscode" | "claudecode" | "cursor" | "output" | undefined>();
   const [analyticsEnabled, setAnalyticsEnabled] = useState(true);
+  const [updateInfo, setUpdateInfo] = useState<{
+    latestVersion: string;
+    downloadURL: string;
+    releaseURL: string;
+  } | null>(null);
+  const [updating, setUpdating] = useState(false);
 
   useEffect(() => {
     GetAnalyticsEnabled().then(setAnalyticsEnabled).catch(() => {});
+    const cancel = EventsOn("update:available", (info: any) => {
+      if (info && info.latestVersion) {
+        setUpdateInfo(info);
+      }
+    });
+    return cancel;
   }, []);
 
   // Collect existing watch dirs for duplicate prevention
@@ -100,6 +112,34 @@ function App() {
           processingProgress={processingProgress}
           badgeCounts={badgeCounts}
         />
+        {updateInfo && (
+          <div className="update-banner">
+            <div className="update-banner-text">
+              v{updateInfo.latestVersion} available
+            </div>
+            <button
+              className="btn btn-primary btn-xs"
+              disabled={updating}
+              onClick={() => {
+                if (updateInfo.downloadURL) {
+                  setUpdating(true);
+                  ApplyAppUpdate(updateInfo.downloadURL).catch(() => setUpdating(false));
+                } else {
+                  BrowserOpenURL(updateInfo.releaseURL);
+                }
+              }}
+            >
+              {updating ? "Updating..." : <><Download size={11} /> Update</>}
+            </button>
+            <button
+              className="icon-btn icon-btn-sm"
+              onClick={() => setUpdateInfo(null)}
+              title="Dismiss"
+            >
+              <X size={12} />
+            </button>
+          </div>
+        )}
         <footer className="sidebar-footer">
           <button
             className="footer-link"

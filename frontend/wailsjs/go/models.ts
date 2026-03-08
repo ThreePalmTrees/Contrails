@@ -330,6 +330,26 @@ export namespace main {
 		    return a;
 		}
 	}
+	export class UpdateInfo {
+	    currentVersion: string;
+	    latestVersion: string;
+	    releaseURL: string;
+	    downloadURL: string;
+	    releaseNotes: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new UpdateInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.currentVersion = source["currentVersion"];
+	        this.latestVersion = source["latestVersion"];
+	        this.releaseURL = source["releaseURL"];
+	        this.downloadURL = source["downloadURL"];
+	        this.releaseNotes = source["releaseNotes"];
+	    }
+	}
 
 }
 

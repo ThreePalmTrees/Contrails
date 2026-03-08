@@ -1,0 +1,50 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.26"
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24.11.1"
+
+      - name: Install Yarn
+        run: npm install -g yarn
+
+      - name: Install Wails
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.11.0
+
+      - name: Extract version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Build
+        run: ./buildMacOS.sh "${{ steps.version.outputs.VERSION }}" "${{ secrets.POSTHOG_API_KEY }}"
+
+      - name: Zip .app bundle
+        run: |
+          cd build/bin
+          zip -r ../../Contrails-macos.zip contrails.app
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Contrails v${{ steps.version.outputs.VERSION }}
+          generate_release_notes: true
+          files: Contrails-macos.zip

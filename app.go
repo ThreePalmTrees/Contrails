@@ -152,6 +152,19 @@ func (app *App) startup(ctx context.Context) {
 	}()
 
 	app.analytics.TrackAppStarted()
+
+	// Clean up any .app.old from a previous update
+	CleanupOldUpdate()
+
+	// Check for updates in the background (non-blocking)
+	app.waitGroup.Add(1)
+	go func() {
+		defer app.waitGroup.Done()
+		time.Sleep(3 * time.Second) // Delay so startup isn't slowed
+		if info, _ := CheckForUpdate(); info != nil {
+			app.emitter.Emit("update:available", info)
+		}
+	}()
 }
 
 // shutdown is called when the app is closing
@@ -606,6 +619,28 @@ func (app *App) SetAnalyticsEnabled(enabled bool) error {
 	}
 	app.analytics.SetEnabled(enabled)
 	return nil
+}
+
+// --- Update ---
+
+// CheckForAppUpdate checks GitHub for a newer version. Returns nil if up to date.
+func (app *App) CheckForAppUpdate() *UpdateInfo {
+	info, _ := CheckForUpdate()
+	return info
+}
+
+// ApplyAppUpdate downloads and installs the update, then relaunches.
+func (app *App) ApplyAppUpdate(downloadURL string) error {
+	app.analytics.Track("update_accepted", map[string]interface{}{
+		"from_version": Version,
+	})
+	app.analytics.Close() // Flush before we exit
+	return ApplyUpdate(downloadURL)
+}
+
+// GetVersion returns the current app version.
+func (app *App) GetVersion() string {
+	return Version
 }
 
 // ProcessChatSessions processes all JSON files in a chat sessions directory.

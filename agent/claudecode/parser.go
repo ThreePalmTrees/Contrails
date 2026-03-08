@@ -195,7 +195,8 @@ func isLocalCommandContent(content interface{}) bool {
 		return false
 	}
 	return strings.HasPrefix(text, "<command-name>") ||
-		strings.HasPrefix(text, "<local-command-stdout>")
+		strings.HasPrefix(text, "<local-command-stdout>") ||
+		strings.HasPrefix(text, "<local-command-caveat>")
 }
 
 // buildUserMessage extracts text content from a user-role JSONL line.

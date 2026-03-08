@@ -60,7 +60,7 @@
         So the next session doesn't repeat the same mistakes.
       </p>
       <div class="hero-actions">
-        <a href="#download" class="btn btn-primary">
+        <a href="https://github.com/ThreePalmTrees/Contrails/releases/latest/download/Contrails-macos.zip" class="btn btn-primary download-btn">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           Download for macOS
         </a>
@@ -332,7 +332,7 @@ deduplicates on their end.</code></pre>
       <h2 class="cta-title">Stop losing your agent's reasoning</h2>
       <p class="cta-subtitle">Free, open source, and runs entirely on your machine.</p>
       <div class="hero-actions">
-        <a href="#download" class="btn btn-primary">
+        <a href="https://github.com/ThreePalmTrees/Contrails/releases/latest/download/Contrails-macos.zip" class="btn btn-primary download-btn">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           Download for macOS
         </a>
@@ -369,10 +369,10 @@ deduplicates on their end.</code></pre>
 
   <!-- Track download clicks -->
   <script>
-    document.querySelectorAll('a[href*="download"], a.btn-primary').forEach(function(link) {
+    document.querySelectorAll('.download-btn').forEach(function(link) {
       link.addEventListener('click', function() {
         if (window.posthog) {
-          posthog.capture('download_clicked', { source: 'website' });
+          posthog.capture('download_clicked', { source: 'website', location: link.closest('.hero') ? 'hero' : 'cta' });
         }
       });
     });

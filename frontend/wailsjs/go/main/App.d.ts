@@ -7,11 +7,15 @@ import {agent} from '../models';
 
 export function AddProject(arg1:main.Project):Promise<void>;
 
+export function ApplyAppUpdate(arg1:string):Promise<void>;
+
 export function BrowseClaudeCodeProjects():Promise<Array<claudecode.ScannedProject>>;
 
 export function BrowseCursorProjects():Promise<Array<cursor.ScannedProject>>;
 
 export function BrowseWorkspaceStorages():Promise<Array<Record<string, string>>>;
+
+export function CheckForAppUpdate():Promise<main.UpdateInfo>;
 
 export function EmitFileProcessed(arg1:string,arg2:string):Promise<void>;
 
@@ -24,6 +28,8 @@ export function GetAnalyticsEnabled():Promise<boolean>;
 export function GetDefaultOutputDir(arg1:string):Promise<string>;
 
 export function GetProjects():Promise<Array<main.Project>>;
+
+export function GetVersion():Promise<string>;
 
 export function GetWorkspaceStoragePath():Promise<string>;
 
