@@ -231,6 +231,7 @@ button, input, select, textarea, a, [role="button"] {
 }
 
 .empty-main {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -242,6 +243,8 @@ button, input, select, textarea, a, [role="button"] {
 }
 .empty-main h2 {
   color: var(--text-secondary);
+  font-size: 21px;
+  margin-top: -8px;
 }
 .empty-main p {
   color: var(--text-muted);
@@ -521,24 +524,29 @@ button, input, select, textarea, a, [role="button"] {
 .footer-link:hover {
   color: var(--text-secondary);
 }
-.footer-analytics-toggle {
-  opacity: 0.5;
-  font-size: 10px;
-}
-.footer-analytics-toggle:hover {
-  opacity: 0.8;
-}
 .analytics-dot {
   display: inline-block;
   width: 6px;
   height: 6px;
   border-radius: 50%;
+  opacity: 0.4;
 }
 .analytics-on {
   background: #50e12f;
 }
 .analytics-off {
   background: #666;
+}
+.telemetry-toggle {
+  position: absolute;
+  bottom: 0px;
+  right: -24px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 8px;
+  color: var(--text-muted);
+  opacity: 0.4;
 }
 
 /* ===== Project Item Badge ===== */

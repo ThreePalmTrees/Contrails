@@ -1409,6 +1409,7 @@ func (app *App) OnCursorDatabaseChanged() {
 				if err := app.updateLastProcessed(p.ID); err != nil {
 					logWarningf(app.logger, "Failed to update lastProcessed: %v", err)
 				}
+				app.analytics.TrackProcessAll("cursor", count)
 			}
 		}(project, *cursorSource)
 	}

@@ -9,7 +9,10 @@ import (
 
 // hookCommand is the shell command written into .claude/settings.local.json.
 // It pipes the hook's stdin JSON into a timestamped signal file.
-const hookCommand = "cat > ~/contrails/hook-signals/$(date +%s%N).json"
+// Uses epoch seconds + PID for the filename — $$ is unique per hook invocation
+// and works on all macOS versions (BSD date doesn't support %N on older macOS).
+const hookCommand = "cat > ~/contrails/hook-signals/$(date +%s)_$$.json"
+
 
 // hookEntry represents a single hook command entry.
 type hookEntry struct {

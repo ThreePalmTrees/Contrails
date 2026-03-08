@@ -188,16 +188,30 @@ Tests use `t.TempDir()` for filesystem isolation and interface injection (define
 ## Building
 
 ```bash
-# Build production app (dev — no analytics, no update checks)
-wails build
+# Build universal macOS app (dev — no analytics, no update checks)
+./buildMacOS.sh
 
 # Build with version + analytics (used by CI/CD)
-wails build -ldflags "-X main.Version=1.2.3 -X main.PostHogAPIKey=phc_xxxx"
+./buildMacOS.sh 1.2.3 phc_xxxx
 
 # Output: build/bin/contrails.app
 ```
 
-Version is derived from git tags (`v1.2.3` → `1.2.3`). When `Version` is `"dev"`, update checks and analytics are disabled.
+`buildMacOS.sh` wraps `wails build -platform darwin/universal`, injects `Version` and `PostHogAPIKey` via `-ldflags` when provided, and ad-hoc codesigns the output. Version is derived from git tags (`v1.2.3` → `1.2.3`). When `Version` is `"dev"` (no arguments), update checks and analytics are disabled.
+
+## Releasing
+
+```bash
+# Tag and push a new minor release (default)
+./release.sh
+
+# Or specify the bump type
+./release.sh patch   # v0.1.0 → v0.1.1
+./release.sh minor   # v0.1.0 → v0.2.0
+./release.sh major   # v0.1.0 → v1.0.0
+```
+
+`release.sh` reads the latest semver git tag, increments it, tags, and pushes to origin. The push triggers the GitHub Actions workflow (`.github/workflows/release.yml`) which builds the universal macOS app via `buildMacOS.sh`, zips the `.app` bundle, and creates a GitHub Release with the artifact attached. The PostHog API key is injected from a repository secret.
 
 ## Configuration
 

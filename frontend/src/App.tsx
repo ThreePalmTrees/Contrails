@@ -147,17 +147,6 @@ function App() {
           >
             Documentation <ExternalLink size={11} />
           </button>
-          <button
-            className="footer-link footer-analytics-toggle"
-            onClick={() => {
-              const next = !analyticsEnabled;
-              SetAnalyticsEnabled(next).then(() => setAnalyticsEnabled(next)).catch(() => {});
-            }}
-            title={analyticsEnabled ? "Anonymous analytics are enabled. Click to disable." : "Anonymous analytics are disabled. Click to enable."}
-          >
-            <span className={`analytics-dot ${analyticsEnabled ? "analytics-on" : "analytics-off"}`} />
-            Analytics {analyticsEnabled ? "on" : "off"}
-          </button>
         </footer>
       </aside>
 
@@ -178,17 +167,37 @@ function App() {
           />
         ) : (
           <div className="empty-main">
-            <div>
-              <ContrailsIcon style={{ width: '48px' }} />
+            <div style={{ opacity: 0.2 }}>
+              <ContrailsIcon style={{ width: '88px' }} />
               <h2>Contrails</h2>
             </div>
             <p>Select a project or add a new one to get started.</p>
             <button
               className="btn btn-primary"
               onClick={() => setShowAddDialog(true)}
+              style={{fontSize: '14px', padding: '8px 28px'}}
             >
               Add Project
             </button>
+            <div className="telemetry-toggle">
+              <span
+                className={`analytics-dot ${analyticsEnabled ? "analytics-on" : "analytics-off"}`}
+                role="button"
+                tabIndex={0}
+                onClick={() => {
+                  const next = !analyticsEnabled;
+                  SetAnalyticsEnabled(next).then(() => setAnalyticsEnabled(next)).catch(() => {});
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    const next = !analyticsEnabled;
+                    SetAnalyticsEnabled(next).then(() => setAnalyticsEnabled(next)).catch(() => {});
+                  }
+                }}
+                title={analyticsEnabled ? "Anonymous telemetry is enabled. Click to disable." : "Anonymous telemetry is disabled. Click to enable."}
+              />
+              <span style={{ cursor: 'default'}}>Telemetry {analyticsEnabled ? "on" : "off"}</span>
+            </div>
           </div>
         )}
       </main>
