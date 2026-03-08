@@ -118,7 +118,7 @@ button, input, select, textarea, a, [role="button"] {
   background: var(--accent-muted);
   border-radius: var(--radius-sm);
 }
-.project-item.inactive {
+.project-item.inactive > .project-item-content {
   opacity: 0.55;
 }
 .project-item:not(:last-child) {
@@ -169,7 +169,9 @@ button, input, select, textarea, a, [role="button"] {
   transition: opacity 0.12s ease;
 }
 .project-item:hover .project-item-actions,
-.project-item.selected .project-item-actions {
+.project-item.selected .project-item-actions,
+.project-item.menu-open .project-item-actions,
+.project-item .project-item-actions:focus-within {
   opacity: 1;
 }
 /* Keep space for actions even when hidden so badge doesn't jump */

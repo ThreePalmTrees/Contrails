@@ -114,18 +114,30 @@ func (app *App) startup(ctx context.Context) {
 	go func() {
 		defer app.waitGroup.Done()
 		for _, project := range projects {
-			if project.Active && project.LastProcessed > 0 {
-				count, err := app.ProcessModifiedSince(project.ID, project.WatchDir, project.OutputDir)
-				if err != nil {
-					logWarningf(app.logger, "Startup scan error for %s: %v", project.Name, err)
-					app.emitter.Emit("app:error", AppError{
-						ProjectID:   project.ID,
-						ProjectName: project.Name,
-						Message:     fmt.Sprintf("Startup scan failed: %v", err),
-					})
-				} else if count > 0 {
-					logInfof(app.logger, "Startup: processed %d modified file(s) for %s", count, project.Name)
+			if !project.Active || project.LastProcessed == 0 {
+				continue
+			}
+			// ProcessModifiedSince is VSCode-specific; find the VSCode watch dir
+			watchDir := project.WatchDir
+			for _, source := range project.Sources {
+				if source.Type == AgentSourceVSCode {
+					watchDir = effectiveWatchDir(source, project)
+					break
 				}
+			}
+			if watchDir == "" {
+				continue
+			}
+			count, err := app.ProcessModifiedSince(project.ID, watchDir, project.OutputDir)
+			if err != nil {
+				logWarningf(app.logger, "Startup scan error for %s: %v", project.Name, err)
+				app.emitter.Emit("app:error", AppError{
+					ProjectID:   project.ID,
+					ProjectName: project.Name,
+					Message:     fmt.Sprintf("Startup scan failed: %v", err),
+				})
+			} else if count > 0 {
+				logInfof(app.logger, "Startup: processed %d modified file(s) for %s", count, project.Name)
 			}
 		}
 	}()
@@ -790,6 +802,10 @@ func (app *App) updateLastProcessed(projectID string) error {
 func (app *App) GetDefaultOutputDir(workspacePath string) string {
 	if workspacePath == "" {
 		return ""
+	}
+	// For workspace files (e.g. .code-workspace), use the parent directory
+	if info, err := os.Stat(workspacePath); err == nil && !info.IsDir() {
+		workspacePath = filepath.Dir(workspacePath)
 	}
 	return filepath.Join(workspacePath, "contrails")
 }

@@ -194,6 +194,17 @@ func TestGetDefaultOutputDir(t *testing.T) {
 			}
 		})
 	}
+
+	t.Run("workspace file", func(t *testing.T) {
+		dir := t.TempDir()
+		wsFile := filepath.Join(dir, "myproject.code-workspace")
+		os.WriteFile(wsFile, []byte("{}"), 0644)
+		got := app.GetDefaultOutputDir(wsFile)
+		expected := filepath.Join(dir, "contrails")
+		if got != expected {
+			t.Errorf("GetDefaultOutputDir(%q) = %q, want %q", wsFile, got, expected)
+		}
+	})
 }
 
 // --- ValidateOutputDir ---

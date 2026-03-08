@@ -648,7 +648,14 @@ export function AddProjectDialog({ onAdd, onCancel, existingWatchDirs, existingP
                       onClick={() => selectCursorProject(project)}
                     >
                       <div className="workspace-item-info">
-                        <span className="workspace-name">{project.displayName}</span>
+                        <span className="workspace-name">
+                          {project.displayName}
+                          {project.displayName.endsWith(".code-workspace") && (
+                            <span className="badge badge-workspace badge-inline">
+                              <Layers size={10} /> Workspace
+                            </span>
+                          )}
+                        </span>
                         <span className="workspace-path" title={project.workspacePath}>
                           {project.composerCount} session{project.composerCount !== 1 ? "s" : ""}
                           {" · "}
@@ -683,6 +690,11 @@ export function AddProjectDialog({ onAdd, onCancel, existingWatchDirs, existingP
                             <div className="workspace-item-info">
                               <span className="workspace-name">
                                 {project.displayName}
+                                {project.displayName.endsWith(".code-workspace") && (
+                                  <span className="badge badge-workspace badge-inline">
+                                    <Layers size={10} /> Workspace
+                                  </span>
+                                )}
                                 {isCurrentConfigured && <span className="badge badge-inline" style={{ marginLeft: 6 }}>Current</span>}
                               </span>
                               <span className="workspace-path" title={project.workspacePath}>

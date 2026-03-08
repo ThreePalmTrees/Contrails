@@ -109,7 +109,7 @@ export function ProjectList({
           return (
             <div
               key={project.id}
-              className={`project-item ${selectedId === project.id ? "selected" : ""} ${!project.active ? "inactive" : ""}`}
+              className={`project-item ${selectedId === project.id ? "selected" : ""} ${!project.active ? "inactive" : ""} ${menuId === project.id ? "menu-open" : ""}`}
               onClick={() => onSelect(project.id)}
             >
               <div className="project-item-content">
