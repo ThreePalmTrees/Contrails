@@ -9,6 +9,8 @@ This way you keep the reasoning that led to fixing a bug or implementing a featu
 
 Built with [Wails v2](https://wails.io/) (Go + React + TypeScript).
 
+![Contrails Screenshot](screenshot.png)
+
 ## Why
 
 Coding agents forget everything between sessions. The reasoning that led to a fix, the wrong approaches that were tried, the self-corrections — all of it vanishes. Contrails watches agent session files in real-time and outputs clean, human-readable Markdown into a `contrails/` directory in your project, making your agent conversations part of your repo history.
