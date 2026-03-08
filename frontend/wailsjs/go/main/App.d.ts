@@ -19,6 +19,8 @@ export function EmitWatcherEvent(arg1:string,arg2:string,arg3:string):Promise<vo
 
 export function FindProject(arg1:string):Promise<string>;
 
+export function GetAnalyticsEnabled():Promise<boolean>;
+
 export function GetDefaultOutputDir(arg1:string):Promise<string>;
 
 export function GetProjects():Promise<Array<main.Project>>;
@@ -56,6 +58,8 @@ export function SaveProjects(arg1:Array<main.Project>):Promise<void>;
 export function SelectChatSessionsDir():Promise<string>;
 
 export function SelectOutputDir():Promise<string>;
+
+export function SetAnalyticsEnabled(arg1:boolean):Promise<void>;
 
 export function UpdateProject(arg1:main.Project):Promise<void>;
 

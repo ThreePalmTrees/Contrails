@@ -15,6 +15,14 @@ import (
 // Style: Prefix Unexported Globals with _ (go-style-guide.md)
 var _assets embed.FS
 
+// Version is set at build time via -ldflags "-X main.Version=x.y.z".
+// Defaults to "dev" for local development builds.
+var Version = "dev"
+
+// PostHog API key, injected at build time via -ldflags "-X main.PostHogAPIKey=phc_xxxx".
+// Empty = analytics disabled (dev builds).
+var PostHogAPIKey = ""
+
 func main() {
 	app := NewApp()
 

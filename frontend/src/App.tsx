@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { ExternalLink, X, AlertCircle } from "lucide-react";
 import { ContrailsIcon } from "./components/ContrailsIcon";
 import { ProjectList } from "./components/ProjectList";
@@ -8,6 +8,7 @@ import { OnboardingTour } from "./components/OnboardingTour";
 import { useProjects } from "./hooks/useProjects";
 import { Project } from "./types";
 import { BrowserOpenURL } from "../wailsjs/runtime/runtime";
+import { GetAnalyticsEnabled, SetAnalyticsEnabled } from "../wailsjs/go/main/App";
 import "./App.css";
 
 function App() {
@@ -33,6 +34,11 @@ function App() {
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [editProject, setEditProject] = useState<Project | null>(null);
   const [editTab, setEditTab] = useState<"vscode" | "claudecode" | "cursor" | "output" | undefined>();
+  const [analyticsEnabled, setAnalyticsEnabled] = useState(true);
+
+  useEffect(() => {
+    GetAnalyticsEnabled().then(setAnalyticsEnabled).catch(() => {});
+  }, []);
 
   // Collect existing watch dirs for duplicate prevention
   const existingWatchDirs = useMemo(
@@ -100,6 +106,17 @@ function App() {
             onClick={() => BrowserOpenURL("https://github.com/ThreePalmTrees/Contrails")}
           >
             Documentation <ExternalLink size={11} />
+          </button>
+          <button
+            className="footer-link footer-analytics-toggle"
+            onClick={() => {
+              const next = !analyticsEnabled;
+              SetAnalyticsEnabled(next).then(() => setAnalyticsEnabled(next)).catch(() => {});
+            }}
+            title={analyticsEnabled ? "Anonymous analytics are enabled. Click to disable." : "Anonymous analytics are disabled. Click to enable."}
+          >
+            <span className={`analytics-dot ${analyticsEnabled ? "analytics-on" : "analytics-off"}`} />
+            Analytics {analyticsEnabled ? "on" : "off"}
           </button>
         </footer>
       </aside>

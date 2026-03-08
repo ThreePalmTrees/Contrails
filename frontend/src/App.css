@@ -498,6 +498,25 @@ button, input, select, textarea, a, [role="button"] {
 .footer-link:hover {
   color: var(--text-secondary);
 }
+.footer-analytics-toggle {
+  opacity: 0.5;
+  font-size: 10px;
+}
+.footer-analytics-toggle:hover {
+  opacity: 0.8;
+}
+.analytics-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+.analytics-on {
+  background: #50e12f;
+}
+.analytics-off {
+  background: #666;
+}
 
 /* ===== Project Item Badge ===== */
 .project-item-right {

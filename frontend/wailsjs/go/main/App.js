@@ -30,6 +30,10 @@ export function FindProject(arg1) {
   return window['go']['main']['App']['FindProject'](arg1);
 }
 
+export function GetAnalyticsEnabled() {
+  return window['go']['main']['App']['GetAnalyticsEnabled']();
+}
+
 export function GetDefaultOutputDir(arg1) {
   return window['go']['main']['App']['GetDefaultOutputDir'](arg1);
 }
@@ -104,6 +108,10 @@ export function SelectChatSessionsDir() {
 
 export function SelectOutputDir() {
   return window['go']['main']['App']['SelectOutputDir']();
+}
+
+export function SetAnalyticsEnabled(arg1) {
+  return window['go']['main']['App']['SetAnalyticsEnabled'](arg1);
 }
 
 export function UpdateProject(arg1) {

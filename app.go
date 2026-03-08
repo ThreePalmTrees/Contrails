@@ -27,6 +27,7 @@ type App struct {
 	logger         Logger
 	emitter        EventEmitter
 	dialogOpener   DialogOpener
+	analytics      *Analytics
 	drivers        map[AgentSourceType]agent.AgentDriver // source type → driver
 	configDir      string           // override for testing; empty = os.UserConfigDir()
 	lastFileHashes map[string]string // filePath → content hash at last processing
@@ -83,6 +84,14 @@ func (app *App) startup(ctx context.Context) {
 	app.drivers[AgentSourceVSCode] = vscode.NewDriver(app.watcher, app.logger)
 	app.drivers[AgentSourceClaudeCode] = claudecode.NewDriver(app.signalWatcher, app.hookEnforcer, app.watcher, app.logger)
 	app.drivers[AgentSourceCursor] = cursor.NewDriver(app, app.logger)
+
+	// Initialize analytics (no-ops if PostHogAPIKey is empty)
+	app.analytics = NewAnalytics(PostHogAPIKey, app.logger, app.GetProjects)
+
+	// Check opt-out setting
+	if settings, err := app.loadSettings(); err == nil && !settings.AnalyticsEnabled {
+		app.analytics.SetEnabled(false)
+	}
 
 	// Re-watch all projects and heal stale filenames
 	projects, _ := app.GetProjects()
@@ -141,6 +150,8 @@ func (app *App) startup(ctx context.Context) {
 			}
 		}
 	}()
+
+	app.analytics.TrackAppStarted()
 }
 
 // shutdown is called when the app is closing
@@ -156,6 +167,9 @@ func (app *App) shutdown(ctx context.Context) {
 	if app.hookEnforcer != nil {
 		app.hookEnforcer.Stop()
 	}
+
+	app.analytics.TrackAppClosed()
+	app.analytics.Close()
 }
 
 // --- SignalHandler implementation (Dependency Inversion) ---
@@ -192,7 +206,11 @@ func (app *App) FindProject(workingDirectory string) (projectID, outputDir strin
 // WriteContrail writes the parsed session as a markdown file and returns
 // the output path. Delegates to the shared WriteParsedSession function.
 func (app *App) WriteContrail(session *agent.ParsedSession, outputDir string) (string, error) {
-	return agent.WriteParsedSession(session, outputDir)
+	path, err := agent.WriteParsedSession(session, outputDir)
+	if err == nil && path != "" {
+		app.analytics.TrackContrailCreated(session.Agent, len(session.Messages))
+	}
+	return path, err
 }
 
 // EmitWatcherEvent notifies the frontend that a contrail file was
@@ -300,6 +318,13 @@ func (app *App) AddProject(project Project) error {
 		}
 	}
 
+	// Analytics: track project addition
+	agentTypes := make([]string, 0, len(project.Sources))
+	for _, s := range project.Sources {
+		agentTypes = append(agentTypes, string(s.Type))
+	}
+	app.analytics.TrackProjectAdded(agentTypes, len(projects))
+
 	return nil
 }
 
@@ -328,6 +353,26 @@ func (app *App) UpdateProject(project Project) error {
 			if sourcesChanged {
 				app.deactivateProjectSources(existing)
 				app.activateProjectSources(project)
+
+				// Analytics: track source additions/removals
+				oldTypes := map[AgentSourceType]bool{}
+				for _, s := range existing.Sources {
+					oldTypes[s.Type] = true
+				}
+				newTypes := map[AgentSourceType]bool{}
+				for _, s := range project.Sources {
+					newTypes[s.Type] = true
+				}
+				for t := range newTypes {
+					if !oldTypes[t] {
+						app.analytics.TrackAgentSourceAdded(string(t))
+					}
+				}
+				for t := range oldTypes {
+					if !newTypes[t] {
+						app.analytics.TrackAgentSourceRemoved(string(t))
+					}
+				}
 			}
 
 			// On resume: process files modified since pause
@@ -378,7 +423,12 @@ func (app *App) RemoveProject(projectID string) error {
 		updated = append(updated, project)
 	}
 
-	return app.SaveProjects(updated)
+	if err := app.SaveProjects(updated); err != nil {
+		return err
+	}
+
+	app.analytics.TrackProjectRemoved(len(updated))
+	return nil
 }
 
 // --- File/Directory Selection ---
@@ -486,6 +536,78 @@ func (app *App) makeProcessCallbacks(projectID string) agent.ProcessCallbacks {
 	}
 }
 
+// --- Analytics Settings ---
+
+// AnalyticsSettings holds the opt-out preference, persisted alongside projects.json.
+type AnalyticsSettings struct {
+	AnalyticsEnabled bool `json:"analyticsEnabled"`
+}
+
+func (app *App) settingsFilePath() (string, error) {
+	baseDir := app.configDir
+	if baseDir == "" {
+		var err error
+		baseDir, err = os.UserConfigDir()
+		if err != nil {
+			return "", fmt.Errorf("getting config dir: %w", err)
+		}
+	}
+	dir := filepath.Join(baseDir, "contrails")
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return "", fmt.Errorf("creating config dir: %w", err)
+	}
+	return filepath.Join(dir, "settings.json"), nil
+}
+
+func (app *App) loadSettings() (AnalyticsSettings, error) {
+	path, err := app.settingsFilePath()
+	if err != nil {
+		return AnalyticsSettings{AnalyticsEnabled: true}, err
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		// Default: analytics enabled
+		return AnalyticsSettings{AnalyticsEnabled: true}, nil
+	}
+	var settings AnalyticsSettings
+	if err := json.Unmarshal(data, &settings); err != nil {
+		return AnalyticsSettings{AnalyticsEnabled: true}, err
+	}
+	return settings, nil
+}
+
+func (app *App) saveSettings(settings AnalyticsSettings) error {
+	data, err := json.MarshalIndent(settings, "", "  ")
+	if err != nil {
+		return err
+	}
+	path, err := app.settingsFilePath()
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(path, data, 0644)
+}
+
+// GetAnalyticsEnabled returns whether analytics collection is enabled.
+func (app *App) GetAnalyticsEnabled() bool {
+	settings, err := app.loadSettings()
+	if err != nil {
+		return true // default enabled
+	}
+	return settings.AnalyticsEnabled
+}
+
+// SetAnalyticsEnabled toggles analytics collection on or off.
+func (app *App) SetAnalyticsEnabled(enabled bool) error {
+	settings, _ := app.loadSettings()
+	settings.AnalyticsEnabled = enabled
+	if err := app.saveSettings(settings); err != nil {
+		return err
+	}
+	app.analytics.SetEnabled(enabled)
+	return nil
+}
+
 // ProcessChatSessions processes all JSON files in a chat sessions directory.
 // This is the "Process All Now" path - ignores lastProcessedAt.
 // Delegates to the VS Code driver's ProcessAll.
@@ -503,6 +625,10 @@ func (app *App) ProcessChatSessions(projectID, watchDir, outputDir string) (int,
 	// Update lastProcessedAt
 	if err := app.updateLastProcessed(projectID); err != nil {
 		logWarningf(app.logger, "Failed to update lastProcessed: %v", err)
+	}
+
+	if count > 0 {
+		app.analytics.TrackProcessAll("vscode", count)
 	}
 
 	return count, nil
@@ -678,6 +804,7 @@ func (app *App) processFileWithSource(filePath, sourceType, outputDir string) (s
 		return "", 0, err
 	}
 
+	app.analytics.TrackContrailCreated(parsed.Agent, len(parsed.Messages))
 	return outPath, time.Since(start), nil
 }
 
@@ -703,6 +830,7 @@ func (app *App) processFileReturn(filePath, outputDir string) (string, time.Dura
 		return "", 0, err
 	}
 
+	app.analytics.TrackContrailCreated(parsed.Agent, len(parsed.Messages))
 	duration := time.Since(start)
 	return outPath, duration, nil
 }
@@ -1265,6 +1393,7 @@ func (app *App) ProcessClaudeCodeSessions(projectID, transcriptDirectory, output
 		if err := app.updateLastProcessed(projectID); err != nil {
 			logWarningf(app.logger, "Failed to update lastProcessed: %v", err)
 		}
+		app.analytics.TrackProcessAll("claudecode", count)
 	}
 
 	return count, nil

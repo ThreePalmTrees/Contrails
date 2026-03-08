@@ -151,8 +151,8 @@ func (watcher *SignalWatcher) eventLoop() {
 // processSignalFile reads a signal file, matches it to a project via the
 // SignalHandler, and triggers parsing of the Claude Code transcript.
 func (watcher *SignalWatcher) processSignalFile(signalPath string) {
-	// // Read the raw signal file before we consume (and delete) it
-	// rawSignalBytes, readSignalErr := os.ReadFile(signalPath)
+	// Read the raw signal file before we consume (and delete) it
+	rawSignalBytes, readSignalErr := os.ReadFile(signalPath)
 
 	signal, err := ConsumeSignalFile(signalPath)
 	if err != nil {
@@ -230,29 +230,29 @@ func (watcher *SignalWatcher) processSignalFile(signalPath string) {
 
 	agent.LogInfof(watcher.logger, "Wrote Claude Code contrail: %s", filepath.Base(outputPath))
 
-	// // Save a debug copy of every file we parse, using its original name with a "debug_" prefix.
-	// // 1. The transcript .jsonl file
-	// transcriptData, readErr := os.ReadFile(signal.TranscriptPath)
-	// if readErr == nil {
-	// 	debugFileName := "debug_" + filepath.Base(signal.TranscriptPath)
-	// 	debugPath := filepath.Join(filepath.Dir(outputPath), debugFileName)
-	// 	if writeErr := os.WriteFile(debugPath, transcriptData, 0644); writeErr != nil {
-	// 		agent.LogWarningf(watcher.logger, "Failed to write debug transcript file %s: %v", debugFileName, writeErr)
-	// 	} else {
-	// 		agent.LogInfof(watcher.logger, "Wrote debug copy: %s", debugFileName)
-	// 	}
-	// }
-	//
-	// // 2. The parsed signal .json file
-	// if readSignalErr == nil {
-	// 	debugSignalFileName := "debug_" + filepath.Base(signalPath)
-	// 	debugSignalPath := filepath.Join(filepath.Dir(outputPath), debugSignalFileName)
-	// 	if writeErr := os.WriteFile(debugSignalPath, rawSignalBytes, 0644); writeErr != nil {
-	// 		agent.LogWarningf(watcher.logger, "Failed to write debug signal file %s: %v", debugSignalFileName, writeErr)
-	// 	} else {
-	// 		agent.LogInfof(watcher.logger, "Wrote debug copy: %s", debugSignalFileName)
-	// 	}
-	// }
+	// Save a debug copy of every file we parse, using its original name with a "debug_" prefix.
+	// 1. The transcript .jsonl file
+	transcriptData, readErr := os.ReadFile(signal.TranscriptPath)
+	if readErr == nil {
+		debugFileName := "debug_" + filepath.Base(signal.TranscriptPath)
+		debugPath := filepath.Join(filepath.Dir(outputPath), debugFileName)
+		if writeErr := os.WriteFile(debugPath, transcriptData, 0644); writeErr != nil {
+			agent.LogWarningf(watcher.logger, "Failed to write debug transcript file %s: %v", debugFileName, writeErr)
+		} else {
+			agent.LogInfof(watcher.logger, "Wrote debug copy: %s", debugFileName)
+		}
+	}
+	
+	// 2. The parsed signal .json file
+	if readSignalErr == nil {
+		debugSignalFileName := "debug_" + filepath.Base(signalPath)
+		debugSignalPath := filepath.Join(filepath.Dir(outputPath), debugSignalFileName)
+		if writeErr := os.WriteFile(debugSignalPath, rawSignalBytes, 0644); writeErr != nil {
+			agent.LogWarningf(watcher.logger, "Failed to write debug signal file %s: %v", debugSignalFileName, writeErr)
+		} else {
+			agent.LogInfof(watcher.logger, "Wrote debug copy: %s", debugSignalFileName)
+		}
+	}
 
 	// Emit events via the handler
 	watcher.handler.EmitWatcherEvent(projectID, filepath.Base(outputPath), "created")
