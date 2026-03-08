@@ -1,4 +1,4 @@
-# .Contrails ✈️
+# Contrails ✈️
 
 **Preserve your coding agent trails.**
 
