@@ -25,6 +25,12 @@ When working on a related feature in the future, you can reference relevant cont
 | **Claude Code** | Scans `~/.claude/projects/` for session files | Signal watcher on `~/contrails/hook-signals/` via Stop hook | JSONL transcript |
 | **Cursor** | Scans `workspaceStorage/` for per-workspace `state.vscdb` files | `fsnotify` on per-workspace storage + global `globalStorage/` directory (debounced 2 s) | SQLite — per-workspace `ItemTable` for composer list + global `cursorDiskKV` for `composerData:*` + `bubbleId:*` keys |
 
+## Installation
+
+1. Download `Contrails-macos.zip` from the [latest release](https://github.com/ThreePalmTrees/Contrails/releases/latest)
+2. Unzip and drag `contrails.app` to your Applications folder
+3. Launch Contrails — on first run, right-click the app and select "Open" to bypass Gatekeeper since the app is not notarized
+
 ## Features
 
 - **Auto-discovery** - Finds projects with agent chat sessions automatically. VS Code and Cursor workspaces are resolved via `workspace.json`; Claude Code projects are discovered from `~/.claude/projects/`
