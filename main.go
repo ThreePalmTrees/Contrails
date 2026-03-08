@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/wailsapp/wails/v2"
+	"github.com/wailsapp/wails/v2/pkg/menu"
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
 	"github.com/wailsapp/wails/v2/pkg/options/mac"
@@ -44,6 +45,7 @@ func main() {
 				})
 			},
 		},
+		Menu:             menu.NewMenuFromItems(menu.AppMenu(), menu.WindowMenu()),
 		BackgroundColour: &options.RGBA{R: 15, G: 15, B: 20, A: 1},
 		OnStartup:        app.startup,
 		OnShutdown:       app.shutdown,
