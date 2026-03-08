@@ -62,7 +62,7 @@ func main() {
 			WindowIsTranslucent:  true,
 			About: &mac.AboutInfo{
 				Title:   "Contrails",
-				Message: "Chat history preserver for coding agents",
+				Message: "Chat history preserver for coding agents\nVersion: " + Version,
 			},
 		},
 		Bind: []interface{}{

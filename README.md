@@ -51,7 +51,7 @@ When working on a related feature in the future, you can reference relevant cont
 - **Project management** - Track multiple workspaces, rename them, pause/resume watching
 - **Native macOS** - Translucent titlebar, native directory pickers, system font rendering
 - **Persistent state** - Projects list persists across restarts; selected project stored in localStorage
-- **Anonymous analytics** - Optional, anonymous usage analytics via PostHog (Go SDK). Tracks aggregate metrics like app starts, project counts, and contrails created. No personal data is collected. A persistent device UUID is generated on first launch — no accounts or sign-in required. Analytics can be toggled on/off from the sidebar footer; the preference is persisted across restarts. Disabled entirely in dev builds (no API key injected)
+- **Anonymous telemetry** - Optional, anonymous usage telemetry via PostHog (Go SDK). Tracks aggregate metrics like app starts, project counts, and contrails created. No personal data is collected. A persistent device UUID is generated on first launch — no accounts or sign-in required. Telemetry can be toggled on/off from the sidebar footer; the preference is persisted across restarts. Disabled entirely in dev builds (no API key injected)
 - **Auto-update** - On launch, checks GitHub Releases for a newer version. If available, shows a banner with release notes and a one-click install button. Updates replace the full `.app` bundle atomically and relaunch
 
 ## Architecture
@@ -108,7 +108,7 @@ contrails/
 
 | File | Responsibility |
 |------|---------------|
-| `app.go` | Composition root — project CRUD (persisted to `~/Library/Application Support/contrails/projects.json`), driver registry + dispatch, native directory pickers, workspace scanning, incremental processing, analytics settings, update check. Implements `claudecode.SignalHandler` to receive signal events via dependency inversion. |
+| `app.go` | Composition root — project CRUD (persisted to `~/Library/Application Support/contrails/projects.json`), driver registry + dispatch, native directory pickers, workspace scanning, incremental processing, telemetry settings, update check. Implements `claudecode.SignalHandler` to receive signal events via dependency inversion. |
 | `analytics.go` | PostHog client wrapper — fail-safe design (all methods silently no-op on failure), device ID generation/persistence (`~/.config/contrails/device_id`), opt-out support, event tracking (app lifecycle, project/source/contrail events). Disabled entirely when API key is empty (dev builds). |
 | `updater.go` | GitHub Releases update checker — polls `ThreePalmTrees/Contrails` releases, semantic version comparison, downloads and atomically replaces the full `.app` bundle, relaunches via `open`. Skipped for `dev` builds. |
 | `runtime.go` | Testability interfaces (`Logger`, `EventEmitter`, `DialogOpener`) with production (Wails-backed) and test (Noop, Recording) implementations. `Logger` is a type alias for `agent.Logger`. |
@@ -202,16 +202,16 @@ Tests use `t.TempDir()` for filesystem isolation and interface injection (define
 ## Building
 
 ```bash
-# Build universal macOS app (dev — no analytics, no update checks)
+# Build universal macOS app (dev — no telemetry, no update checks)
 ./buildMacOS.sh
 
-# Build with version + analytics (used by CI/CD)
+# Build with version + telemetry (used by CI/CD)
 ./buildMacOS.sh 1.2.3 phc_xxxx
 
 # Output: build/bin/contrails.app
 ```
 
-`buildMacOS.sh` wraps `wails build -platform darwin/universal`, injects `Version` and `PostHogAPIKey` via `-ldflags` when provided, and ad-hoc codesigns the output. Version is derived from git tags (`v1.2.3` → `1.2.3`). When `Version` is `"dev"` (no arguments), update checks and analytics are disabled.
+`buildMacOS.sh` wraps `wails build -platform darwin/universal`, injects `Version` and `PostHogAPIKey` via `-ldflags` when provided, and ad-hoc codesigns the output. Version is derived from git tags (`v1.2.3` → `1.2.3`). When `Version` is `"dev"` (no arguments), update checks and telemetry are disabled.
 
 ## Releasing
 
@@ -234,7 +234,7 @@ Projects are stored in:
 ~/Library/Application Support/contrails/projects.json
 ```
 
-Analytics preference and device identity:
+Telemetry preference and device identity:
 ```
 ~/.config/contrails/settings.json   # { "analyticsEnabled": true }
 ~/.config/contrails/device_id       # persistent UUID (generated on first launch)
@@ -247,14 +247,36 @@ Default output directory per project:
 
 It's suggested to commit `contrails/`.
 
-## Analytics & Privacy
+## Contributing
 
-Contrails collects anonymous usage analytics via [PostHog](https://posthog.com/) to understand how the app is used (e.g., number of active users, contrails created, agents used). No personal data, file contents, or conversation text is collected.
+Contributions are welcome! Here's how to get started:
 
-- **Opt-out:** Click the "Analytics on/off" toggle in the sidebar footer. The preference is saved immediately and persists across restarts.
+1. Fork the repository
+2. Create a feature branch from `main`
+3. Make your changes
+4. Run the tests: `go test ./... -v`
+5. Commit your changes — include a contrail of the agent session that produced the work (the `contrails/` directory in your project)
+6. Open a pull request against `main`
+
+## Reporting Issues
+
+Found a bug? Please [open an issue](https://github.com/ThreePalmTrees/Contrails/issues/new) with the following details:
+
+- **Agent:** Which coding agent is affected (VS Code Copilot, Claude Code, Cursor)
+- **Contrails version:** Shown in the About dialog (`Contrails` → `About Contrails`)
+- **Steps to reproduce:** A clear, numbered list of actions that trigger the issue
+- **Expected behavior:** What you expected to happen
+- **Actual behavior:** What actually happened
+- **Screenshots or screen recordings:** If applicable, attach visuals to help illustrate the problem
+
+## Telemetry
+
+Contrails collects anonymous telemetry via [PostHog](https://posthog.com/) to understand how the app is used (e.g., number of active users, contrails created, agents used). No personal data, file contents, or conversation text is collected.
+
+- **Opt-out:** Click the "Telemetry on/off" toggle in the sidebar footer. The preference is saved immediately and persists across restarts.
 - **Device identity:** A random UUID is generated on first launch and stored locally. There are no user accounts.
-- **Fail-safe:** Analytics never block the app. If PostHog is unreachable or returns an error, events are silently dropped.
-- **Dev builds:** Analytics are completely disabled when no API key is injected (local `wails dev` / `wails build` without `-ldflags`).
+- **Fail-safe:** Telemetry never blocks the app. If PostHog is unreachable or returns an error, events are silently dropped.
+- **Dev builds:** Telemetry is completely disabled when no API key is injected (local `wails dev` / `wails build` without `-ldflags`).
 
 ## License
 
