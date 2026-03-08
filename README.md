@@ -29,7 +29,13 @@ When working on a related feature in the future, you can reference relevant cont
 
 1. Download `Contrails-macos.zip` from the [latest release](https://github.com/ThreePalmTrees/Contrails/releases/latest)
 2. Unzip and drag `contrails.app` to your Applications folder
-3. Launch Contrails — on first run, right-click the app and select "Open" to bypass Gatekeeper since the app is not notarized
+3. Remove the macOS quarantine flag:
+   ```bash
+   xattr -cr /Applications/contrails.app
+   ```
+4. Launch Contrails normally
+
+> **Why is step 3 needed?** macOS blocks apps that aren't notarized by Apple. Notarization requires an Apple Developer Program membership ($99/year) — Apple effectively charges indie developers a yearly toll just to let users open their software. Until we bite that bullet, `xattr -cr` is the workaround.
 
 ## Features
 
