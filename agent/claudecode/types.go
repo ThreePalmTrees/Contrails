@@ -53,6 +53,20 @@ type lineMessage struct {
 
 // --- Claude Code JSONL line structures ---
 
+// progressMessage wraps the nested message structure inside progress lines.
+// Progress lines from subagents use: data.message.message.content.
+type progressMessage struct {
+	Type    string       `json:"type"`    // "assistant" or "user"
+	Message *lineMessage `json:"message,omitempty"`
+}
+
+// progressData holds the data payload of a "progress" type JSONL line.
+type progressData struct {
+	Type    string           `json:"type"` // "agent_progress"
+	AgentID string           `json:"agentId,omitempty"`
+	Message *progressMessage `json:"message,omitempty"`
+}
+
 // jsonlLine represents a single line in a Claude Code .jsonl session file.
 type jsonlLine struct {
 	Type      string       `json:"type"`
@@ -66,6 +80,9 @@ type jsonlLine struct {
 	UserType  string       `json:"userType,omitempty"`
 	Message   *lineMessage `json:"message,omitempty"`
 	RequestID string       `json:"requestId,omitempty"`
+
+	// Progress line data (subagent messages)
+	Data *progressData `json:"data,omitempty"`
 
 	// Tool result fields
 	ToolUseResult          *toolUseResult `json:"toolUseResult,omitempty"`

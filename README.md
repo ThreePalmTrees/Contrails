@@ -37,13 +37,17 @@ When working on a related feature in the future, you can reference relevant cont
 - **Project management** - Track multiple workspaces, rename them, pause/resume watching
 - **Native macOS** - Translucent titlebar, native directory pickers, system font rendering
 - **Persistent state** - Projects list persists across restarts; selected project stored in localStorage
+- **Anonymous analytics** - Optional, anonymous usage analytics via PostHog (Go SDK). Tracks aggregate metrics like app starts, project counts, and contrails created. No personal data is collected. A persistent device UUID is generated on first launch — no accounts or sign-in required. Analytics can be toggled on/off from the sidebar footer; the preference is persisted across restarts. Disabled entirely in dev builds (no API key injected)
+- **Auto-update** - On launch, checks GitHub Releases for a newer version. If available, shows a banner with release notes and a one-click install button. Updates replace the full `.app` bundle atomically and relaunch
 
 ## Architecture
 
 ```
 contrails/
-├── main.go              # Wails app entry, macOS window config
+├── main.go              # Wails app entry, macOS window config, build-time Version + PostHogAPIKey
 ├── app.go               # Composition root: project CRUD, driver registry, processing dispatch
+├── analytics.go         # PostHog client wrapper — fail-safe, opt-out, device ID, event tracking
+├── updater.go           # GitHub Releases update checker + atomic .app bundle replacement
 ├── runtime.go           # Interfaces (EventEmitter, DialogOpener) + Wails implementations
 ├── types.go             # Project, AgentSource, event structs + type aliases to agent pkg
 ├── watcher.go           # fsnotify-based VS Code directory watcher
@@ -90,7 +94,9 @@ contrails/
 
 | File | Responsibility |
 |------|---------------|
-| `app.go` | Composition root — project CRUD (persisted to `~/Library/Application Support/contrails/projects.json`), driver registry + dispatch, native directory pickers, workspace scanning, incremental processing. Implements `claudecode.SignalHandler` to receive signal events via dependency inversion. |
+| `app.go` | Composition root — project CRUD (persisted to `~/Library/Application Support/contrails/projects.json`), driver registry + dispatch, native directory pickers, workspace scanning, incremental processing, analytics settings, update check. Implements `claudecode.SignalHandler` to receive signal events via dependency inversion. |
+| `analytics.go` | PostHog client wrapper — fail-safe design (all methods silently no-op on failure), device ID generation/persistence (`~/.config/contrails/device_id`), opt-out support, event tracking (app lifecycle, project/source/contrail events). Disabled entirely when API key is empty (dev builds). |
+| `updater.go` | GitHub Releases update checker — polls `ThreePalmTrees/Contrails` releases, semantic version comparison, downloads and atomically replaces the full `.app` bundle, relaunches via `open`. Skipped for `dev` builds. |
 | `runtime.go` | Testability interfaces (`Logger`, `EventEmitter`, `DialogOpener`) with production (Wails-backed) and test (Noop, Recording) implementations. `Logger` is a type alias for `agent.Logger`. |
 | `watcher.go` | Wraps `fsnotify` to watch VS Code `chatSessions/` directories for `.jsonl` files, emits events to frontend via Wails runtime |
 | `types.go` | Project, AgentSource, event structs (WatcherEvent, FileProcessedEvent). Parsed session types are aliases to `agent.ParsedSession` etc. |
@@ -182,11 +188,16 @@ Tests use `t.TempDir()` for filesystem isolation and interface injection (define
 ## Building
 
 ```bash
-# Build production app
+# Build production app (dev — no analytics, no update checks)
 wails build
+
+# Build with version + analytics (used by CI/CD)
+wails build -ldflags "-X main.Version=1.2.3 -X main.PostHogAPIKey=phc_xxxx"
 
 # Output: build/bin/contrails.app
 ```
+
+Version is derived from git tags (`v1.2.3` → `1.2.3`). When `Version` is `"dev"`, update checks and analytics are disabled.
 
 ## Configuration
 
@@ -195,12 +206,27 @@ Projects are stored in:
 ~/Library/Application Support/contrails/projects.json
 ```
 
+Analytics preference and device identity:
+```
+~/.config/contrails/settings.json   # { "analyticsEnabled": true }
+~/.config/contrails/device_id       # persistent UUID (generated on first launch)
+```
+
 Default output directory per project:
 ```
 {workspace_path}/contrails/
 ```
 
 It's suggested to commit `contrails/`.
+
+## Analytics & Privacy
+
+Contrails collects anonymous usage analytics via [PostHog](https://posthog.com/) to understand how the app is used (e.g., number of active users, contrails created, agents used). No personal data, file contents, or conversation text is collected.
+
+- **Opt-out:** Click the "Analytics on/off" toggle in the sidebar footer. The preference is saved immediately and persists across restarts.
+- **Device identity:** A random UUID is generated on first launch and stored locally. There are no user accounts.
+- **Fail-safe:** Analytics never block the app. If PostHog is unreachable or returns an error, events are silently dropped.
+- **Dev builds:** Analytics are completely disabled when no API key is injected (local `wails dev` / `wails build` without `-ldflags`).
 
 ## License
 

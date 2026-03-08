@@ -1094,6 +1094,12 @@ func (app *App) ListChatFiles(projectID string) ([]ChatFileInfo, error) {
 				name := filepath.Base(filePath)
 				sessionID := strings.TrimSuffix(name, ".jsonl")
 
+				title := claudecode.ExtractTitle(filePath)
+				// Skip empty sessions (opened and closed without any user message)
+				if title == "" {
+					continue
+				}
+
 				lastMessageDate, _ := claudecode.ExtractLastMessageDate(filePath)
 				firstMessageDate, _ := claudecode.ExtractFirstMessageDate(filePath)
 				mdMtime := parsedAt[sessionID]
@@ -1108,7 +1114,7 @@ func (app *App) ListChatFiles(projectID string) ([]ChatFileInfo, error) {
 					Parsed:          isParsed && !isPartiallyParsed,
 					PartiallyParsed: isPartiallyParsed,
 					ProcessedAt:     mdMtime,
-					Title:           claudecode.ExtractTitle(filePath),
+					Title:           title,
 					CreatedAt:       firstMessageDate,
 				}
 				files = append(files, info)

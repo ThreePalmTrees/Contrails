@@ -512,6 +512,65 @@ func TestParser_AgentToolResult(t *testing.T) {
 	}
 }
 
+func TestParser_SubagentWebSearch(t *testing.T) {
+	parsed, err := (&Parser{}).ParseFile(filepath.Join("..", "..", "testdata", "fixtures", "claudecode", "subagent_websearch.jsonl"))
+	if err != nil {
+		t.Fatalf("ParseFile failed: %v", err)
+	}
+
+	// First assistant message should contain the Agent tool call + WebSearch + WebFetch from progress lines
+	assistant := findNthAssistantMessage(parsed.Messages, 1)
+	if assistant == nil {
+		t.Fatal("Expected at least one assistant message")
+	}
+
+	// Count web tool calls
+	var webSearchCount, webFetchCount int
+	for _, part := range assistant.Parts {
+		if part.Type == agent.PartToolCall {
+			switch part.Tool {
+			case "WebSearch":
+				webSearchCount++
+			case "WebFetch":
+				webFetchCount++
+			}
+		}
+	}
+
+	if webSearchCount != 1 {
+		t.Errorf("Expected 1 WebSearch tool call, got %d", webSearchCount)
+	}
+	if webFetchCount != 1 {
+		t.Errorf("Expected 1 WebFetch tool call, got %d", webFetchCount)
+	}
+
+	// Non-web tools (Read) in progress lines should be ignored
+	for _, part := range assistant.Parts {
+		if part.Type == agent.PartToolCall && part.Tool == "Read" {
+			t.Error("Read tool calls from subagent progress should not be included")
+		}
+	}
+
+	// Verify the tool call summaries
+	outputDirectory := t.TempDir()
+	outputPath, err := agent.WriteParsedSession(parsed, outputDirectory)
+	if err != nil {
+		t.Fatalf("WriteParsedSession failed: %v", err)
+	}
+	content, err := os.ReadFile(outputPath)
+	if err != nil {
+		t.Fatalf("Reading output file: %v", err)
+	}
+	markdown := string(content)
+
+	if !strings.Contains(markdown, "Search `Sparkle macOS auto-update framework`") {
+		t.Error("Output should contain WebSearch summary")
+	}
+	if !strings.Contains(markdown, "Fetch `https://sparkle-project.org`") {
+		t.Error("Output should contain WebFetch summary")
+	}
+}
+
 func TestStripSystemReminders(t *testing.T) {
 	tests := []struct {
 		name     string

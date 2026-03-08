@@ -23,9 +23,9 @@ var _ agent.SessionParser = (*Parser)(nil)
 type Parser struct{}
 
 // noisyLineTypes lists JSONL line types that carry no user-visible content
-// and should be skipped during parsing.
+// and should be skipped during parsing. Note: "progress" lines are handled
+// separately to extract subagent web searches before skipping.
 var noisyLineTypes = map[string]bool{
-	"progress":              true,
 	"queue-operation":       true,
 	"file-history-snapshot": true,
 }
@@ -77,7 +77,7 @@ func (parser *Parser) ParseFile(filePath string) (*agent.ParsedSession, error) {
 	// Noise lines (e.g., file-history-snapshot) can appear before the
 	// first real line and lack sessionId / timestamp fields.
 	for _, line := range lines {
-		if noisyLineTypes[line.Type] {
+		if noisyLineTypes[line.Type] || line.Type == "progress" {
 			continue
 		}
 		session.SessionID = line.SessionID
@@ -110,7 +110,15 @@ func (parser *Parser) ParseFile(filePath string) (*agent.ParsedSession, error) {
 	}
 
 	for _, line := range lines {
-		// Skip noisy line types
+		// Extract WebSearch/WebFetch tool calls from subagent progress lines
+		if line.Type == "progress" {
+			if parts := extractSubagentWebParts(line); len(parts) > 0 && lastAssistantMsg != nil {
+				lastAssistantMsg.Parts = append(lastAssistantMsg.Parts, parts...)
+			}
+			continue
+		}
+
+		// Skip other noisy line types
 		if noisyLineTypes[line.Type] {
 			continue
 		}
@@ -294,6 +302,35 @@ func buildToolCallPart(block contentBlock) agent.MessagePart {
 
 	part.ToolArgs = summarizeToolCall(block.Name, block.Input)
 	return part
+}
+
+// webToolNames lists tool names from subagent progress lines that should be
+// included in the contrail output (web research tools).
+var webToolNames = map[string]bool{
+	"WebSearch": true,
+	"WebFetch":  true,
+}
+
+// extractSubagentWebParts inspects a progress-type JSONL line and returns
+// MessagePart entries for any WebSearch or WebFetch tool calls found within
+// the subagent's assistant message.
+func extractSubagentWebParts(line jsonlLine) []agent.MessagePart {
+	if line.Data == nil || line.Data.Message == nil || line.Data.Message.Message == nil {
+		return nil
+	}
+	// Only look at assistant messages (tool_use calls)
+	if line.Data.Message.Type != "assistant" {
+		return nil
+	}
+
+	blocks := parseContentBlocks(line.Data.Message.Message.Content)
+	var parts []agent.MessagePart
+	for _, block := range blocks {
+		if block.Type == "tool_use" && webToolNames[block.Name] {
+			parts = append(parts, buildToolCallPart(block))
+		}
+	}
+	return parts
 }
 
 // summarizeToolCall produces a human-readable summary for a Claude Code tool call.
