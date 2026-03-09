@@ -377,10 +377,15 @@ func buildParsedSession(session *chatSession) (*agent.ParsedSession, error) {
 func buildFromToolCallRounds(request *chatRequest, assistantMessage *agent.ParsedMessage) {
 	deduped := deduplicateResponse(request.Response)
 
-	// 1. Collect tool calls and thinking blocks from the deduplicated response.
+	// 1. Collect tool calls and (optionally) thinking blocks from the deduplicated response.
 	//    Separate top-level calls (no subAgentInvocationId) from subagent child calls.
 	//    toolCallRounds only has slots for top-level calls; positional mapping must
 	//    use only those. Children are emitted immediately after their parent.
+	//
+	//    Thinking: When toolCallRounds has per-round Thinking fields, those are used
+	//    as the authoritative source (emitted inline with each round). When they don't
+	//    (older format), thinking blocks are collected from the response array as a
+	//    fallback and emitted at the top — matching the previous behavior.
 	type toolCallEntry struct {
 		internalID string                 // VS Code internal toolCallId
 		detail     map[string]interface{} // full response item
@@ -388,7 +393,17 @@ func buildFromToolCallRounds(request *chatRequest, assistantMessage *agent.Parse
 	var topLevelCalls []toolCallEntry
 	subCallsByParentID := make(map[string][]toolCallEntry) // parentToolCallId → children
 
-	thinkingSeen := make(map[string]bool)
+	// Check if toolCallRounds has per-round thinking.
+	rounds := request.Result.Metadata.ToolCallRounds
+	hasRoundThinking := false
+	for _, round := range rounds {
+		if round.Thinking != nil && strings.TrimSpace(round.Thinking.Text) != "" {
+			hasRoundThinking = true
+			break
+		}
+	}
+
+	// Fallback: collect thinking from the response array when rounds don't have it.
 	var thinkingBlocks []agent.MessagePart
 
 	for _, item := range deduped {
@@ -409,23 +424,21 @@ func buildFromToolCallRounds(request *chatRequest, assistantMessage *agent.Parse
 			}
 
 		case "thinking":
-			id, _ := responseMap["id"].(string)
-			value, _ := responseMap["value"].(string)
-			value = strings.TrimSpace(value)
-			if value != "" && !thinkingSeen[id] {
-				if id != "" {
-					thinkingSeen[id] = true
+			if !hasRoundThinking {
+				value, _ := responseMap["value"].(string)
+				value = strings.TrimSpace(value)
+				if value != "" {
+					title, _ := responseMap["generatedTitle"].(string)
+					content := "<thinking"
+					if title != "" {
+						content += fmt.Sprintf(` title="%s"`, title)
+					}
+					content += ">\n" + value + "\n</thinking>"
+					thinkingBlocks = append(thinkingBlocks, agent.MessagePart{
+						Type:    agent.PartText,
+						Content: content,
+					})
 				}
-				title, _ := responseMap["generatedTitle"].(string)
-				content := "<thinking"
-				if title != "" {
-					content += fmt.Sprintf(` title="%s"`, title)
-				}
-				content += ">\n" + value + "\n</thinking>"
-				thinkingBlocks = append(thinkingBlocks, agent.MessagePart{
-					Type:    agent.PartText,
-					Content: content,
-				})
 			}
 		}
 	}
@@ -518,17 +531,32 @@ func buildFromToolCallRounds(request *chatRequest, assistantMessage *agent.Parse
 		}
 	}
 
-	// 3. Emit thinking blocks first (they appear before the agent's text).
+	// 3. Emit fallback thinking blocks first (when rounds don't have per-round thinking).
 	assistantMessage.Parts = append(assistantMessage.Parts, thinkingBlocks...)
 
 	// 4. Walk toolCallRounds to build parts in authoritative order.
 	//    The Nth slot in toolCallRounds maps to topLevelCalls[N] by position.
 	//    After each top-level call, emit its subagent children to preserve the
 	//    complete contrail of all tool activity during that invocation.
-	rounds := request.Result.Metadata.ToolCallRounds
+	//
+	//    When rounds have per-round Thinking, it's emitted before each round's text,
+	//    preserving the agent's thought process at each step. This avoids the
+	//    deduplication issue where multiple rounds share the same thinking ID.
 	toolCallIdx := 0
 
 	for _, round := range rounds {
+		// Emit per-round thinking (authoritative source from toolCallRounds).
+		if round.Thinking != nil {
+			thinkingText := strings.TrimSpace(round.Thinking.Text)
+			if thinkingText != "" {
+				content := "<thinking>\n" + thinkingText + "\n</thinking>"
+				assistantMessage.Parts = append(assistantMessage.Parts, agent.MessagePart{
+					Type:    agent.PartText,
+					Content: content,
+				})
+			}
+		}
+
 		// Round response text (what the agent said before invoking tools in this round).
 		if text := strings.TrimSpace(round.Response); text != "" {
 			assistantMessage.Parts = append(assistantMessage.Parts, agent.MessagePart{
@@ -767,7 +795,7 @@ func deduplicateResponse(response []interface{}) []interface{} {
 
 	// Walk backward, collecting unique items
 	seenToolCallIDs := make(map[string]bool)
-	seenThinkingIDs := make(map[string]bool)
+	seenThinkingContent := make(map[string]bool) // content hash → seen
 
 	var result []interface{}
 
@@ -792,7 +820,6 @@ func deduplicateResponse(response []interface{}) []interface{} {
 			result = append(result, item)
 
 		case "thinking":
-			id, _ := responseMap["id"].(string)
 			// Skip "done" markers (empty value with vscodeReasoningDone metadata)
 			if meta, ok := responseMap["metadata"].(map[string]interface{}); ok {
 				if done, ok := meta["vscodeReasoningDone"].(bool); ok && done {
@@ -803,12 +830,13 @@ func deduplicateResponse(response []interface{}) []interface{} {
 			if value == "" {
 				continue // skip empty thinking blocks
 			}
-			if id != "" && seenThinkingIDs[id] {
-				continue // skip earlier duplicate
+			// Deduplicate by content, not by ID. VSCode reuses "thinking_0" across
+			// different tool call rounds, but each round's thinking has different content.
+			// Using ID-only dedup would lose all but one thinking block per request.
+			if seenThinkingContent[value] {
+				continue // skip exact content duplicate
 			}
-			if id != "" {
-				seenThinkingIDs[id] = true
-			}
+			seenThinkingContent[value] = true
 			result = append(result, item)
 
 		case "textEditGroup":

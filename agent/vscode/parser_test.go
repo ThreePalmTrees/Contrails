@@ -299,3 +299,122 @@ func TestParser_WriteParsedSession_RoundTrip(t *testing.T) {
 		t.Error("Output should contain the session ID")
 	}
 }
+
+// TestParser_ParseFile_MultiRoundThinking verifies that thinking blocks from
+// different tool call rounds are preserved, even when they share the same ID
+// ("thinking_0"). Before this fix, deduplication collapsed all thinking blocks
+// with the same ID into one, losing the agent's per-round thought process.
+func TestParser_ParseFile_MultiRoundThinking(t *testing.T) {
+	parsed, err := (&Parser{}).ParseFile(filepath.Join("..", "..", "testdata", "fixtures", "vscode", "multi_round_thinking.jsonl"))
+	if err != nil {
+		t.Fatalf("ParseFile failed: %v", err)
+	}
+
+	if parsed.Title != "Multi-round thinking test" {
+		t.Errorf("Unexpected title: %q", parsed.Title)
+	}
+
+	// Find the assistant message
+	var assistantMsg *agent.ParsedMessage
+	for i := range parsed.Messages {
+		if parsed.Messages[i].Role == "assistant" {
+			assistantMsg = &parsed.Messages[i]
+			break
+		}
+	}
+	if assistantMsg == nil {
+		t.Fatal("No assistant message found")
+	}
+
+	// Collect thinking parts (they are PartText containing "<thinking>")
+	var thinkingParts []agent.MessagePart
+	for _, p := range assistantMsg.Parts {
+		if p.Type == agent.PartText && strings.Contains(p.Content, "<thinking>") {
+			thinkingParts = append(thinkingParts, p)
+		}
+	}
+
+	// All 3 rounds have thinking blocks with different content but same ID.
+	// They must all be preserved.
+	if len(thinkingParts) != 3 {
+		t.Fatalf("Expected 3 thinking parts (one per round), got %d", len(thinkingParts))
+	}
+
+	// Verify each thinking block contains the expected content
+	expectedContents := []string{
+		"Initial thought: I should look at the test output first.",
+		"Second thought: The assertion expects a different return value.",
+		"Third thought: The function returns nil instead of an empty slice.",
+	}
+	for i, expected := range expectedContents {
+		if !strings.Contains(thinkingParts[i].Content, expected) {
+			t.Errorf("Thinking part %d should contain %q, got %q", i, expected, thinkingParts[i].Content)
+		}
+	}
+
+	// Verify thinking blocks appear BEFORE their corresponding tool calls/text
+	// (thinking → tool → thinking → text+tool → thinking → text)
+	var partTypes []string
+	for _, p := range assistantMsg.Parts {
+		if p.Type == agent.PartText && strings.Contains(p.Content, "<thinking>") {
+			partTypes = append(partTypes, "thinking")
+		} else if p.Type == agent.PartText {
+			partTypes = append(partTypes, "text")
+		} else if p.Type == agent.PartToolCall {
+			partTypes = append(partTypes, "tool")
+		}
+	}
+
+	// Verify the markdown output contains all three thinking blocks
+	markdown := agent.RenderMarkdown(parsed)
+	for _, expected := range expectedContents {
+		if !strings.Contains(markdown, expected) {
+			t.Errorf("Rendered markdown should contain %q", expected)
+		}
+	}
+}
+
+// TestParser_ParseFile_MultiThinkingNoRounds verifies that thinking blocks with
+// the same ID but different content are preserved when toolCallRounds is not
+// available (the buildFromResponseArray path).
+func TestParser_ParseFile_MultiThinkingNoRounds(t *testing.T) {
+	parsed, err := (&Parser{}).ParseFile(filepath.Join("..", "..", "testdata", "fixtures", "vscode", "multi_thinking_no_rounds.jsonl"))
+	if err != nil {
+		t.Fatalf("ParseFile failed: %v", err)
+	}
+
+	// Find the assistant message
+	var assistantMsg *agent.ParsedMessage
+	for i := range parsed.Messages {
+		if parsed.Messages[i].Role == "assistant" {
+			assistantMsg = &parsed.Messages[i]
+			break
+		}
+	}
+	if assistantMsg == nil {
+		t.Fatal("No assistant message found")
+	}
+
+	// Collect thinking parts
+	var thinkingParts []agent.MessagePart
+	for _, p := range assistantMsg.Parts {
+		if p.Type == agent.PartText && strings.Contains(p.Content, "<thinking>") {
+			thinkingParts = append(thinkingParts, p)
+		}
+	}
+
+	// All 3 thinking blocks should be preserved (different content, same ID)
+	if len(thinkingParts) != 3 {
+		t.Fatalf("Expected 3 thinking parts, got %d", len(thinkingParts))
+	}
+
+	if !strings.Contains(thinkingParts[0].Content, "reading the stack trace") {
+		t.Errorf("Expected first thinking to contain 'reading the stack trace', got %q", thinkingParts[0].Content)
+	}
+	if !strings.Contains(thinkingParts[1].Content, "nil pointer dereference") {
+		t.Errorf("Expected second thinking to contain 'nil pointer dereference', got %q", thinkingParts[1].Content)
+	}
+	if !strings.Contains(thinkingParts[2].Content, "variable is uninitialized") {
+		t.Errorf("Expected third thinking to contain 'variable is uninitialized', got %q", thinkingParts[2].Content)
+	}
+}

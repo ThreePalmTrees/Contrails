@@ -117,8 +117,15 @@ type chatMetadata struct {
 
 // toolCallRound describes a single round of tool calls within a response.
 type toolCallRound struct {
-	Response  string     `json:"response"`
-	ToolCalls []toolCall `json:"toolCalls,omitempty"`
+	Response  string             `json:"response"`
+	ToolCalls []toolCall         `json:"toolCalls,omitempty"`
+	Thinking  *toolCallThinking  `json:"thinking,omitempty"`
+}
+
+// toolCallThinking holds the thinking block from a single tool call round.
+type toolCallThinking struct {
+	ID   string `json:"id"`
+	Text string `json:"text"`
 }
 
 // toolCall represents an individual tool invocation.
