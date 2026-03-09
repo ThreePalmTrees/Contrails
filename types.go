@@ -41,15 +41,16 @@ type AgentSource struct {
 
 // Project represents a watched workspace project
 type Project struct {
-	ID            string        `json:"id"`
-	Name          string        `json:"name"`
-	WatchDir      string        `json:"watchDir"`                // kept for backward compat with existing VS Code projects
-	OutputDir     string        `json:"outputDir"`
-	Active        bool          `json:"active"`
-	WorkspacePath string        `json:"workspacePath,omitempty"`
-	Sources       []AgentSource `json:"sources,omitempty"`       // one or both agent sources
-	LastProcessed int64         `json:"lastProcessed,omitempty"`
-	PausedAt      int64         `json:"pausedAt,omitempty"`
+	ID            string            `json:"id"`
+	Name          string            `json:"name"`
+	WatchDir      string            `json:"watchDir"`                // kept for backward compat with existing VS Code projects
+	OutputDir     string            `json:"outputDir"`
+	Active        bool              `json:"active"`
+	WorkspacePath string            `json:"workspacePath,omitempty"`
+	Sources       []AgentSource     `json:"sources,omitempty"`       // one or both agent sources
+	LastProcessed int64             `json:"lastProcessed,omitempty"`
+	PausedAt      int64             `json:"pausedAt,omitempty"`
+	IgnoredChats  map[string]string `json:"ignoredChats,omitempty"`  // filePath → title (for display when source unavailable)
 }
 
 // ProcessingProgress reports progress during batch processing
@@ -91,4 +92,5 @@ type ChatFileInfo struct {
 	LastMessageAt   string `json:"lastMessageAt"`
 	ProcessedAt     int64  `json:"processedAt"` // unix ms of the output .md file's mtime; 0 if not parsed
 	CreatedAt       int64  `json:"createdAt"`   // unix ms of the first message / session creation
+	Ignored         bool   `json:"ignored"`
 }

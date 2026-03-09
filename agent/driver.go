@@ -12,6 +12,11 @@ type ProcessCallbacks struct {
 	// processing duration after each file is successfully written.
 	// May be nil.
 	OnFileProcessed func(outputFileName string, durationMs int64)
+
+	// ShouldSkip returns true if the given source file path should be
+	// skipped during processing (e.g. because the chat is ignored).
+	// May be nil (no files skipped).
+	ShouldSkip func(filePath string) bool
 }
 
 // AgentDriver encapsulates agent-specific lifecycle behavior.

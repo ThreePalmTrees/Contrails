@@ -1,12 +1,12 @@
 import { useState, useEffect, useMemo } from "react";
-import { FolderOpen, FolderUp, Eye, EyeOff, MapPin, Play, Loader2, Layers, CheckCircle2, ChevronLeft, FileText, Pencil, Trash2, ExternalLink } from "lucide-react";
+import { FolderOpen, FolderUp, Eye, EyeOff, MapPin, Play, Loader2, Layers, CheckCircle2, ChevronLeft, FileText, Pencil, Trash2, ExternalLink, ChevronDown, ChevronRight } from "lucide-react";
 import { OpenDirectoryWith, GetDirectoryOpener } from "../../wailsjs/go/main/App";
 import { DirectoryOpenerDialog } from "./DirectoryOpenerDialog";
 import { Project, ProcessingProgress, ChatFileInfo } from "../types";
 import copilotLogo from "../assets/images/gh-copilot.png";
 import claudeLogo from "../assets/images/claude.png";
 import cursorLogo from "../assets/images/cursor.png";
-import { ListChatFiles, PreviewChatFile, ProcessSingleFile, ReadExistingContrail } from "../../wailsjs/go/main/App";
+import { ListChatFiles, PreviewChatFile, ProcessSingleFile, ReadExistingContrail, IgnoreChat, UnignoreChat } from "../../wailsjs/go/main/App";
 import { EventsOn } from "../../wailsjs/runtime/runtime";
 import { diffLines, Change } from "diff";
 
@@ -185,10 +185,24 @@ export function ProjectDetail({ project, onToggle, onProcess, onEdit, onUpdatePr
     );
   }
 
+  const [ignoredExpanded, setIgnoredExpanded] = useState(false);
+
+  async function handleIgnoreChat(file: ChatFileInfo) {
+    await IgnoreChat(project.id, file.filePath, getFileDisplayName(file));
+    setFilesVersion((v) => v + 1);
+  }
+
+  async function handleUnignoreChat(file: ChatFileInfo) {
+    await UnignoreChat(project.id, file.filePath);
+    setFilesVersion((v) => v + 1);
+  }
+
   const sortByCreated = (a: ChatFileInfo, b: ChatFileInfo) => (b.createdAt || 0) - (a.createdAt || 0);
-  const parsedFiles = chatFiles.filter((f) => f.parsed && !f.partiallyParsed).sort(sortByCreated);
-  const partiallyParsedFiles = chatFiles.filter((f) => f.partiallyParsed).sort(sortByCreated);
-  const unparsedFiles = chatFiles.filter((f) => !f.parsed && !f.partiallyParsed).sort(sortByCreated);
+  const activeFiles = chatFiles.filter((f) => !f.ignored);
+  const ignoredFiles = chatFiles.filter((f) => f.ignored).sort(sortByCreated);
+  const parsedFiles = activeFiles.filter((f) => f.parsed && !f.partiallyParsed).sort(sortByCreated);
+  const partiallyParsedFiles = activeFiles.filter((f) => f.partiallyParsed).sort(sortByCreated);
+  const unparsedFiles = activeFiles.filter((f) => !f.parsed && !f.partiallyParsed).sort(sortByCreated);
 
   return (
     <div className="project-detail">
@@ -396,7 +410,7 @@ export function ProjectDetail({ project, onToggle, onProcess, onEdit, onUpdatePr
       {/* Chat files list */}
       {chatFiles.length > 0 && (
         <div className="chat-files-section">
-          <h3 className="chat-files-heading">Chat Sessions ({chatFiles.length})</h3>
+          <h3 className="chat-files-heading">Chat Sessions ({activeFiles.length})</h3>
           {parsedFiles.length > 0 && (
             <div className="chat-files-group">
               <div className="chat-files-group-label">Processed ({parsedFiles.length})</div>
@@ -409,6 +423,7 @@ export function ProjectDetail({ project, onToggle, onProcess, onEdit, onUpdatePr
                     onShowDetails={() => handleShowDetails(file)}
                     onProcessDone={() => setFilesVersion((v) => v + 1)}
                     outputDir={project.outputDir}
+                    onIgnore={() => handleIgnoreChat(file)}
                   />
                 ))}
               </div>
@@ -425,6 +440,7 @@ export function ProjectDetail({ project, onToggle, onProcess, onEdit, onUpdatePr
                     onShowDetails={() => handleShowDetails(file)}
                     onProcessDone={() => setFilesVersion((v) => v + 1)}
                     outputDir={project.outputDir}
+                    onIgnore={() => handleIgnoreChat(file)}
                   />
                 ))}
               </div>
@@ -442,9 +458,36 @@ export function ProjectDetail({ project, onToggle, onProcess, onEdit, onUpdatePr
                     onShowDetails={() => handleShowDetails(file)}
                     onProcessDone={() => setFilesVersion((v) => v + 1)}
                     outputDir={project.outputDir}
+                    onIgnore={() => handleIgnoreChat(file)}
                   />
                 ))}
               </div>
+            </div>
+          )}
+          {ignoredFiles.length > 0 && (
+            <div className="chat-files-group chat-files-group-ignored">
+              <div
+                className="chat-files-group-label chat-files-group-label-collapsible"
+                onClick={() => setIgnoredExpanded((v) => !v)}
+                style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+              >
+                {ignoredExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                Ignored ({ignoredFiles.length})
+              </div>
+              {ignoredExpanded && (
+                <div className="chat-files-scroll">
+                  {ignoredFiles.map((file) => (
+                    <ChatFileRow
+                      key={file.filePath}
+                      file={file}
+                      onShowDetails={() => handleShowDetails(file)}
+                      onProcessDone={() => setFilesVersion((v) => v + 1)}
+                      outputDir={project.outputDir}
+                      onUnignore={() => handleUnignoreChat(file)}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -465,9 +508,11 @@ interface ChatFileRowProps {
   onShowDetails: () => void;
   onProcessDone: () => void;
   outputDir: string;
+  onIgnore?: () => void;
+  onUnignore?: () => void;
 }
 
-function ChatFileRow({ file, onShowDetails, onProcessDone, outputDir }: ChatFileRowProps) {
+function ChatFileRow({ file, onShowDetails, onProcessDone, outputDir, onIgnore, onUnignore }: ChatFileRowProps) {
   const [processing, setProcessing] = useState(false);
   const [done, setDone] = useState(false);
   const [processedAt, setProcessedAt] = useState(file.processedAt);
@@ -507,26 +552,37 @@ function ChatFileRow({ file, onShowDetails, onProcessDone, outputDir }: ChatFile
         {isParsed && processedAt > 0 && (
           <span className="chat-file-processed-time">{formatDateTime(processedAt)}</span>
         )}
-        <>
-          {isPartiallyParsed && (
-            <button className="btn btn-outline btn-sm" onClick={onShowDetails}>
-              Show Diff
-            </button>
-          )}
-          <button
-            className="btn btn-primary btn-sm"
-            onClick={handleProcess}
-            disabled={processing}
-          >
-            {processing ? (
-              <><Loader2 size={12} className="spin" /> Processing…</>
-            ) : isParsed && !isPartiallyParsed ? (
-              <><Play size={12} /> Re-process</>
-            ) : (
-              <><Play size={12} /> Process Now</>
-            )}
+        {onUnignore ? (
+          <button className="btn btn-outline btn-sm" onClick={onUnignore} title="Stop ignoring this chat">
+            <Eye size={12} /> Unignore
           </button>
-        </>
+        ) : (
+          <>
+            {isPartiallyParsed && (
+              <button className="btn btn-outline btn-sm" onClick={onShowDetails}>
+                Show Diff
+              </button>
+            )}
+            <button
+              className="btn btn-primary btn-sm"
+              onClick={handleProcess}
+              disabled={processing}
+            >
+              {processing ? (
+                <><Loader2 size={12} className="spin" /> Processing…</>
+              ) : isParsed && !isPartiallyParsed ? (
+                <><Play size={12} /> Re-process</>
+              ) : (
+                <><Play size={12} /> Process Now</>
+              )}
+            </button>
+            {onIgnore && (
+              <button className="btn btn-ghost btn-sm" onClick={onIgnore} title="Ignore this chat" style={{ opacity: 0.5, padding: '0 4px' }}>
+                <EyeOff size={12} />
+              </button>
+            )}
+          </>
+        )}
       </div>
     </div>
   );

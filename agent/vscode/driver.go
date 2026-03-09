@@ -90,6 +90,11 @@ func (d *Driver) ProcessAll(sourceDir, outputDir string, callbacks agent.Process
 		}
 
 		filePath := filepath.Join(sourceDir, entry.Name())
+
+		if callbacks.ShouldSkip != nil && callbacks.ShouldSkip(filePath) {
+			continue
+		}
+
 		start := time.Now()
 
 		session, err := parser.ParseFile(filePath)

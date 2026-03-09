@@ -174,6 +174,11 @@ func (d *Driver) ProcessAll(sourceDir, outputDir string, callbacks agent.Process
 			callbacks.OnProgress(i+1, total)
 		}
 
+		// Skip ignored chats (Cursor uses composer ID as filePath)
+		if callbacks.ShouldSkip != nil && callbacks.ShouldSkip(composerID) {
+			continue
+		}
+
 		// Skip sessions whose lastUpdatedAt hasn't changed.
 		if prev, ok := timestamps[composerID]; ok && c.LastUpdatedAt <= prev {
 			continue

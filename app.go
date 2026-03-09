@@ -227,6 +227,24 @@ func (app *App) WriteContrail(session *agent.ParsedSession, outputDir string) (s
 	return path, err
 }
 
+// IsChatIgnored returns true if the chat file is in the project's ignored list.
+func (app *App) IsChatIgnored(projectID, filePath string) bool {
+	projects, err := app.GetProjects()
+	if err != nil {
+		return false
+	}
+	for _, p := range projects {
+		if p.ID == projectID {
+			if p.IgnoredChats == nil {
+				return false
+			}
+			_, ignored := p.IgnoredChats[filePath]
+			return ignored
+		}
+	}
+	return false
+}
+
 // EmitWatcherEvent notifies the frontend that a contrail file was
 // created, modified, or removed.
 func (app *App) EmitWatcherEvent(projectID, fileName, eventType string) {
@@ -558,6 +576,9 @@ func (app *App) makeProcessCallbacks(projectID string) agent.ProcessCallbacks {
 				FileName:  outputFileName,
 			})
 		},
+		ShouldSkip: func(filePath string) bool {
+			return app.IsChatIgnored(projectID, filePath)
+		},
 	}
 }
 
@@ -801,10 +822,12 @@ func (app *App) ProcessFileIfNeeded(projectID, filePath, outputDir string) (stri
 
 	var lastProcessed int64
 	var isActive bool
+	var ignoredChats map[string]string
 	for _, project := range projects {
 		if project.ID == projectID {
 			lastProcessed = project.LastProcessed
 			isActive = project.Active
+			ignoredChats = project.IgnoredChats
 			break
 		}
 	}
@@ -812,6 +835,11 @@ func (app *App) ProcessFileIfNeeded(projectID, filePath, outputDir string) (stri
 	// We're keeping watchers running to list raw files, but if the project
 	// is paused, we don't automatically parse them.
 	if !isActive {
+		return "", nil
+	}
+
+	// Skip ignored chats
+	if _, ignored := ignoredChats[filePath]; ignored {
 		return "", nil
 	}
 
@@ -1332,7 +1360,50 @@ func (app *App) ListChatFiles(projectID string) ([]ChatFileInfo, error) {
 		}
 	}
 
+	// Mark ignored files
+	if project.IgnoredChats != nil {
+		for i := range files {
+			if _, ok := project.IgnoredChats[files[i].FilePath]; ok {
+				files[i].Ignored = true
+			}
+		}
+	}
+
 	return files, nil
+}
+
+// IgnoreChat adds a chat file to the project's ignored list.
+// Ignored chats are still listed but won't be synced/processed automatically.
+func (app *App) IgnoreChat(projectID, filePath, title string) error {
+	projects, err := app.GetProjects()
+	if err != nil {
+		return err
+	}
+	for i := range projects {
+		if projects[i].ID == projectID {
+			if projects[i].IgnoredChats == nil {
+				projects[i].IgnoredChats = make(map[string]string)
+			}
+			projects[i].IgnoredChats[filePath] = title
+			return app.SaveProjects(projects)
+		}
+	}
+	return fmt.Errorf("project %s not found", projectID)
+}
+
+// UnignoreChat removes a chat file from the project's ignored list.
+func (app *App) UnignoreChat(projectID, filePath string) error {
+	projects, err := app.GetProjects()
+	if err != nil {
+		return err
+	}
+	for i := range projects {
+		if projects[i].ID == projectID {
+			delete(projects[i].IgnoredChats, filePath)
+			return app.SaveProjects(projects)
+		}
+	}
+	return fmt.Errorf("project %s not found", projectID)
 }
 
 // PreviewChatFile parses a single chat session file and returns the rendered

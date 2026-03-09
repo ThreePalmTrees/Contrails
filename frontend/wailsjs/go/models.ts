@@ -266,6 +266,7 @@ export namespace main {
 	    lastMessageAt: string;
 	    processedAt: number;
 	    createdAt: number;
+	    ignored: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new ChatFileInfo(source);
@@ -282,6 +283,7 @@ export namespace main {
 	        this.lastMessageAt = source["lastMessageAt"];
 	        this.processedAt = source["processedAt"];
 	        this.createdAt = source["createdAt"];
+	        this.ignored = source["ignored"];
 	    }
 	}
 	export class IDEOption {
@@ -308,6 +310,7 @@ export namespace main {
 	    sources?: AgentSource[];
 	    lastProcessed?: number;
 	    pausedAt?: number;
+	    ignoredChats?: Record<string, string>;
 	
 	    static createFrom(source: any = {}) {
 	        return new Project(source);
@@ -324,6 +327,7 @@ export namespace main {
 	        this.sources = this.convertValues(source["sources"], AgentSource);
 	        this.lastProcessed = source["lastProcessed"];
 	        this.pausedAt = source["pausedAt"];
+	        this.ignoredChats = source["ignoredChats"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

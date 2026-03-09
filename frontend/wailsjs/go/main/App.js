@@ -74,6 +74,14 @@ export function HealContrailNames(arg1, arg2) {
   return window['go']['main']['App']['HealContrailNames'](arg1, arg2);
 }
 
+export function IgnoreChat(arg1, arg2, arg3) {
+  return window['go']['main']['App']['IgnoreChat'](arg1, arg2, arg3);
+}
+
+export function IsChatIgnored(arg1, arg2) {
+  return window['go']['main']['App']['IsChatIgnored'](arg1, arg2);
+}
+
 export function ListChatFiles(arg1) {
   return window['go']['main']['App']['ListChatFiles'](arg1);
 }
@@ -140,6 +148,10 @@ export function SetAnalyticsEnabled(arg1) {
 
 export function SetDirectoryOpener(arg1) {
   return window['go']['main']['App']['SetDirectoryOpener'](arg1);
+}
+
+export function UnignoreChat(arg1, arg2) {
+  return window['go']['main']['App']['UnignoreChat'](arg1, arg2);
 }
 
 export function UpdateProject(arg1) {

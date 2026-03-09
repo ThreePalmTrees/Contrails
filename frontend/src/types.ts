@@ -13,6 +13,7 @@ export interface Project {
   sources?: AgentSource[];
   lastProcessed?: number;
   pausedAt?: number;
+  ignoredChats?: Record<string, string>;
 }
 
 export interface WorkspaceInfo {
@@ -50,6 +51,7 @@ export interface ChatFileInfo {
   lastMessageAt: string;
   processedAt: number;
   createdAt: number;
+  ignored: boolean;
 }
 
 export interface AppError {

@@ -31,6 +31,9 @@ type SignalHandler interface {
 
 	// EmitFileProcessed notifies the frontend that a source file was processed.
 	EmitFileProcessed(projectID, fileName string)
+
+	// IsChatIgnored returns true if the chat file is in the project's ignored list.
+	IsChatIgnored(projectID, filePath string) bool
 }
 
 // SignalWatcher watches the ~/contrails/hook-signals/ directory for new
@@ -170,6 +173,12 @@ func (watcher *SignalWatcher) processSignalFile(signalPath string) {
 	projectID, outputDir, found := watcher.handler.FindProject(signal.Cwd)
 	if !found {
 		agent.LogWarningf(watcher.logger, "No matching project for cwd %s (session %s)", signal.Cwd, signal.SessionID)
+		return
+	}
+
+	// Skip ignored chats
+	if watcher.handler.IsChatIgnored(projectID, signal.TranscriptPath) {
+		agent.LogInfof(watcher.logger, "Skipping ignored chat for session %s", signal.SessionID)
 		return
 	}
 

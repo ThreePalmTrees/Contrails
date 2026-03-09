@@ -120,6 +120,10 @@ func (d *Driver) ProcessAll(sourceDir, outputDir string, callbacks agent.Process
 			callbacks.OnProgress(i+1, total)
 		}
 
+		if callbacks.ShouldSkip != nil && callbacks.ShouldSkip(sessionFile) {
+			continue
+		}
+
 		start := time.Now()
 		session, err := parser.ParseFile(sessionFile)
 		if err != nil {

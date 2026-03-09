@@ -41,6 +41,10 @@ export function HandleDeletedFile(arg1:string,arg2:string):Promise<void>;
 
 export function HealContrailNames(arg1:string,arg2:string):Promise<number>;
 
+export function IgnoreChat(arg1:string,arg2:string,arg3:string):Promise<void>;
+
+export function IsChatIgnored(arg1:string,arg2:string):Promise<boolean>;
+
 export function ListChatFiles(arg1:string):Promise<Array<main.ChatFileInfo>>;
 
 export function OnCursorDatabaseChanged():Promise<void>;
@@ -74,6 +78,8 @@ export function SelectOutputDir():Promise<string>;
 export function SetAnalyticsEnabled(arg1:boolean):Promise<void>;
 
 export function SetDirectoryOpener(arg1:string):Promise<void>;
+
+export function UnignoreChat(arg1:string,arg2:string):Promise<void>;
 
 export function UpdateProject(arg1:main.Project):Promise<void>;
 

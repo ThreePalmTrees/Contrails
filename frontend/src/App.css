@@ -984,6 +984,15 @@ button, input, select, textarea, a, [role="button"] {
   margin-bottom: 6px;
   font-style: italic;
 }
+.chat-files-group-ignored {
+  opacity: 0.6;
+  margin-top: 8px;
+  border-top: 1px solid var(--border);
+  padding-top: 8px;
+}
+.chat-files-group-label-collapsible:hover {
+  color: var(--text);
+}
 .chat-file-actions {
   display: flex;
   align-items: center;
