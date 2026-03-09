@@ -1,5 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
-import { FolderOpen, Eye, EyeOff, MapPin, Play, Loader2, Layers, CheckCircle2, ChevronLeft, FileText, Pencil, Trash2 } from "lucide-react";
+import { FolderOpen, FolderUp, Eye, EyeOff, MapPin, Play, Loader2, Layers, CheckCircle2, ChevronLeft, FileText, Pencil, Trash2, ExternalLink } from "lucide-react";
+import { OpenDirectoryWith, GetDirectoryOpener } from "../../wailsjs/go/main/App";
+import { DirectoryOpenerDialog } from "./DirectoryOpenerDialog";
 import { Project, ProcessingProgress, ChatFileInfo } from "../types";
 import copilotLogo from "../assets/images/gh-copilot.png";
 import claudeLogo from "../assets/images/claude.png";
@@ -47,6 +49,18 @@ export function ProjectDetail({ project, onToggle, onProcess, onEdit, onUpdatePr
   const [chatFiles, setChatFiles] = useState<ChatFileInfo[]>([]);
   const [filesVersion, setFilesVersion] = useState(0);
   const [preview, setPreview] = useState<PreviewState | null>(null);
+  const [openDirPath, setOpenDirPath] = useState<string | null>(null);
+  const [showOpenerDialog, setShowOpenerDialog] = useState(false);
+
+  async function handleOpenDir(dirPath: string) {
+    const saved = await GetDirectoryOpener();
+    if (saved) {
+      await OpenDirectoryWith(dirPath, saved);
+    } else {
+      setOpenDirPath(dirPath);
+      setShowOpenerDialog(true);
+    }
+  }
 
   const hasVSCode = useMemo(() => project.sources?.some((s) => s.type === "vscode") ?? (project.watchDir !== ""), [project]);
   const hasClaude = useMemo(() => project.sources?.some((s) => s.type === "claudecode") ?? false, [project]);
@@ -301,7 +315,17 @@ export function ProjectDetail({ project, onToggle, onProcess, onEdit, onUpdatePr
             <MapPin size={18} />
           </div>
           <div className="detail-card-content" style={{ flex: 1 }}>
-            <span className="detail-card-label">Output Directory</span>
+            <span className="detail-card-label">
+              Output Directory
+              <span style={{ display: 'inline-flex', gap: '2px', marginLeft: '6px', verticalAlign: 'middle' }}>
+                <button className="btn btn-ghost btn-sm" style={{ padding: '0 4px', height: '20px', minHeight: 'unset' }} onClick={() => handleOpenDir(project.outputDir)} title="Open output directory">
+                  <ExternalLink size={12} />
+                </button>
+                <button className="btn btn-ghost btn-sm" style={{ padding: '0 4px', height: '20px', minHeight: 'unset' }} onClick={() => handleOpenDir(project.outputDir.replace(/\/[^/]*\/?$/, ''))} title="Open parent directory">
+                  <FolderUp size={12} />
+                </button>
+              </span>
+            </span>
             <span className="detail-card-value mono">{project.outputDir}</span>
           </div>
           {onEdit && (
@@ -426,6 +450,12 @@ export function ProjectDetail({ project, onToggle, onProcess, onEdit, onUpdatePr
         </div>
       )}
     </div>
+    {showOpenerDialog && (
+      <DirectoryOpenerDialog
+        dirPath={openDirPath}
+        onClose={() => setShowOpenerDialog(false)}
+      />
+    )}
     </div>
   );
 }

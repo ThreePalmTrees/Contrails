@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -551,10 +552,12 @@ func (app *App) makeProcessCallbacks(projectID string) agent.ProcessCallbacks {
 
 // --- Analytics Settings ---
 
-// AnalyticsSettings holds the opt-out preference, persisted alongside projects.json.
-type AnalyticsSettings struct {
-	AnalyticsEnabled bool `json:"analyticsEnabled"`
+// AppSettings holds app-level preferences, persisted alongside projects.json.
+type AppSettings struct {
+	AnalyticsEnabled bool   `json:"analyticsEnabled"`
+	DirectoryOpener  string `json:"directoryOpener,omitempty"` // CLI command to open directories (e.g. "code", "cursor", "open")
 }
+
 
 func (app *App) settingsFilePath() (string, error) {
 	baseDir := app.configDir
@@ -572,24 +575,24 @@ func (app *App) settingsFilePath() (string, error) {
 	return filepath.Join(dir, "settings.json"), nil
 }
 
-func (app *App) loadSettings() (AnalyticsSettings, error) {
+func (app *App) loadSettings() (AppSettings, error) {
 	path, err := app.settingsFilePath()
 	if err != nil {
-		return AnalyticsSettings{AnalyticsEnabled: true}, err
+		return AppSettings{AnalyticsEnabled: true}, err
 	}
 	data, err := os.ReadFile(path)
 	if err != nil {
 		// Default: analytics enabled
-		return AnalyticsSettings{AnalyticsEnabled: true}, nil
+		return AppSettings{AnalyticsEnabled: true}, nil
 	}
-	var settings AnalyticsSettings
+	var settings AppSettings
 	if err := json.Unmarshal(data, &settings); err != nil {
-		return AnalyticsSettings{AnalyticsEnabled: true}, err
+		return AppSettings{AnalyticsEnabled: true}, err
 	}
 	return settings, nil
 }
 
-func (app *App) saveSettings(settings AnalyticsSettings) error {
+func (app *App) saveSettings(settings AppSettings) error {
 	data, err := json.MarshalIndent(settings, "", "  ")
 	if err != nil {
 		return err
@@ -621,6 +624,102 @@ func (app *App) SetAnalyticsEnabled(enabled bool) error {
 	return nil
 }
 
+// IDEOption represents a detected IDE that can open directories.
+type IDEOption struct {
+	Name    string `json:"name"`
+	Command string `json:"command"`
+}
+
+// DetectIDEs returns a list of available IDEs/editors on the system.
+// It checks both CLI commands on PATH and .app bundles in /Applications.
+func (app *App) DetectIDEs() []IDEOption {
+	// CLI commands to check on PATH
+	cliCandidates := []IDEOption{
+		{Name: "VS Code", Command: "code"},
+		{Name: "Cursor", Command: "cursor"},
+		{Name: "Zed", Command: "zed"},
+		{Name: "WebStorm", Command: "webstorm"},
+		{Name: "Antigravity", Command: "agy"},
+	}
+
+	// macOS .app bundles: display name → bundle name in /Applications
+	appBundles := []struct {
+		Name    string
+		Bundles []string // possible .app names (without .app suffix)
+	}{
+		{Name: "VS Code", Bundles: []string{"Visual Studio Code"}},
+		{Name: "Cursor", Bundles: []string{"Cursor"}},
+		{Name: "Zed", Bundles: []string{"Zed"}},
+		{Name: "WebStorm", Bundles: []string{"WebStorm"}},
+		{Name: "Antigravity", Bundles: []string{"Antigravity"}},
+	}
+
+	seen := make(map[string]bool)
+	var found []IDEOption
+
+	// Check CLI commands
+	for _, c := range cliCandidates {
+		if p, err := exec.LookPath(c.Command); err == nil && p != "" {
+			if !seen[c.Name] {
+				seen[c.Name] = true
+				found = append(found, c)
+			}
+		}
+	}
+
+	// Check /Applications for .app bundles (use "open -a" to launch them)
+	for _, ab := range appBundles {
+		if seen[ab.Name] {
+			continue
+		}
+		for _, bundle := range ab.Bundles {
+			appPath := filepath.Join("/Applications", bundle+".app")
+			if _, err := os.Stat(appPath); err == nil {
+				seen[ab.Name] = true
+				found = append(found, IDEOption{
+					Name:    ab.Name,
+					Command: "open -a \"" + bundle + "\"",
+				})
+				break
+			}
+		}
+	}
+
+	return found
+}
+
+// GetDirectoryOpener returns the saved directory opener command (empty string means not set).
+func (app *App) GetDirectoryOpener() string {
+	settings, _ := app.loadSettings()
+	return settings.DirectoryOpener
+}
+
+// SetDirectoryOpener saves the preferred directory opener command.
+func (app *App) SetDirectoryOpener(command string) error {
+	settings, _ := app.loadSettings()
+	settings.DirectoryOpener = command
+	return app.saveSettings(settings)
+}
+
+// OpenDirectoryWith opens a directory using the given command.
+func (app *App) OpenDirectoryWith(dirPath, command string) error {
+	if command == "" {
+		command = "open"
+	}
+	// Use interactive login shell to support commands like: open -a "Antigravity"
+	// and custom aliases/functions like: ide
+	shell := os.Getenv("SHELL")
+	if shell == "" {
+		shell = "/bin/sh"
+	}
+	return exec.Command(shell, "-ic", command+" "+shellescape(dirPath)).Start()
+}
+
+// shellescape wraps a string in single quotes for safe shell usage.
+func shellescape(s string) string {
+	return "'" + strings.ReplaceAll(s, "'", "'\"'\"'") + "'"
+}
+
 // --- Update ---
 
 // CheckForAppUpdate checks GitHub for a newer version. Returns nil if up to date.
@@ -642,6 +741,8 @@ func (app *App) ApplyAppUpdate(downloadURL string) error {
 func (app *App) GetVersion() string {
 	return Version
 }
+
+
 
 // ProcessChatSessions processes all JSON files in a chat sessions directory.
 // This is the "Process All Now" path - ignores lastProcessedAt.

@@ -284,6 +284,20 @@ export namespace main {
 	        this.createdAt = source["createdAt"];
 	    }
 	}
+	export class IDEOption {
+	    name: string;
+	    command: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new IDEOption(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.command = source["command"];
+	    }
+	}
 	export class Project {
 	    id: string;
 	    name: string;

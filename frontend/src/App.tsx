@@ -1,11 +1,12 @@
 import { useState, useEffect, useMemo } from "react";
-import { ExternalLink, X, AlertCircle, Download } from "lucide-react";
+import { ExternalLink, X, AlertCircle, Download, Settings } from "lucide-react";
 import { ContrailsIcon } from "./components/ContrailsIcon";
 import { ProjectList } from "./components/ProjectList";
 import { ProjectDetail } from "./components/ProjectDetail";
 import { AddProjectDialog } from "./components/AddProjectDialog";
 import { OnboardingTour } from "./components/OnboardingTour";
 import { useProjects } from "./hooks/useProjects";
+import { DirectoryOpenerDialog } from "./components/DirectoryOpenerDialog";
 import { Project } from "./types";
 import { BrowserOpenURL, EventsOn } from "../wailsjs/runtime/runtime";
 import { GetAnalyticsEnabled, SetAnalyticsEnabled, ApplyAppUpdate } from "../wailsjs/go/main/App";
@@ -41,6 +42,7 @@ function App() {
     releaseURL: string;
   } | null>(null);
   const [updating, setUpdating] = useState(false);
+  const [showOpenerSettings, setShowOpenerSettings] = useState(false);
 
   useEffect(() => {
     GetAnalyticsEnabled().then(setAnalyticsEnabled).catch(() => {});
@@ -140,12 +142,20 @@ function App() {
             </button>
           </div>
         )}
-        <footer className="sidebar-footer">
+        <footer className="sidebar-footer" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <button
             className="footer-link"
             onClick={() => BrowserOpenURL("https://github.com/ThreePalmTrees/Contrails")}
           >
             Documentation <ExternalLink size={11} />
+          </button>
+          <button
+            className="icon-btn icon-btn-sm"
+            onClick={() => setShowOpenerSettings(true)}
+            title="Settings"
+            style={{ opacity: 0.5 }}
+          >
+            <Settings size={13} />
           </button>
         </footer>
       </aside>
@@ -258,6 +268,13 @@ function App() {
       {/* Onboarding tour */}
       {!onboardingComplete && projects.length === 0 && (
         <OnboardingTour onComplete={completeOnboarding} />
+      )}
+
+      {showOpenerSettings && (
+        <DirectoryOpenerDialog
+          dirPath={null}
+          onClose={() => setShowOpenerSettings(false)}
+        />
       )}
     </div>
   );

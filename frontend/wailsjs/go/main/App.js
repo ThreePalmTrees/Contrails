@@ -26,6 +26,10 @@ export function CheckForAppUpdate() {
   return window['go']['main']['App']['CheckForAppUpdate']();
 }
 
+export function DetectIDEs() {
+  return window['go']['main']['App']['DetectIDEs']();
+}
+
 export function EmitFileProcessed(arg1, arg2) {
   return window['go']['main']['App']['EmitFileProcessed'](arg1, arg2);
 }
@@ -44,6 +48,10 @@ export function GetAnalyticsEnabled() {
 
 export function GetDefaultOutputDir(arg1) {
   return window['go']['main']['App']['GetDefaultOutputDir'](arg1);
+}
+
+export function GetDirectoryOpener() {
+  return window['go']['main']['App']['GetDirectoryOpener']();
 }
 
 export function GetProjects() {
@@ -72,6 +80,10 @@ export function ListChatFiles(arg1) {
 
 export function OnCursorDatabaseChanged() {
   return window['go']['main']['App']['OnCursorDatabaseChanged']();
+}
+
+export function OpenDirectoryWith(arg1, arg2) {
+  return window['go']['main']['App']['OpenDirectoryWith'](arg1, arg2);
 }
 
 export function PreviewChatFile(arg1, arg2) {
@@ -124,6 +136,10 @@ export function SelectOutputDir() {
 
 export function SetAnalyticsEnabled(arg1) {
   return window['go']['main']['App']['SetAnalyticsEnabled'](arg1);
+}
+
+export function SetDirectoryOpener(arg1) {
+  return window['go']['main']['App']['SetDirectoryOpener'](arg1);
 }
 
 export function UpdateProject(arg1) {

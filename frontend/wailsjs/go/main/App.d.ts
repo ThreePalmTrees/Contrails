@@ -17,6 +17,8 @@ export function BrowseWorkspaceStorages():Promise<Array<Record<string, string>>>
 
 export function CheckForAppUpdate():Promise<main.UpdateInfo>;
 
+export function DetectIDEs():Promise<Array<main.IDEOption>>;
+
 export function EmitFileProcessed(arg1:string,arg2:string):Promise<void>;
 
 export function EmitWatcherEvent(arg1:string,arg2:string,arg3:string):Promise<void>;
@@ -26,6 +28,8 @@ export function FindProject(arg1:string):Promise<string>;
 export function GetAnalyticsEnabled():Promise<boolean>;
 
 export function GetDefaultOutputDir(arg1:string):Promise<string>;
+
+export function GetDirectoryOpener():Promise<string>;
 
 export function GetProjects():Promise<Array<main.Project>>;
 
@@ -40,6 +44,8 @@ export function HealContrailNames(arg1:string,arg2:string):Promise<number>;
 export function ListChatFiles(arg1:string):Promise<Array<main.ChatFileInfo>>;
 
 export function OnCursorDatabaseChanged():Promise<void>;
+
+export function OpenDirectoryWith(arg1:string,arg2:string):Promise<void>;
 
 export function PreviewChatFile(arg1:string,arg2:string):Promise<string>;
 
@@ -66,6 +72,8 @@ export function SelectChatSessionsDir():Promise<string>;
 export function SelectOutputDir():Promise<string>;
 
 export function SetAnalyticsEnabled(arg1:boolean):Promise<void>;
+
+export function SetDirectoryOpener(arg1:string):Promise<void>;
 
 export function UpdateProject(arg1:main.Project):Promise<void>;
 
