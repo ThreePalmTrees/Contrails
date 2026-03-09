@@ -1,0 +1,18 @@
+How to install Contrails
+========================
+
+1. Drag "contrails.app" to your Applications folder.
+
+2. Open Terminal and run this command:
+
+   xattr -cr /Applications/contrails.app
+
+3. Launch Contrails normally from Applications.
+
+
+Why is step 2 needed?
+---------------------
+macOS blocks apps that aren't notarized by Apple. Notarization requires
+an Apple Developer Program membership ($99/year) — Apple effectively
+charges indie developers a yearly toll just to let users open their
+software. Until we bite that bullet, "xattr -cr" is the workaround.

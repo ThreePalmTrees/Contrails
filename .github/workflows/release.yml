@@ -37,10 +37,11 @@ jobs:
       - name: Build
         run: ./buildMacOS.sh "${{ steps.version.outputs.VERSION }}" "${{ secrets.POSTHOGAPIKEY }}"
 
-      - name: Zip .app bundle
+      - name: Zip .app bundle with install instructions
         run: |
           cd build/bin
-          zip -r ../../Contrails-macos.zip contrails.app
+          cp ../../how_to_install.txt .
+          zip -r ../../Contrails-macos.zip contrails.app how_to_install.txt
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
