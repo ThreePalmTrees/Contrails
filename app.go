@@ -1203,6 +1203,12 @@ func (app *App) ListChatFiles(projectID string) ([]ChatFileInfo, error) {
 					continue
 				}
 				filePath := filepath.Join(watchDir, entry.Name())
+
+				// Skip empty sessions (opened and closed without any user message)
+				if !vscode.HasRequests(filePath) {
+					continue
+				}
+
 				sessionID := strings.TrimSuffix(strings.TrimSuffix(entry.Name(), ".jsonl"), ".json")
 
 				lastMessageDate, _ := vscode.ExtractLastMessageDate(filePath)
@@ -1296,6 +1302,12 @@ func (app *App) ListChatFiles(projectID string) ([]ChatFileInfo, error) {
 					continue
 				}
 				filePath := filepath.Join(project.WatchDir, entry.Name())
+
+				// Skip empty sessions (opened and closed without any user message)
+				if !vscode.HasRequests(filePath) {
+					continue
+				}
+
 				sessionID := strings.TrimSuffix(strings.TrimSuffix(entry.Name(), ".jsonl"), ".json")
 
 				lastMessageDate, _ := vscode.ExtractLastMessageDate(filePath)

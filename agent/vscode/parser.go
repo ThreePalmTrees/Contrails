@@ -1155,6 +1155,67 @@ func ExtractSessionSignature(filePath string) (string, error) {
 	return hex.EncodeToString(hash.Sum(nil)), nil
 }
 
+// HasRequests returns true if the session file contains at least one request.
+// This is a lightweight check used to filter empty sessions from the chat list.
+func HasRequests(filePath string) bool {
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		return false
+	}
+
+	trimmed := bytes.TrimSpace(data)
+	if len(trimmed) == 0 {
+		return false
+	}
+
+	// Plain JSON: check if requests array is non-empty
+	var session struct {
+		Requests []json.RawMessage `json:"requests"`
+	}
+	if err := json.Unmarshal(trimmed, &session); err == nil {
+		return len(session.Requests) > 0
+	}
+
+	// JSONL: check initial state and patches
+	scanner := bufio.NewScanner(bytes.NewReader(trimmed))
+	scanner.Buffer(make([]byte, 0, 64*1024), 10*1024*1024)
+
+	for scanner.Scan() {
+		line := bytes.TrimSpace(scanner.Bytes())
+		if len(line) == 0 {
+			continue
+		}
+		var peek struct {
+			Kind int             `json:"kind"`
+			K    []interface{}   `json:"k,omitempty"`
+			V    json.RawMessage `json:"v"`
+		}
+		if err := json.Unmarshal(line, &peek); err != nil {
+			continue
+		}
+
+		if peek.Kind == 0 {
+			// Check if initial requests array is non-empty
+			var state struct {
+				Requests []json.RawMessage `json:"requests"`
+			}
+			if json.Unmarshal(peek.V, &state) == nil && len(state.Requests) > 0 {
+				return true
+			}
+			continue
+		}
+
+		// Any patch targeting "requests" means requests were added
+		if (peek.Kind == 1 || peek.Kind == 2) && len(peek.K) > 0 {
+			if key0, ok := peek.K[0].(string); ok && key0 == "requests" {
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
 // IsChatSessionFile returns true if the filename looks like a VS Code
 // Copilot chat session JSON or JSONL file.
 func IsChatSessionFile(name string) bool {

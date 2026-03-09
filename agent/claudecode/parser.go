@@ -142,6 +142,11 @@ func (parser *Parser) ParseFile(filePath string) (*agent.ParsedSession, error) {
 			// Check if this is a tool_result line (not a real user message)
 			if isToolResultContent(line.Message.Content) {
 				if lastAssistantMsg != nil {
+					// Skip result content for Read and Edit — the tool call
+					// line already conveys all the useful information.
+					if name := lastToolCallName(lastAssistantMsg.Parts); name == "Read" || name == "Edit" {
+						continue
+					}
 					toolResultPart := buildToolResultPart(line)
 					if toolResultPart != nil {
 						lastAssistantMsg.Parts = append(lastAssistantMsg.Parts, *toolResultPart)
@@ -753,6 +758,17 @@ func isToolResultContent(content interface{}) bool {
 		}
 	}
 	return false
+}
+
+// lastToolCallName returns the Tool name of the last PartToolCall in parts,
+// or "" if there is none.
+func lastToolCallName(parts []agent.MessagePart) string {
+	for i := len(parts) - 1; i >= 0; i-- {
+		if parts[i].Type == agent.PartToolCall {
+			return parts[i].Tool
+		}
+	}
+	return ""
 }
 
 // buildToolResultPart extracts a compact summary from a tool result line

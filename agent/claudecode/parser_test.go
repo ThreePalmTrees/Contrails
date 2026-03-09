@@ -383,8 +383,9 @@ func TestParser_ParseFile_ToolResults(t *testing.T) {
 			}
 		}
 	}
-	if toolResultCount < 2 {
-		t.Errorf("Expected at least 2 tool result parts, got %d", toolResultCount)
+	// Read and Edit tool results are excluded — only Bash results remain
+	if toolResultCount < 1 {
+		t.Errorf("Expected at least 1 tool result part, got %d", toolResultCount)
 	}
 }
 
