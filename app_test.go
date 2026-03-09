@@ -195,12 +195,36 @@ func TestGetDefaultOutputDir(t *testing.T) {
 		})
 	}
 
-	t.Run("workspace file", func(t *testing.T) {
+	t.Run("workspace file without folders", func(t *testing.T) {
 		dir := t.TempDir()
 		wsFile := filepath.Join(dir, "myproject.code-workspace")
 		os.WriteFile(wsFile, []byte("{}"), 0644)
 		got := app.GetDefaultOutputDir(wsFile)
 		expected := filepath.Join(dir, "contrails")
+		if got != expected {
+			t.Errorf("GetDefaultOutputDir(%q) = %q, want %q", wsFile, got, expected)
+		}
+	})
+
+	t.Run("workspace file with folders uses first folder", func(t *testing.T) {
+		dir := t.TempDir()
+		wsFile := filepath.Join(dir, "myproject.code-workspace")
+		content := `{"folders":[{"path":"/Users/test/project-frontend"},{"path":"/Users/test/project-backend"}]}`
+		os.WriteFile(wsFile, []byte(content), 0644)
+		got := app.GetDefaultOutputDir(wsFile)
+		expected := "/Users/test/project-frontend/contrails"
+		if got != expected {
+			t.Errorf("GetDefaultOutputDir(%q) = %q, want %q", wsFile, got, expected)
+		}
+	})
+
+	t.Run("workspace file with relative folder path", func(t *testing.T) {
+		dir := t.TempDir()
+		wsFile := filepath.Join(dir, "myproject.code-workspace")
+		content := `{"folders":[{"path":"src/frontend"}]}`
+		os.WriteFile(wsFile, []byte(content), 0644)
+		got := app.GetDefaultOutputDir(wsFile)
+		expected := filepath.Join(dir, "src", "frontend", "contrails")
 		if got != expected {
 			t.Errorf("GetDefaultOutputDir(%q) = %q, want %q", wsFile, got, expected)
 		}

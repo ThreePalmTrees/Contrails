@@ -20,6 +20,7 @@ export interface WorkspaceInfo {
   chatSessionsDir: string;
   name: string;
   workspacePath?: string;
+  sessionCount?: number;
 }
 
 export interface WatcherEvent {

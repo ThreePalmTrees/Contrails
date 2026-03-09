@@ -125,7 +125,10 @@ export function AddProjectDialog({ onAdd, onCancel, existingWatchDirs, existingP
     setVscodeLoading(true);
     try {
       const results = await BrowseWorkspaceStorages();
-      setWorkspaces(results as unknown as WorkspaceInfo[]);
+      setWorkspaces((results as Record<string, string>[]).map(r => ({
+        ...r,
+        sessionCount: parseInt(r.sessionCount || "0", 10),
+      })) as WorkspaceInfo[]);
     } catch (err) {
       console.error("Failed to browse workspaces:", err);
     } finally {
@@ -467,7 +470,10 @@ export function AddProjectDialog({ onAdd, onCancel, existingWatchDirs, existingP
                             </span>
                           )}
                         </span>
-                        <span className="workspace-path" title={ws.chatSessionsDir}>{shortenPath(ws.chatSessionsDir)}</span>
+                        <span className="workspace-path" title={ws.chatSessionsDir}>
+                          {ws.sessionCount != null && <>{ws.sessionCount} session{ws.sessionCount !== 1 ? "s" : ""}{" · "}</>}
+                          {shortenPath(ws.chatSessionsDir)}
+                        </span>
                       </div>
                       {selectedVSCode?.id === ws.id ? (
                         <CheckCircle2 size={14} className="configured-check" />
@@ -504,7 +510,10 @@ export function AddProjectDialog({ onAdd, onCancel, existingWatchDirs, existingP
                               )}
                               {isCurrentConfigured && <span className="badge badge-inline" style={{ marginLeft: 6 }}>Current</span>}
                             </span>
-                            <span className="workspace-path" title={ws.chatSessionsDir}>{shortenPath(ws.chatSessionsDir)}</span>
+                            <span className="workspace-path" title={ws.chatSessionsDir}>
+                              {ws.sessionCount != null && <>{ws.sessionCount} session{ws.sessionCount !== 1 ? "s" : ""}{" · "}</>}
+                              {shortenPath(ws.chatSessionsDir)}
+                            </span>
                           </div>
                           {isSelected ? (
                             <CheckCircle2 size={14} className="configured-check" />

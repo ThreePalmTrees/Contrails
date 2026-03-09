@@ -12,8 +12,9 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/options/mac"
 )
 
-//go:embed all:frontend/dist
 // Style: Prefix Unexported Globals with _ (go-style-guide.md)
+
+//go:embed all:frontend/dist
 var _assets embed.FS
 
 // Version is set at build time via -ldflags "-X main.Version=x.y.z".
@@ -29,10 +30,10 @@ func main() {
 
 	// Style: Reduce Scope of Variables (go-style-guide.md)
 	if err := wails.Run(&options.App{
-		Title:    "Contrails",
-		Width:    960,
-		Height:   640,
-		MinWidth: 680,
+		Title:     "Contrails",
+		Width:     960,
+		Height:    640,
+		MinWidth:  680,
 		MinHeight: 480,
 		AssetServer: &assetserver.Options{
 			Assets: _assets,
@@ -45,18 +46,18 @@ func main() {
 				})
 			},
 		},
-		Menu:             menu.NewMenuFromItems(menu.AppMenu(), menu.WindowMenu()),
+		Menu:             menu.NewMenuFromItems(menu.AppMenu(), menu.EditMenu(), menu.WindowMenu()),
 		BackgroundColour: &options.RGBA{R: 15, G: 15, B: 20, A: 1},
 		OnStartup:        app.startup,
 		OnShutdown:       app.shutdown,
 		Mac: &mac.Options{
 			TitleBar: &mac.TitleBar{
 				TitlebarAppearsTransparent: true,
-				HideTitle:                 true,
-				HideTitleBar:              false,
-				FullSizeContent:           true,
-				UseToolbar:                false,
-				HideToolbarSeparator:      true,
+				HideTitle:                  true,
+				HideTitleBar:               false,
+				FullSizeContent:            true,
+				UseToolbar:                 false,
+				HideToolbarSeparator:       true,
 			},
 			WebviewIsTransparent: true,
 			WindowIsTranslucent:  true,

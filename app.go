@@ -522,6 +522,17 @@ func (app *App) BrowseWorkspaceStorages() ([]map[string]string, error) {
 			}
 		}
 
+		// Count chat session files
+		sessionCount := 0
+		if chatEntries, err := os.ReadDir(chatSessionsDir); err == nil {
+			for _, ce := range chatEntries {
+				if !ce.IsDir() && vscode.IsChatSessionFile(ce.Name()) {
+					sessionCount++
+				}
+			}
+		}
+		info["sessionCount"] = fmt.Sprintf("%d", sessionCount)
+
 		results = append(results, info)
 	}
 
@@ -1067,11 +1078,39 @@ func (app *App) GetDefaultOutputDir(workspacePath string) string {
 	if workspacePath == "" {
 		return ""
 	}
-	// For workspace files (e.g. .code-workspace), use the parent directory
+	// For workspace files (e.g. .code-workspace), read the first folder path
 	if info, err := os.Stat(workspacePath); err == nil && !info.IsDir() {
+		if firstFolder := firstFolderFromWorkspaceFile(workspacePath); firstFolder != "" {
+			return filepath.Join(firstFolder, "contrails")
+		}
 		workspacePath = filepath.Dir(workspacePath)
 	}
 	return filepath.Join(workspacePath, "contrails")
+}
+
+// firstFolderFromWorkspaceFile reads a .code-workspace file and returns
+// the first folder path, resolving relative paths against the file's directory.
+func firstFolderFromWorkspaceFile(wsFile string) string {
+	data, err := os.ReadFile(wsFile)
+	if err != nil {
+		return ""
+	}
+	var ws struct {
+		Folders []struct {
+			Path string `json:"path"`
+		} `json:"folders"`
+	}
+	if err := json.Unmarshal(data, &ws); err != nil || len(ws.Folders) == 0 {
+		return ""
+	}
+	p := ws.Folders[0].Path
+	if p == "" {
+		return ""
+	}
+	if !filepath.IsAbs(p) {
+		p = filepath.Join(filepath.Dir(wsFile), p)
+	}
+	return filepath.Clean(p)
 }
 
 // ValidateOutputDir checks if the output directory is writable.
