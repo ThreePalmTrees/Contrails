@@ -20,7 +20,6 @@ body {
   background: #09090f;
   color: #e4e4ef;
   line-height: 1.6;
-  overflow-x: hidden;
 }
 
 ::selection {
@@ -695,6 +694,7 @@ img {
   padding: 64px 0;
   text-align: center;
   position: relative;
+  overflow: hidden;
 }
 
 .cta::before {
