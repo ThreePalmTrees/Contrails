@@ -51,6 +51,7 @@ export function ProjectDetail({ project, onToggle, onProcess, onEdit, onUpdatePr
   const [preview, setPreview] = useState<PreviewState | null>(null);
   const [openDirPath, setOpenDirPath] = useState<string | null>(null);
   const [showOpenerDialog, setShowOpenerDialog] = useState(false);
+  const [ignoredExpanded, setIgnoredExpanded] = useState(false);
 
   async function handleOpenDir(dirPath: string) {
     const saved = await GetDirectoryOpener();
@@ -184,8 +185,6 @@ export function ProjectDetail({ project, onToggle, onProcess, onEdit, onUpdatePr
       </div>
     );
   }
-
-  const [ignoredExpanded, setIgnoredExpanded] = useState(false);
 
   async function handleIgnoreChat(file: ChatFileInfo) {
     await IgnoreChat(project.id, file.filePath, getFileDisplayName(file));
