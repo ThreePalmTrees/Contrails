@@ -397,7 +397,7 @@ func buildFromToolCallRounds(request *chatRequest, assistantMessage *agent.Parse
 	rounds := request.Result.Metadata.ToolCallRounds
 	hasRoundThinking := false
 	for _, round := range rounds {
-		if round.Thinking != nil && strings.TrimSpace(round.Thinking.Text) != "" {
+		if round.Thinking != nil && strings.TrimSpace(string(round.Thinking.Text)) != "" {
 			hasRoundThinking = true
 			break
 		}
@@ -547,7 +547,7 @@ func buildFromToolCallRounds(request *chatRequest, assistantMessage *agent.Parse
 	for _, round := range rounds {
 		// Emit per-round thinking (authoritative source from toolCallRounds).
 		if round.Thinking != nil {
-			thinkingText := strings.TrimSpace(round.Thinking.Text)
+			thinkingText := strings.TrimSpace(string(round.Thinking.Text))
 			if thinkingText != "" {
 				content := "<thinking>\n" + thinkingText + "\n</thinking>"
 				assistantMessage.Parts = append(assistantMessage.Parts, agent.MessagePart{

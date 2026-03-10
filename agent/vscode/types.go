@@ -1,5 +1,10 @@
 package vscode
 
+import (
+	"encoding/json"
+	"fmt"
+)
+
 // --- VSCode chat session structures ---
 //
 // VSCode Copilot uses two formats:
@@ -123,9 +128,38 @@ type toolCallRound struct {
 }
 
 // toolCallThinking holds the thinking block from a single tool call round.
+// The Text field uses a custom unmarshaler because VSCode sometimes serializes
+// it as an empty array [] instead of a string when thinking content is absent.
 type toolCallThinking struct {
-	ID   string `json:"id"`
-	Text string `json:"text"`
+	ID   string     `json:"id"`
+	Text flexString `json:"text"`
+}
+
+// flexString is a string that tolerates JSON arrays (unmarshals them as "").
+// VSCode occasionally emits thinking.text as [] instead of "".
+type flexString string
+
+func (f *flexString) UnmarshalJSON(data []byte) error {
+	// Fast path: JSON string
+	if len(data) > 0 && data[0] == '"' {
+		var s string
+		if err := json.Unmarshal(data, &s); err != nil {
+			return err
+		}
+		*f = flexString(s)
+		return nil
+	}
+	// Tolerate arrays (e.g. []) — treat as empty string
+	if len(data) > 0 && data[0] == '[' {
+		*f = ""
+		return nil
+	}
+	// Tolerate null
+	if string(data) == "null" {
+		*f = ""
+		return nil
+	}
+	return fmt.Errorf("flexString: unsupported type: %s", string(data))
 }
 
 // toolCall represents an individual tool invocation.

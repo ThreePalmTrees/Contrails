@@ -1,0 +1,52 @@
+{
+  "version": 3,
+  "creationDate": 1709000000000,
+  "lastMessageDate": 1709000060000,
+  "initialLocation": "panel",
+  "responderUsername": "",
+  "sessionId": "json-thinking-array-text",
+  "customTitle": "Thinking array text test",
+  "requests": [
+    {
+      "requestId": "req-001",
+      "timestamp": 1709000010000,
+      "modelId": "copilot/claude-sonnet-4.6",
+      "responseId": "resp-001",
+      "response": [
+        {
+          "kind": "thinking",
+          "value": "Analyzing the request carefully.",
+          "id": "thinking_0"
+        },
+        {
+          "kind": "thinking",
+          "value": "",
+          "id": "",
+          "metadata": { "vscodeReasoningDone": true, "stopReason": "text" }
+        },
+        {
+          "value": "Here is the answer.",
+          "supportThemeIcons": false
+        }
+      ],
+      "message": {
+        "text": "Explain the config",
+        "parts": [{ "text": "Explain the config", "kind": "text" }]
+      },
+      "variableData": { "variables": [] },
+      "result": {
+        "timings": { "firstProgress": 500, "totalElapsed": 5000 },
+        "metadata": {
+          "toolCallRounds": [
+            {
+              "response": "Here is the answer.",
+              "toolCalls": [],
+              "thinking": { "id": "thinking_0", "text": [] }
+            }
+          ]
+        }
+      },
+      "modelState": { "value": 1, "completedAt": 1709000060000 }
+    }
+  ]
+}
