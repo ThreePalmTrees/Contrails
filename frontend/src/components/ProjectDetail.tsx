@@ -47,6 +47,7 @@ export function ProjectDetail({ project, onToggle, onProcess, onEdit, onUpdatePr
   const isProcessing = processing === project.id;
   const progress = processingProgress?.projectId === project.id ? processingProgress : null;
   const [chatFiles, setChatFiles] = useState<ChatFileInfo[]>([]);
+  const [chatFilesLoading, setChatFilesLoading] = useState(true);
   const [filesVersion, setFilesVersion] = useState(0);
   const [preview, setPreview] = useState<PreviewState | null>(null);
   const [openDirPath, setOpenDirPath] = useState<string | null>(null);
@@ -79,10 +80,13 @@ export function ProjectDetail({ project, onToggle, onProcess, onEdit, onUpdatePr
 
   useEffect(() => {
     let mounted = true;
+    setChatFilesLoading(true);
     ListChatFiles(project.id).then((files) => {
       if (mounted) setChatFiles(files ?? []);
     }).catch(() => {
       if (mounted) setChatFiles([]);
+    }).finally(() => {
+      if (mounted) setChatFilesLoading(false);
     });
     return () => { mounted = false; };
   }, [project.id, isProcessing, filesVersion, project.sources, project.watchDir]);
@@ -407,7 +411,14 @@ export function ProjectDetail({ project, onToggle, onProcess, onEdit, onUpdatePr
 <div>
 
       {/* Chat files list */}
-      {chatFiles.length > 0 && (
+      {chatFilesLoading ? (
+        <div className="chat-files-section">
+          <h3 className="chat-files-heading">Chat Sessions</h3>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '16px 0', opacity: 0.6 }}>
+            <Loader2 size={16} className="spin" /> Loading…
+          </div>
+        </div>
+      ) : chatFiles.length > 0 ? (
         <div className="chat-files-section">
           <h3 className="chat-files-heading">Chat Sessions ({activeFiles.length})</h3>
           {parsedFiles.length > 0 && (
@@ -490,7 +501,7 @@ export function ProjectDetail({ project, onToggle, onProcess, onEdit, onUpdatePr
             </div>
           )}
         </div>
-      )}
+      ) : null}
     </div>
     {showOpenerDialog && (
       <DirectoryOpenerDialog
