@@ -625,13 +625,10 @@ func findNthAssistantMessage(messages []agent.ParsedMessage, n int) *agent.Parse
 }
 
 func TestDeriveTitle_LongMessage(t *testing.T) {
-	longMessage := strings.Repeat("a", 100)
+	longMessage := strings.Repeat("a", 150)
 	title := deriveTitle(longMessage)
-	if len(title) > 84 { // 80 + "..."
-		t.Errorf("Title should be truncated, got length %d", len(title))
-	}
-	if !strings.HasSuffix(title, "...") {
-		t.Error("Truncated title should end with ...")
+	if len(title) != 100 {
+		t.Errorf("Title should be truncated to 100 chars, got length %d", len(title))
 	}
 }
 

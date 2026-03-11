@@ -641,7 +641,7 @@ func ExtractTitle(filePath string) string {
 // deriveTitle generates a session title from the first user message.
 // Claude Code does not have customTitle — we truncate the first message.
 func deriveTitle(firstMessage string) string {
-	const maxTitleLength = 80
+	const maxTitleLength = 100
 	// Take the first line only
 	firstLine := firstMessage
 	if newlineIndex := strings.IndexByte(firstMessage, '\n'); newlineIndex >= 0 {
@@ -649,7 +649,7 @@ func deriveTitle(firstMessage string) string {
 	}
 	firstLine = strings.TrimSpace(firstLine)
 	if len(firstLine) > maxTitleLength {
-		firstLine = firstLine[:maxTitleLength] + "..."
+		firstLine = firstLine[:maxTitleLength]
 	}
 	return firstLine
 }

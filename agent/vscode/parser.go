@@ -1223,42 +1223,121 @@ func IsChatSessionFile(name string) bool {
 }
 
 // ExtractTitle reads a VS Code chat session JSON or JSONL file and returns the
-// customTitle if present, or an empty string if not set yet.
-// This is cheaper than full parsing and is used to build the chat file list.
+// customTitle if present, or derives a title from the first user message.
+// Returns empty string if the file cannot be read or has no user messages.
 func ExtractTitle(filePath string) string {
 	data, err := os.ReadFile(filePath)
 	if err != nil {
 		return ""
 	}
 
-	// Check if it's a fully materialized JSON
+	// Try parsing as a fully materialized JSON object first
 	var session struct {
-		CustomTitle string `json:"customTitle"`
+		CustomTitle string        `json:"customTitle"`
+		Requests    []chatRequest `json:"requests"`
 	}
-	if err := json.Unmarshal(data, &session); err == nil && session.CustomTitle != "" {
-		return session.CustomTitle
+	if err := json.Unmarshal(data, &session); err == nil {
+		if session.CustomTitle != "" {
+			return session.CustomTitle
+		}
+		if len(session.Requests) > 0 && session.Requests[0].Message.Text != "" {
+			return deriveTitle(session.Requests[0].Message.Text)
+		}
+		return ""
 	}
 
+	// JSONL v3 format — the kind:0 event typically has empty requests;
+	// customTitle and requests are added via kind:1/kind:2 patch events.
 	scanner := bufio.NewScanner(bytes.NewReader(data))
 	scanner.Buffer(make([]byte, 0, 64*1024), 10*1024*1024)
+
+	var customTitle string
+	var firstUserMessage string
 
 	for scanner.Scan() {
 		line := bytes.TrimSpace(scanner.Bytes())
 		if len(line) == 0 {
 			continue
 		}
-		var record struct {
-			Kind        int    `json:"kind"`
-			CustomTitle string `json:"customTitle"`
+		var event struct {
+			Kind int             `json:"kind"`
+			K    []interface{}   `json:"k,omitempty"`
+			V    json.RawMessage `json:"v"`
 		}
-		if err := json.Unmarshal(line, &record); err != nil {
+		if err := json.Unmarshal(line, &event); err != nil {
 			continue
 		}
-		if record.Kind == 0 && record.CustomTitle != "" {
-			return record.CustomTitle
+
+		switch event.Kind {
+		case 0:
+			// Initial state snapshot — check for customTitle and requests
+			var state struct {
+				CustomTitle string `json:"customTitle"`
+				Requests    []struct {
+					Message struct {
+						Text string `json:"text"`
+					} `json:"message"`
+				} `json:"requests"`
+			}
+			if json.Unmarshal(event.V, &state) == nil {
+				if state.CustomTitle != "" {
+					customTitle = state.CustomTitle
+				}
+				if firstUserMessage == "" && len(state.Requests) > 0 && state.Requests[0].Message.Text != "" {
+					firstUserMessage = state.Requests[0].Message.Text
+				}
+			}
+
+		case 1:
+			// Scalar patch — check if it sets customTitle
+			if len(event.K) == 1 {
+				if key, ok := event.K[0].(string); ok && key == "customTitle" {
+					var title string
+					if json.Unmarshal(event.V, &title) == nil && title != "" {
+						customTitle = title
+					}
+				}
+			}
+
+		case 2:
+			// Array patch — check if it adds requests
+			if firstUserMessage == "" && len(event.K) > 0 {
+				if key, ok := event.K[0].(string); ok && key == "requests" {
+					var requests []struct {
+						Message struct {
+							Text string `json:"text"`
+						} `json:"message"`
+					}
+					if json.Unmarshal(event.V, &requests) == nil && len(requests) > 0 && requests[0].Message.Text != "" {
+						firstUserMessage = requests[0].Message.Text
+					}
+				}
+			}
 		}
 	}
+
+	if customTitle != "" {
+		return customTitle
+	}
+	if firstUserMessage != "" {
+		return deriveTitle(firstUserMessage)
+	}
 	return ""
+}
+
+// deriveTitle generates a session title from the first user message.
+// It truncates to the first 100 characters of the first line.
+func deriveTitle(firstMessage string) string {
+	const maxTitleLength = 100
+	firstLine := firstMessage
+	if newlineIndex := strings.IndexByte(firstMessage, '\n'); newlineIndex >= 0 {
+		firstLine = firstMessage[:newlineIndex]
+	}
+	firstLine = strings.TrimSpace(firstLine)
+	if len(firstLine) > maxTitleLength {
+		firstLine = firstLine[:maxTitleLength]
+	}
+	return firstLine
 }
 
 // FindSourceFile locates the chat session JSON/JSONL file for a given session ID

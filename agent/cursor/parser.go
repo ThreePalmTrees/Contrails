@@ -421,3 +421,72 @@ func ExtractLastMessageDate(composerId string) (int64, error) {
 	}
 	return rec.LastUpdatedAt, nil
 }
+
+// ExtractTitle returns a display title for the given composer session.
+// It first checks the composer's Name field, then falls back to the first
+// user message text (truncated to 100 characters).
+func ExtractTitle(composerId string) string {
+	db, err := openDB()
+	if err != nil {
+		return ""
+	}
+	defer db.Close()
+
+	var raw string
+	err = db.QueryRow(
+		"SELECT value FROM cursorDiskKV WHERE key = ?",
+		"composerData:"+composerId,
+	).Scan(&raw)
+	if err != nil {
+		return ""
+	}
+
+	var rec struct {
+		Name                        string         `json:"name"`
+		FullConversationHeadersOnly []bubbleHeader `json:"fullConversationHeadersOnly"`
+	}
+	if err := json.Unmarshal([]byte(raw), &rec); err != nil {
+		return ""
+	}
+	if rec.Name != "" {
+		return rec.Name
+	}
+
+	// Find the first user bubble and derive title from it
+	for _, header := range rec.FullConversationHeadersOnly {
+		if header.Type != 1 { // 1 = USER
+			continue
+		}
+		var bubbleRaw string
+		err := db.QueryRow(
+			"SELECT value FROM cursorDiskKV WHERE key = ?",
+			"bubbleId:"+composerId+":"+header.BubbleId,
+		).Scan(&bubbleRaw)
+		if err != nil {
+			return ""
+		}
+		var bubble struct {
+			Text string `json:"text"`
+		}
+		if err := json.Unmarshal([]byte(bubbleRaw), &bubble); err != nil || bubble.Text == "" {
+			return ""
+		}
+		return deriveTitle(bubble.Text)
+	}
+	return ""
+}
+
+// deriveTitle generates a session title from the first user message.
+// It truncates to the first 100 characters of the first line.
+func deriveTitle(firstMessage string) string {
+	const maxTitleLength = 100
+	firstLine := firstMessage
+	if newlineIndex := strings.IndexByte(firstMessage, '\n'); newlineIndex >= 0 {
+		firstLine = firstMessage[:newlineIndex]
+	}
+	firstLine = strings.TrimSpace(firstLine)
+	if len(firstLine) > maxTitleLength {
+		firstLine = firstLine[:maxTitleLength]
+	}
+	return firstLine
+}

@@ -1305,6 +1305,11 @@ func (app *App) ListChatFiles(projectID string) ([]ChatFileInfo, error) {
 				isParsed := mdMtime > 0
 				isPartiallyParsed := isParsed && c.LastUpdatedAt > mdMtime
 
+				title := c.Name
+				if title == "" {
+					title = cursor.ExtractTitle(c.ID)
+				}
+
 				info := ChatFileInfo{
 					FileName:        c.ID,
 					FilePath:        c.ID, // composer UUID used as identifier
@@ -1312,7 +1317,7 @@ func (app *App) ListChatFiles(projectID string) ([]ChatFileInfo, error) {
 					Parsed:          isParsed && !isPartiallyParsed,
 					PartiallyParsed: isPartiallyParsed,
 					ProcessedAt:     mdMtime,
-					Title:           c.Name,
+					Title:           title,
 					LastMessageAt:   agent.FormatTimestamp(c.LastUpdatedAt),
 					CreatedAt:       c.CreatedAt,
 				}
