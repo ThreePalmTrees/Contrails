@@ -274,6 +274,7 @@ function App() {
         <DirectoryOpenerDialog
           dirPath={null}
           onClose={() => setShowOpenerSettings(false)}
+          updateInfo={updateInfo}
         />
       )}
     </div>

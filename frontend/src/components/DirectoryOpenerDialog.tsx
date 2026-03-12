@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
-import { X, FolderOpen } from "lucide-react";
-import { DetectIDEs, GetDirectoryOpener, SetDirectoryOpener, OpenDirectoryWith } from "../../wailsjs/go/main/App";
+import { X, FolderOpen, Download } from "lucide-react";
+import { DetectIDEs, GetDirectoryOpener, SetDirectoryOpener, OpenDirectoryWith, GetVersion, ApplyAppUpdate } from "../../wailsjs/go/main/App";
+import { BrowserOpenURL } from "../../wailsjs/runtime/runtime";
 import { main } from "../../wailsjs/go/models";
 
 interface IDEChoice {
@@ -11,22 +12,36 @@ interface IDEChoice {
 const FINDER_OPTION: IDEChoice = { name: "Finder", command: "open" };
 const CUSTOM_SENTINEL = "__custom__";
 
+interface UpdateInfo {
+  latestVersion: string;
+  downloadURL: string;
+  releaseURL: string;
+}
+
 interface DirectoryOpenerDialogProps {
   /** Directory path to open (null = settings mode, no directory to open) */
   dirPath: string | null;
   onClose: () => void;
+  /** Update info from App (if an update has been detected) */
+  updateInfo?: UpdateInfo | null;
 }
 
-export function DirectoryOpenerDialog({ dirPath, onClose }: DirectoryOpenerDialogProps) {
+export function DirectoryOpenerDialog({ dirPath, onClose, updateInfo }: DirectoryOpenerDialogProps) {
   const [ides, setIdes] = useState<IDEChoice[]>([]);
   const [selected, setSelected] = useState("open");
   const [customCommand, setCustomCommand] = useState("");
   const [dontAsk, setDontAsk] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [version, setVersion] = useState("");
+  const [updating, setUpdating] = useState(false);
 
   const isSettingsMode = dirPath === null;
   const isCustom = selected === CUSTOM_SENTINEL;
   const effectiveCommand = isCustom ? customCommand.trim() : selected;
+
+  useEffect(() => {
+    GetVersion().then(setVersion).catch(() => {});
+  }, []);
 
   useEffect(() => {
     Promise.all([DetectIDEs(), GetDirectoryOpener()]).then(([detected, saved]) => {
@@ -151,6 +166,33 @@ export function DirectoryOpenerDialog({ dirPath, onClose }: DirectoryOpenerDialo
             </div>
           )}
         </div>
+        {isSettingsMode && (
+          <div className="settings-version-section">
+            <div className="settings-version-row">
+              <span className="settings-version-label">
+                Version {version || "…"}
+              </span>
+              {updateInfo ? (
+                <button
+                  className="btn btn-primary btn-xs"
+                  disabled={updating}
+                  onClick={() => {
+                    if (updateInfo.downloadURL) {
+                      setUpdating(true);
+                      ApplyAppUpdate(updateInfo.downloadURL).catch(() => setUpdating(false));
+                    } else {
+                      BrowserOpenURL(updateInfo.releaseURL);
+                    }
+                  }}
+                >
+                  {updating ? "Updating..." : <><Download size={11} /> Update to v{updateInfo.latestVersion}</>}
+                </button>
+              ) : (
+                <span className="settings-version-uptodate">Up to date</span>
+              )}
+            </div>
+          </div>
+        )}
         <div className="error-modal-footer" style={{ justifyContent: "space-between" }}>
           {!isSettingsMode ? (
             <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--text-tertiary)", cursor: "pointer", whiteSpace: "nowrap" }}>
