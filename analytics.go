@@ -114,6 +114,35 @@ func (a *Analytics) Track(event string, properties map[string]interface{}) {
 	})
 }
 
+// TrackAnonymous sends an event with an ephemeral random ID and minimal properties.
+// It fires regardless of the opt-out setting since the data is fully anonymous
+// (no stored identifiers, no behavioral fingerprinting properties).
+// Only use this for GDPR-safe aggregate counters.
+func (a *Analytics) TrackAnonymous(event string, properties map[string]interface{}) {
+	defer func() { recover() }() //nolint: errcheck
+
+	if a.client == nil {
+		return
+	}
+
+	props := posthog.NewProperties()
+	props.Set("source", "app")
+	props.Set("app_version", Version)
+	props.Set("os", runtime.GOOS)
+	props.Set("arch", runtime.GOARCH)
+	for k, v := range properties {
+		props.Set(k, v)
+	}
+
+	// Ephemeral UUID — not stored, not reused — so this event cannot be linked
+	// back to any device or person.
+	_ = a.client.Enqueue(posthog.Capture{
+		DistinctId: uuid.New().String(),
+		Event:      event,
+		Properties: props,
+	})
+}
+
 // Identify sets person properties on the PostHog profile for this device.
 func (a *Analytics) Identify(properties map[string]interface{}) {
 	defer func() { recover() }() //nolint: errcheck
@@ -136,6 +165,9 @@ func (a *Analytics) Identify(properties map[string]interface{}) {
 // TrackAppStarted sends the app_started event with version, OS, and project stats.
 func (a *Analytics) TrackAppStarted() {
 	defer func() { recover() }() //nolint: errcheck
+
+	// Always send an anonymous ping (GDPR-safe: no device ID, no behavioral data)
+	a.TrackAnonymous("app_started_anonymous", nil)
 
 	if !a.IsEnabled() {
 		return

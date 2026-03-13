@@ -765,6 +765,9 @@ func (app *App) ApplyAppUpdate(downloadURL string) error {
 	app.analytics.Track("update_accepted", map[string]interface{}{
 		"from_version": Version,
 	})
+	app.analytics.TrackAnonymous("update_accepted_anonymous", map[string]interface{}{
+		"from_version": Version,
+	})
 	app.analytics.Close() // Flush before we exit
 	return ApplyUpdate(downloadURL)
 }

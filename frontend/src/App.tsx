@@ -189,25 +189,6 @@ function App() {
             >
               Add Project
             </button>
-            <div className="telemetry-toggle">
-              <span
-                className={`analytics-dot ${analyticsEnabled ? "analytics-on" : "analytics-off"}`}
-                role="button"
-                tabIndex={0}
-                onClick={() => {
-                  const next = !analyticsEnabled;
-                  SetAnalyticsEnabled(next).then(() => setAnalyticsEnabled(next)).catch(() => {});
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    const next = !analyticsEnabled;
-                    SetAnalyticsEnabled(next).then(() => setAnalyticsEnabled(next)).catch(() => {});
-                  }
-                }}
-                title={analyticsEnabled ? "Anonymous telemetry is enabled. Click to disable." : "Anonymous telemetry is disabled. Click to enable."}
-              />
-              <span style={{ cursor: 'default'}}>Telemetry {analyticsEnabled ? "on" : "off"}</span>
-            </div>
           </div>
         )}
       </main>
@@ -275,6 +256,10 @@ function App() {
           dirPath={null}
           onClose={() => setShowOpenerSettings(false)}
           updateInfo={updateInfo}
+          analyticsEnabled={analyticsEnabled}
+          onAnalyticsToggle={(next) => {
+            SetAnalyticsEnabled(next).then(() => setAnalyticsEnabled(next)).catch(() => {});
+          }}
         />
       )}
     </div>

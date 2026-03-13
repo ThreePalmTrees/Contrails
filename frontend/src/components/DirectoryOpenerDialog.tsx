@@ -24,9 +24,13 @@ interface DirectoryOpenerDialogProps {
   onClose: () => void;
   /** Update info from App (if an update has been detected) */
   updateInfo?: UpdateInfo | null;
+  /** Whether analytics collection is enabled */
+  analyticsEnabled?: boolean;
+  /** Callback to toggle analytics */
+  onAnalyticsToggle?: (enabled: boolean) => void;
 }
 
-export function DirectoryOpenerDialog({ dirPath, onClose, updateInfo }: DirectoryOpenerDialogProps) {
+export function DirectoryOpenerDialog({ dirPath, onClose, updateInfo, analyticsEnabled, onAnalyticsToggle }: DirectoryOpenerDialogProps) {
   const [ides, setIdes] = useState<IDEChoice[]>([]);
   const [selected, setSelected] = useState("open");
   const [customCommand, setCustomCommand] = useState("");
@@ -166,6 +170,27 @@ export function DirectoryOpenerDialog({ dirPath, onClose, updateInfo }: Director
             </div>
           )}
         </div>
+        {isSettingsMode && onAnalyticsToggle && (
+          <div className="settings-telemetry-section">
+            <div className="settings-telemetry-row">
+              <div className="settings-telemetry-info">
+                <label className="settings-telemetry-label">
+                  <input
+                    type="checkbox"
+                    checked={analyticsEnabled ?? true}
+                    onChange={(e) => onAnalyticsToggle(e.target.checked)}
+                  />
+                  Anonymous telemetry
+                </label>
+                <span className="settings-telemetry-hint">
+                  {analyticsEnabled
+                    ? "Usage data is collected anonymously to help improve Contrails."
+                    : "Telemetry is off. Only basic, non-identifiable signals (app version, OS) are sent to help track adoption."}
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
         {isSettingsMode && (
           <div className="settings-version-section">
             <div className="settings-version-row">

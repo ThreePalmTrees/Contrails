@@ -524,30 +524,6 @@ button, input, select, textarea, a, [role="button"] {
 .footer-link:hover {
   color: var(--text-secondary);
 }
-.analytics-dot {
-  display: inline-block;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  opacity: 0.4;
-}
-.analytics-on {
-  background: #50e12f;
-}
-.analytics-off {
-  background: #666;
-}
-.telemetry-toggle {
-  position: absolute;
-  bottom: 0px;
-  right: -24px;
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 8px;
-  color: var(--text-muted);
-  opacity: 0.4;
-}
 
 /* ===== Project Item Badge ===== */
 .project-item-right {
@@ -647,6 +623,36 @@ button, input, select, textarea, a, [role="button"] {
   justify-content: flex-end;
   padding: 10px 16px;
   border-top: 1px solid var(--border-subtle);
+}
+
+/* ===== Settings Telemetry Section ===== */
+.settings-telemetry-section {
+  padding: 10px 16px;
+  border-top: 1px solid var(--border-subtle);
+}
+.settings-telemetry-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+.settings-telemetry-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.settings-telemetry-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.settings-telemetry-hint {
+  font-size: 10.5px;
+  color: var(--text-muted);
+  line-height: 1.4;
 }
 
 /* ===== Settings Version Section ===== */
