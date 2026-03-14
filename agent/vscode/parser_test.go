@@ -292,9 +292,6 @@ func TestParser_WriteParsedSession_RoundTrip(t *testing.T) {
 	}
 
 	markdown := string(content)
-	if !strings.Contains(markdown, parsed.Title) {
-		t.Error("Output should contain the session title")
-	}
 	if !strings.Contains(markdown, parsed.SessionID) {
 		t.Error("Output should contain the session ID")
 	}

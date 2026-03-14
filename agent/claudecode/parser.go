@@ -580,6 +580,43 @@ func ExtractLastMessageDate(filePath string) (int64, error) {
 	return maxTime, nil
 }
 
+// HasContent performs a lightweight scan of a Claude Code JSONL transcript to
+// check whether it contains at least one real user message (not a local-command
+// or tool result). This is used to filter empty sessions from the chat list.
+func HasContent(filePath string) bool {
+	file, err := os.Open(filePath)
+	if err != nil {
+		return false
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	scanner.Buffer(make([]byte, 0, 64*1024), 10*1024*1024)
+
+	for scanner.Scan() {
+		line := bytes.TrimSpace(scanner.Bytes())
+		if len(line) == 0 {
+			continue
+		}
+		var record jsonlLine
+		if err := json.Unmarshal(line, &record); err != nil {
+			continue
+		}
+		if record.Message == nil || record.Message.Role != "user" {
+			continue
+		}
+		if isToolResultContent(record.Message.Content) {
+			continue
+		}
+		if isLocalCommandContent(record.Message.Content) {
+			continue
+		}
+		// Found a real user message
+		return true
+	}
+	return false
+}
+
 // ExtractTitle reads a Claude Code JSONL transcript file and returns a title
 // derived from the first user message, matching the logic used during full parsing.
 // Returns empty string if the file cannot be read or has no user messages.
@@ -631,7 +668,7 @@ func ExtractTitle(filePath string) string {
 				}
 			}
 		}
-		if text != "" {
+		if text != "" && !isLocalCommandContent(text) {
 			return deriveTitle(text)
 		}
 	}

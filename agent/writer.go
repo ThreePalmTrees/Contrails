@@ -14,11 +14,6 @@ import (
 func RenderMarkdown(session *ParsedSession) string {
 	var markdown strings.Builder
 
-	displayTitle := session.Title
-	if displayTitle == "" {
-		displayTitle = session.SessionID
-	}
-	markdown.WriteString(fmt.Sprintf("# %s\n\n", displayTitle))
 	markdown.WriteString(fmt.Sprintf("- **Session ID:** `%s`\n", session.SessionID))
 	markdown.WriteString(fmt.Sprintf("- **Created:** %s\n", session.CreatedAt))
 	markdown.WriteString(fmt.Sprintf("- **Last Message:** %s\n", session.LastMessageAt))

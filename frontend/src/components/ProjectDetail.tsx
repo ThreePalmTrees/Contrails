@@ -200,6 +200,16 @@ export function ProjectDetail({ project, onToggle, onProcess, onEdit, onUpdatePr
     setFilesVersion((v) => v + 1);
   }
 
+  function markFileProcessed(filePath: string) {
+    setChatFiles((prev) =>
+      prev.map((f) =>
+        f.filePath === filePath
+          ? { ...f, parsed: true, partiallyParsed: false, processedAt: Date.now() }
+          : f
+      )
+    );
+  }
+
   const sortByCreated = (a: ChatFileInfo, b: ChatFileInfo) => (b.createdAt || 0) - (a.createdAt || 0);
   const activeFiles = chatFiles.filter((f) => !f.ignored);
   const ignoredFiles = chatFiles.filter((f) => f.ignored).sort(sortByCreated);
@@ -431,7 +441,7 @@ export function ProjectDetail({ project, onToggle, onProcess, onEdit, onUpdatePr
                     key={file.filePath}
                     file={file}
                     onShowDetails={() => handleShowDetails(file)}
-                    onProcessDone={() => setFilesVersion((v) => v + 1)}
+                    onProcessed={() => markFileProcessed(file.filePath)}
                     outputDir={project.outputDir}
                     onIgnore={() => handleIgnoreChat(file)}
                   />
@@ -448,7 +458,7 @@ export function ProjectDetail({ project, onToggle, onProcess, onEdit, onUpdatePr
                     key={file.filePath}
                     file={file}
                     onShowDetails={() => handleShowDetails(file)}
-                    onProcessDone={() => setFilesVersion((v) => v + 1)}
+                    onProcessed={() => markFileProcessed(file.filePath)}
                     outputDir={project.outputDir}
                     onIgnore={() => handleIgnoreChat(file)}
                   />
@@ -466,7 +476,7 @@ export function ProjectDetail({ project, onToggle, onProcess, onEdit, onUpdatePr
                     key={file.filePath}
                     file={file}
                     onShowDetails={() => handleShowDetails(file)}
-                    onProcessDone={() => setFilesVersion((v) => v + 1)}
+                    onProcessed={() => markFileProcessed(file.filePath)}
                     outputDir={project.outputDir}
                     onIgnore={() => handleIgnoreChat(file)}
                   />
@@ -491,7 +501,7 @@ export function ProjectDetail({ project, onToggle, onProcess, onEdit, onUpdatePr
                       key={file.filePath}
                       file={file}
                       onShowDetails={() => handleShowDetails(file)}
-                      onProcessDone={() => setFilesVersion((v) => v + 1)}
+                      onProcessed={() => markFileProcessed(file.filePath)}
                       outputDir={project.outputDir}
                       onUnignore={() => handleUnignoreChat(file)}
                     />
@@ -501,7 +511,12 @@ export function ProjectDetail({ project, onToggle, onProcess, onEdit, onUpdatePr
             </div>
           )}
         </div>
-      ) : null}
+      ) : (
+        <div className="chat-files-section">
+          <h3 className="chat-files-heading">Chat Sessions</h3>
+          <div style={{ padding: '16px 0', opacity: 0.5 }}>No chats yet…</div>
+        </div>
+      )}
     </div>
     {showOpenerDialog && (
       <DirectoryOpenerDialog
@@ -516,32 +531,27 @@ export function ProjectDetail({ project, onToggle, onProcess, onEdit, onUpdatePr
 interface ChatFileRowProps {
   file: ChatFileInfo;
   onShowDetails: () => void;
-  onProcessDone: () => void;
+  onProcessed: () => void;
   outputDir: string;
   onIgnore?: () => void;
   onUnignore?: () => void;
 }
 
-function ChatFileRow({ file, onShowDetails, onProcessDone, outputDir, onIgnore, onUnignore }: ChatFileRowProps) {
+function ChatFileRow({ file, onShowDetails, onProcessed, outputDir, onIgnore, onUnignore }: ChatFileRowProps) {
   const [processing, setProcessing] = useState(false);
-  const [done, setDone] = useState(false);
-  const [processedAt, setProcessedAt] = useState(file.processedAt);
 
   async function handleProcess() {
     setProcessing(true);
     try {
       await ProcessSingleFile(file.filePath, file.sourceType, outputDir);
-      setDone(true);
-      setProcessedAt(Date.now());
-      onProcessDone();
+      onProcessed();
     } finally {
       setProcessing(false);
     }
   }
 
-  // If done, it overrides original parsed/partiallyParsed states to strictly "parsed"
-  const isParsed = done ? true : file.parsed && !file.partiallyParsed;
-  const isPartiallyParsed = done ? false : file.partiallyParsed;
+  const isParsed = file.parsed && !file.partiallyParsed;
+  const isPartiallyParsed = file.partiallyParsed;
 
   return (
     <div className={`chat-file-row ${isParsed ? "chat-file-row-parsed" : ""}`}>
@@ -559,8 +569,8 @@ function ChatFileRow({ file, onShowDetails, onProcessDone, outputDir, onIgnore, 
       </div>
       <span className="chat-file-name chat-file-name-clickable" title={file.filePath} onClick={onShowDetails}>{getFileDisplayName(file)}</span>
       <div className="chat-file-actions">
-        {isParsed && processedAt > 0 && (
-          <span className="chat-file-processed-time">{formatDateTime(processedAt)}</span>
+        {isParsed && file.processedAt > 0 && (
+          <span className="chat-file-processed-time">{formatDateTime(file.processedAt)}</span>
         )}
         {onUnignore ? (
           <button className="btn btn-outline btn-sm" onClick={onUnignore} title="Stop ignoring this chat">

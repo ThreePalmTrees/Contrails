@@ -1271,14 +1271,22 @@ func (app *App) ListChatFiles(projectID string) ([]ChatFileInfo, error) {
 				name := filepath.Base(filePath)
 				sessionID := strings.TrimSuffix(name, ".jsonl")
 
-				title := claudecode.ExtractTitle(filePath)
-				// Skip empty sessions (opened and closed without any user message)
-				if title == "" {
+				// Skip sessions with no real user messages (only local-command
+				// content, tool results, or completely empty).
+				if !claudecode.HasContent(filePath) {
 					continue
 				}
 
+				title := claudecode.ExtractTitle(filePath)
+
 				lastMessageDate, _ := claudecode.ExtractLastMessageDate(filePath)
 				firstMessageDate, _ := claudecode.ExtractFirstMessageDate(filePath)
+
+				// Fall back to createdAt datetime when title is empty
+				// (e.g. session's first user message was a local-command)
+				if title == "" {
+					title = agent.FormatTimestamp(firstMessageDate)
+				}
 				mdMtime := parsedAt[sessionID]
 
 				isParsed := mdMtime > 0
@@ -1303,15 +1311,19 @@ func (app *App) ListChatFiles(projectID string) ([]ChatFileInfo, error) {
 				continue
 			}
 			for _, c := range composers {
-				mdMtime := parsedAt[c.ID]
-
-				isParsed := mdMtime > 0
-				isPartiallyParsed := isParsed && c.LastUpdatedAt > mdMtime
-
 				title := c.Name
 				if title == "" {
 					title = cursor.ExtractTitle(c.ID)
 				}
+				// Skip empty sessions (opened but no messages)
+				if title == "" {
+					continue
+				}
+
+				mdMtime := parsedAt[c.ID]
+
+				isParsed := mdMtime > 0
+				isPartiallyParsed := isParsed && c.LastUpdatedAt > mdMtime
 
 				info := ChatFileInfo{
 					FileName:        c.ID,
