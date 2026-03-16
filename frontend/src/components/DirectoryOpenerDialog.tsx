@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { X, FolderOpen, Download, Sun, Moon } from "lucide-react";
 import type { Theme } from "../hooks/useTheme";
-import { DetectIDEs, GetDirectoryOpener, SetDirectoryOpener, OpenDirectoryWith, GetVersion, ApplyAppUpdate } from "../../wailsjs/go/main/App";
+import { DetectIDEs, GetDirectoryOpener, SetDirectoryOpener, OpenDirectoryWith, GetVersion, ApplyAppUpdate, CheckForAppUpdate } from "../../wailsjs/go/main/App";
 import { BrowserOpenURL } from "../../wailsjs/runtime/runtime";
 import { main } from "../../wailsjs/go/models";
 
@@ -43,6 +43,8 @@ export function DirectoryOpenerDialog({ dirPath, onClose, updateInfo, analyticsE
   const [loading, setLoading] = useState(true);
   const [version, setVersion] = useState("");
   const [updating, setUpdating] = useState(false);
+  const [checkingUpdate, setCheckingUpdate] = useState(false);
+  const [checkedUpdate, setCheckedUpdate] = useState<UpdateInfo | null | undefined>(undefined);
 
   const isSettingsMode = dirPath === null;
   const isCustom = selected === CUSTOM_SENTINEL;
@@ -229,23 +231,46 @@ export function DirectoryOpenerDialog({ dirPath, onClose, updateInfo, analyticsE
               <span className="settings-version-label">
                 Version {version || "…"}
               </span>
-              {updateInfo ? (
+              {(updateInfo || checkedUpdate) ? (
                 <button
                   className="btn btn-primary btn-xs"
                   disabled={updating}
                   onClick={() => {
-                    if (updateInfo.downloadURL) {
+                    const update = (updateInfo || checkedUpdate)!;
+                    if (update.downloadURL) {
                       setUpdating(true);
-                      ApplyAppUpdate(updateInfo.downloadURL).catch(() => setUpdating(false));
+                      ApplyAppUpdate(update.downloadURL).catch(() => setUpdating(false));
                     } else {
-                      BrowserOpenURL(updateInfo.releaseURL);
+                      BrowserOpenURL(update.releaseURL);
                     }
                   }}
                 >
-                  {updating ? "Updating..." : <><Download size={11} /> Update to v{updateInfo.latestVersion}</>}
+                  {updating ? "Updating..." : <><Download size={11} /> Update to v{(updateInfo || checkedUpdate)!.latestVersion}</>}
                 </button>
-              ) : (
+              ) : checkedUpdate === null ? (
                 <span className="settings-version-uptodate">Up to date</span>
+              ) : (
+                <button
+                  className="btn btn-secondary btn-xs"
+                  disabled={checkingUpdate}
+                  onClick={() => {
+                    setCheckingUpdate(true);
+                    CheckForAppUpdate()
+                      .then((info) => {
+                        if (info && info.latestVersion) {
+                          setCheckedUpdate(info);
+                        } else {
+                          setCheckedUpdate(null);
+                        }
+                      })
+                      .catch(() => {
+                        setCheckedUpdate(null);
+                      })
+                      .finally(() => setCheckingUpdate(false));
+                  }}
+                >
+                  {checkingUpdate ? "Checking..." : "Check for updates"}
+                </button>
               )}
             </div>
           </div>

@@ -752,9 +752,6 @@ button, input, select, textarea, a, [role="button"] {
   background: var(--red);
   color: white;
 }
-.btn-danger:hover:not(:disabled) {
-  background: #ef4444;
-}
 
 /* ===== Workspace List Sections ===== */
 .workspace-section-label {

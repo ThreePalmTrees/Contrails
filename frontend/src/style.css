@@ -49,6 +49,8 @@
   --titlebar-shadow: 0 -2px 12px rgba(0, 0, 0, 0.8);
   --titlebar-tint: rgba(45, 212, 191, 0.05);
   --btn-primary-text: #042f2e;
+  --btn-secondary-bg: #eee;
+  --btn-secondary-text: #333;
 }
 
 /* Light theme */
@@ -84,6 +86,8 @@
   --titlebar-shadow: 0 -2px 12px rgba(0, 0, 0, 0.05);
   --titlebar-tint: rgba(13, 148, 136, 0.05);
   --btn-primary-text: #ffffff;
+  --btn-secondary-bg: #333;
+  --btn-secondary-text: #eee;
 }
 
 *,
@@ -169,6 +173,9 @@ p {
   transition: all 0.15s ease;
   white-space: nowrap;
 }
+.btn:hover:not(:disabled) {
+  filter: brightness(0.85);
+}
 .btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
@@ -177,8 +184,9 @@ p {
   background: var(--accent);
   color: var(--btn-primary-text);
 }
-.btn-primary:hover:not(:disabled) {
-  background: var(--accent-hover);
+.btn-secondary {
+  background: var(--btn-secondary-bg);
+  color: var(--btn-secondary-text);
 }
 .btn-outline {
   background: transparent;
@@ -187,7 +195,6 @@ p {
 }
 .btn-outline:hover:not(:disabled) {
   background: var(--bg-hover);
-  border-color: var(--text-muted);
 }
 .btn-ghost {
   background: transparent;
@@ -195,7 +202,6 @@ p {
 }
 .btn-ghost:hover:not(:disabled) {
   background: var(--bg-hover);
-  color: var(--text-primary);
 }
 .btn-sm {
   padding: 4px 8px;
