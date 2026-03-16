@@ -1,27 +1,27 @@
 :root {
-  --bg-base: #0f0f14;
-  --bg-surface: #16161e;
-  --bg-elevated: #1e1e2a;
-  --bg-hover: #252535;
-  --bg-active: #2a2a3d;
+  --bg-base: #101012;
+  --bg-surface: #18181b;
+  --bg-elevated: #222225;
+  --bg-hover: #2c2c30;
+  --bg-active: #333338;
 
-  --border: #2a2a3d;
-  --border-subtle: #1e1e2a;
+  --border: #2e2e33;
+  --border-subtle: #222225;
 
-  --text-primary: #e4e4ef;
-  --text-secondary: #aeaec4;
-  --text-muted: #858596;
+  --text-primary: #e4e4e7;
+  --text-secondary: #a1a1a9;
+  --text-muted: #71717a;
 
-  --accent: #7c6ef0;
-  --accent-hover: #9186f3;
-  --accent-muted: rgba(124, 110, 240, 0.15);
+  --accent: #2dd4bf;
+  --accent-hover: #5eead4;
+  --accent-muted: rgba(45, 212, 191, 0.15);
 
   --green: #4ade80;
   --green-muted: rgba(74, 222, 128, 0.15);
   --amber: #fbbf24;
   --amber-muted: rgba(251, 191, 36, 0.15);
-  --purple: #a78bfa;
-  --purple-muted: rgba(167, 139, 250, 0.15);
+  --teal: #2dd4bf;
+  --teal-muted: rgba(45, 212, 191, 0.15);
   --red: #f87171;
   --red-muted: rgba(248, 113, 113, 0.15);
 
@@ -130,7 +130,7 @@ p {
 }
 .btn-primary {
   background: var(--accent);
-  color: white;
+  color: #042f2e;
 }
 .btn-primary:hover:not(:disabled) {
   background: var(--accent-hover);
@@ -217,8 +217,8 @@ input::placeholder {
   color: var(--amber);
 }
 .badge-workspace {
-  background: var(--purple-muted);
-  color: var(--purple);
+  background: var(--teal-muted);
+  color: var(--teal);
 }
 .badge-inline {
   margin-left: 6px;

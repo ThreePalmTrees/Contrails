@@ -97,12 +97,12 @@ export function DirectoryOpenerDialog({ dirPath, onClose, updateInfo, analyticsE
         </div>
         <div className="error-modal-body" style={{ overflow: "hidden" }}>
           {isSettingsMode && (
-            <p style={{ fontSize: 12, color: "var(--text-tertiary)", marginBottom: 12 }}>
+            <p style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 12 }}>
               Choose which application opens output directories.
             </p>
           )}
           {loading ? (
-            <p style={{ color: "var(--text-tertiary)" }}>Detecting installed editors...</p>
+            <p style={{ color: "var(--text-muted)" }}>Detecting installed editors...</p>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
               {allOptions.map((opt) => (
@@ -128,7 +128,7 @@ export function DirectoryOpenerDialog({ dirPath, onClose, updateInfo, analyticsE
                     style={{ flexShrink: 0 }}
                   />
                   <span style={{ fontSize: 13, whiteSpace: "nowrap" }}>{opt.name}</span>
-                  <span style={{ fontSize: 11, color: "var(--text-tertiary)", marginLeft: "auto", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  <span style={{ fontSize: 11, color: "var(--text-muted)", marginLeft: "auto", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     {opt.command}
                   </span>
                 </label>
@@ -220,7 +220,7 @@ export function DirectoryOpenerDialog({ dirPath, onClose, updateInfo, analyticsE
         )}
         <div className="error-modal-footer" style={{ justifyContent: "space-between" }}>
           {!isSettingsMode ? (
-            <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--text-tertiary)", cursor: "pointer", whiteSpace: "nowrap" }}>
+            <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--text-muted)", cursor: "pointer", whiteSpace: "nowrap" }}>
               <input
                 type="checkbox"
                 checked={dontAsk}

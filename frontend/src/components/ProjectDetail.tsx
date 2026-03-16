@@ -261,7 +261,7 @@ export function ProjectDetail({ project, onToggle, onProcess, onEdit, onUpdatePr
                   <Pencil size={14} />
                 </button>
                 {(hasClaude || hasCursor) && onUpdateProject && (
-                  <button className="btn btn-ghost btn-sm" style={{ padding: '0 6px', color: '#ff4444' }} onClick={() => handleRemoveAgent('vscode')} title="Remove GitHub Copilot">
+                  <button className="btn btn-ghost btn-sm" style={{ padding: '0 6px', color: 'var(--red)' }} onClick={() => handleRemoveAgent('vscode')} title="Remove GitHub Copilot">
                     <Trash2 size={14} />
                   </button>
                 )}
@@ -288,7 +288,7 @@ export function ProjectDetail({ project, onToggle, onProcess, onEdit, onUpdatePr
                   <Pencil size={14} />
                 </button>
                 {(hasVSCode || hasCursor) && onUpdateProject && (
-                  <button className="btn btn-ghost btn-sm" style={{ padding: '0 6px', color: '#ff4444' }} onClick={() => handleRemoveAgent('claudecode')} title="Remove Claude Code">
+                  <button className="btn btn-ghost btn-sm" style={{ padding: '0 6px', color: 'var(--red)' }} onClick={() => handleRemoveAgent('claudecode')} title="Remove Claude Code">
                     <Trash2 size={14} />
                   </button>
                 )}
@@ -317,7 +317,7 @@ export function ProjectDetail({ project, onToggle, onProcess, onEdit, onUpdatePr
                   <Pencil size={14} />
                 </button>
                 {(hasVSCode || hasClaude) && onUpdateProject && (
-                  <button className="btn btn-ghost btn-sm" style={{ padding: '0 6px', color: '#ff4444' }} onClick={() => handleRemoveAgent('cursor')} title="Remove Cursor">
+                  <button className="btn btn-ghost btn-sm" style={{ padding: '0 6px', color: 'var(--red)' }} onClick={() => handleRemoveAgent('cursor')} title="Remove Cursor">
                     <Trash2 size={14} />
                   </button>
                 )}

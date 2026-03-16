@@ -8,7 +8,7 @@
   height: 36px;
   z-index: 1000;
   -webkit-app-region: drag;
-  background: rgba(123, 110, 240, 0.05);
+  background: rgba(45, 212, 191, 0.05);
   backdrop-filter: blur(4px);
   cursor: default;
   box-shadow: 0 -2px 12px #000;
@@ -153,7 +153,7 @@ button, input, select, textarea, a, [role="button"] {
 }
 
 .workspace-icon {
-  color: var(--purple);
+  color: var(--teal);
   flex-shrink: 0;
 }
 
@@ -486,8 +486,8 @@ button, input, select, textarea, a, [role="button"] {
   align-items: center;
   gap: 8px;
   padding: 6px 12px;
-  background: rgba(59, 130, 246, 0.08);
-  border-top: 1px solid rgba(59, 130, 246, 0.15);
+  background: var(--accent-muted);
+  border-top: 1px solid rgba(45, 212, 191, 0.15);
 }
 .update-banner-text {
   flex: 1;
@@ -541,7 +541,7 @@ button, input, select, textarea, a, [role="button"] {
   padding: 0 5px;
   border-radius: 9px;
   background: var(--accent);
-  color: white;
+  color: #042f2e;
   font-size: 10px;
   font-weight: 600;
   line-height: 1;
@@ -739,7 +739,7 @@ button, input, select, textarea, a, [role="button"] {
   padding: 10px 12px;
   background: var(--accent-muted);
   border-radius: var(--radius-sm);
-  border: 1px solid rgba(124, 110, 240, 0.2);
+  border: 1px solid rgba(45, 212, 191, 0.2);
   margin-top: 4px;
 }
 .configure-info p {
@@ -861,7 +861,7 @@ button, input, select, textarea, a, [role="button"] {
 /* Active workspace item (selected) */
 .workspace-item-active {
   background: var(--accent-muted);
-  border: 1px solid rgba(124, 110, 240, 0.2);
+  border: 1px solid rgba(45, 212, 191, 0.2);
 }
 
 /* ===== Custom Dir Tooltip ===== */
@@ -1018,7 +1018,7 @@ button, input, select, textarea, a, [role="button"] {
   padding-top: 8px;
 }
 .chat-files-group-label-collapsible:hover {
-  color: var(--text);
+  color: var(--text-primary);
 }
 .chat-file-actions {
   display: flex;
@@ -1121,12 +1121,12 @@ button, input, select, textarea, a, [role="button"] {
   color: var(--text-primary);
 }
 .error-boundary-message {
-  background: var(--card-bg);
+  background: var(--bg-elevated);
   border: 1px solid var(--border);
   border-radius: 6px;
   padding: 12px 16px;
   font-size: 13px;
-  color: #ef4444;
+  color: var(--red);
   white-space: pre-wrap;
   word-break: break-word;
   max-width: 100%;
@@ -1142,7 +1142,7 @@ button, input, select, textarea, a, [role="button"] {
   color: var(--text-muted);
 }
 .error-boundary-stack {
-  background: var(--card-bg);
+  background: var(--bg-elevated);
   border: 1px solid var(--border);
   border-radius: 6px;
   padding: 12px 16px;
