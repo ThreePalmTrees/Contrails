@@ -6,6 +6,7 @@ import { ProjectDetail } from "./components/ProjectDetail";
 import { AddProjectDialog } from "./components/AddProjectDialog";
 import { OnboardingTour } from "./components/OnboardingTour";
 import { useProjects } from "./hooks/useProjects";
+import { useTheme, Theme } from "./hooks/useTheme";
 import { DirectoryOpenerDialog } from "./components/DirectoryOpenerDialog";
 import { Project } from "./types";
 import { BrowserOpenURL, EventsOn } from "../wailsjs/runtime/runtime";
@@ -32,6 +33,7 @@ function App() {
     completeOnboarding,
   } = useProjects();
 
+  const { theme, setTheme } = useTheme();
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [editProject, setEditProject] = useState<Project | null>(null);
   const [editTab, setEditTab] = useState<"vscode" | "claudecode" | "cursor" | "output" | undefined>();
@@ -260,6 +262,8 @@ function App() {
           onAnalyticsToggle={(next) => {
             SetAnalyticsEnabled(next).then(() => setAnalyticsEnabled(next)).catch(() => {});
           }}
+          theme={theme}
+          onThemeChange={setTheme}
         />
       )}
     </div>

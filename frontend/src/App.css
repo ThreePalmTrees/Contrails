@@ -8,10 +8,10 @@
   height: 36px;
   z-index: 1000;
   -webkit-app-region: drag;
-  background: rgba(45, 212, 191, 0.05);
+  background: var(--titlebar-tint);
   backdrop-filter: blur(4px);
   cursor: default;
-  box-shadow: 0 -2px 12px #000;
+  box-shadow: var(--titlebar-shadow);
 }
 
 /* Ensure interactive elements are clickable within the drag region */
@@ -190,7 +190,7 @@ button, input, select, textarea, a, [role="button"] {
   border-radius: var(--radius-md);
   padding: 4px;
   z-index: 100;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 8px 24px var(--shadow-color);
 }
 .context-menu-item {
   display: flex;
@@ -321,7 +321,7 @@ button, input, select, textarea, a, [role="button"] {
 .dialog-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.6);
+  background: var(--overlay-color);
   backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
@@ -337,7 +337,7 @@ button, input, select, textarea, a, [role="button"] {
   border-radius: var(--radius-lg);
   display: flex;
   flex-direction: column;
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 16px 48px var(--shadow-color);
 }
 
 .dialog-header {
@@ -487,7 +487,7 @@ button, input, select, textarea, a, [role="button"] {
   gap: 8px;
   padding: 6px 12px;
   background: var(--accent-muted);
-  border-top: 1px solid rgba(45, 212, 191, 0.15);
+  border-top: 1px solid var(--accent-muted);
 }
 .update-banner-text {
   flex: 1;
@@ -541,7 +541,7 @@ button, input, select, textarea, a, [role="button"] {
   padding: 0 5px;
   border-radius: 9px;
   background: var(--accent);
-  color: #042f2e;
+  color: var(--btn-primary-text);
   font-size: 10px;
   font-weight: 600;
   line-height: 1;
@@ -572,7 +572,7 @@ button, input, select, textarea, a, [role="button"] {
 .error-modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: var(--overlay-color);
   backdrop-filter: blur(2px);
   display: flex;
   align-items: flex-start;
@@ -585,7 +585,7 @@ button, input, select, textarea, a, [role="button"] {
   background: var(--bg-surface);
   border: 1px solid var(--red-muted);
   border-radius: var(--radius-lg);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 8px 32px var(--shadow-color);
 }
 .error-modal-header {
   display: flex;
@@ -623,6 +623,57 @@ button, input, select, textarea, a, [role="button"] {
   justify-content: flex-end;
   padding: 10px 16px;
   border-top: 1px solid var(--border-subtle);
+}
+
+/* ===== Invertible icons (dark: invert, light: normal) ===== */
+.icon-invert {
+  filter: invert(1);
+}
+.icon-invert-logo {
+  filter: invert(1) brightness(1.5);
+}
+[data-theme="light"] .icon-invert,
+[data-theme="light"] .icon-invert-logo {
+  filter: none;
+}
+
+/* ===== Settings Theme Section ===== */
+.settings-theme-section {
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.settings-theme-section .settings-telemetry-row {
+  align-items: center;
+}
+.theme-toggle {
+  display: flex;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+.theme-toggle-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 26px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.theme-toggle-btn:not(:last-child) {
+  border-right: 1px solid var(--border);
+}
+.theme-toggle-btn:hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+.theme-toggle-btn.active {
+  background: var(--accent-muted);
+  color: var(--accent);
 }
 
 /* ===== Settings Telemetry Section ===== */
@@ -739,7 +790,7 @@ button, input, select, textarea, a, [role="button"] {
   padding: 10px 12px;
   background: var(--accent-muted);
   border-radius: var(--radius-sm);
-  border: 1px solid rgba(45, 212, 191, 0.2);
+  border: 1px solid var(--accent-muted);
   margin-top: 4px;
 }
 .configure-info p {
@@ -861,7 +912,7 @@ button, input, select, textarea, a, [role="button"] {
 /* Active workspace item (selected) */
 .workspace-item-active {
   background: var(--accent-muted);
-  border: 1px solid rgba(45, 212, 191, 0.2);
+  border: 1px solid var(--accent-muted);
 }
 
 /* ===== Custom Dir Tooltip ===== */
@@ -873,7 +924,7 @@ button, input, select, textarea, a, [role="button"] {
 .onboarding-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.7);
+  background: var(--overlay-color);
   backdrop-filter: blur(6px);
   display: flex;
   align-items: center;
@@ -886,7 +937,7 @@ button, input, select, textarea, a, [role="button"] {
   background: var(--bg-surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 16px 48px var(--shadow-color);
   text-align: center;
   position: relative;
 }

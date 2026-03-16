@@ -11,6 +11,6 @@ export function ContrailsIcon({
   style,
 }: ContrailsIconProps) {
   return (
-    <img src={logo} alt="Contrails" className={className} style={{ width: '34px', filter: 'invert(1) brightness(1.5)', ...style }} />
+    <img src={logo} alt="Contrails" className={`icon-invert-logo${className ? ` ${className}` : ''}`} style={{ width: '34px', ...style }} />
   );
 }

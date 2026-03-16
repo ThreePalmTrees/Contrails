@@ -1,4 +1,23 @@
 :root {
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+
+  --sidebar-width: 260px;
+
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI",
+    system-ui, sans-serif;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-primary);
+
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Dark theme (default) */
+:root,
+[data-theme="dark"] {
   --bg-base: #101012;
   --bg-surface: #18181b;
   --bg-elevated: #222225;
@@ -25,20 +44,46 @@
   --red: #f87171;
   --red-muted: rgba(248, 113, 113, 0.15);
 
-  --radius-sm: 6px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
+  --shadow-color: rgba(0, 0, 0, 0.5);
+  --overlay-color: rgba(0, 0, 0, 0.6);
+  --titlebar-shadow: 0 -2px 12px rgba(0, 0, 0, 0.8);
+  --titlebar-tint: rgba(45, 212, 191, 0.05);
+  --btn-primary-text: #042f2e;
+}
 
-  --sidebar-width: 260px;
+/* Light theme */
+[data-theme="light"] {
+  --bg-base: #f4f4f5;
+  --bg-surface: #ffffff;
+  --bg-elevated: #e4e4e7;
+  --bg-hover: #d4d4d8;
+  --bg-active: #c4c4ca;
 
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI",
-    system-ui, sans-serif;
-  font-size: 13px;
-  line-height: 1.5;
-  color: var(--text-primary);
+  --border: #d4d4d8;
+  --border-subtle: #e4e4e7;
 
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  --text-primary: #18181b;
+  --text-secondary: #52525b;
+  --text-muted: #71717a;
+
+  --accent: #0d9488;
+  --accent-hover: #0f766e;
+  --accent-muted: rgba(13, 148, 136, 0.1);
+
+  --green: #16a34a;
+  --green-muted: rgba(22, 163, 74, 0.1);
+  --amber: #d97706;
+  --amber-muted: rgba(217, 119, 6, 0.1);
+  --teal: #0d9488;
+  --teal-muted: rgba(13, 148, 136, 0.1);
+  --red: #dc2626;
+  --red-muted: rgba(220, 38, 38, 0.1);
+
+  --shadow-color: rgba(0, 0, 0, 0.1);
+  --overlay-color: rgba(0, 0, 0, 0.3);
+  --titlebar-shadow: 0 -2px 12px rgba(0, 0, 0, 0.05);
+  --titlebar-tint: rgba(13, 148, 136, 0.05);
+  --btn-primary-text: #ffffff;
 }
 
 *,
@@ -130,7 +175,7 @@ p {
 }
 .btn-primary {
   background: var(--accent);
-  color: #042f2e;
+  color: var(--btn-primary-text);
 }
 .btn-primary:hover:not(:disabled) {
   background: var(--accent-hover);

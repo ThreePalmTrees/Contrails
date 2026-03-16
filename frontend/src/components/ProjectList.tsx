@@ -223,9 +223,9 @@ export function ProjectList({
                 </div>
               </div>
               <div style={{ display: 'flex', gap: '4px' }}>
-                {hasVSCode && <img style={{ filter: 'invert(1)', height: '20px', width: '20px', objectFit: 'contain' }} src={copilotLogo} alt="VSCode" />}
+                {hasVSCode && <img className="icon-invert" style={{ height: '20px', width: '20px', objectFit: 'contain' }} src={copilotLogo} alt="VSCode" />}
                 {hasClaude && <img style={{ height: '18px', width: '28px', objectFit: 'contain' }} src={claudeLogo} alt="ClaudeCode" />}
-                {hasCursor && <img style={{ height: '18px', width: '18px', objectFit: 'contain' }} src={cursorLogo} alt="Cursor" />}
+                {hasCursor && <img style={{ height: '18px', width: '18px', objectFit: 'contain', borderRadius: '4px' }} src={cursorLogo} alt="Cursor" />}
               </div>
             </div>
           );

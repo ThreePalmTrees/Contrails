@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { X, FolderOpen, Download } from "lucide-react";
+import { X, FolderOpen, Download, Sun, Moon } from "lucide-react";
+import type { Theme } from "../hooks/useTheme";
 import { DetectIDEs, GetDirectoryOpener, SetDirectoryOpener, OpenDirectoryWith, GetVersion, ApplyAppUpdate } from "../../wailsjs/go/main/App";
 import { BrowserOpenURL } from "../../wailsjs/runtime/runtime";
 import { main } from "../../wailsjs/go/models";
@@ -28,9 +29,13 @@ interface DirectoryOpenerDialogProps {
   analyticsEnabled?: boolean;
   /** Callback to toggle analytics */
   onAnalyticsToggle?: (enabled: boolean) => void;
+  /** Current theme */
+  theme?: Theme;
+  /** Callback to change theme */
+  onThemeChange?: (theme: Theme) => void;
 }
 
-export function DirectoryOpenerDialog({ dirPath, onClose, updateInfo, analyticsEnabled, onAnalyticsToggle }: DirectoryOpenerDialogProps) {
+export function DirectoryOpenerDialog({ dirPath, onClose, updateInfo, analyticsEnabled, onAnalyticsToggle, theme, onThemeChange }: DirectoryOpenerDialogProps) {
   const [ides, setIdes] = useState<IDEChoice[]>([]);
   const [selected, setSelected] = useState("open");
   const [customCommand, setCustomCommand] = useState("");
@@ -96,6 +101,33 @@ export function DirectoryOpenerDialog({ dirPath, onClose, updateInfo, analyticsE
           </button>
         </div>
         <div className="error-modal-body" style={{ overflow: "hidden" }}>
+          {isSettingsMode && onThemeChange && (
+            <div className="settings-theme-section">
+              <div className="settings-telemetry-row">
+                <div className="settings-telemetry-info" style={{ flex: 1 }}>
+                  <span className="settings-telemetry-label" style={{ cursor: "default" }}>
+                    Appearance
+                  </span>
+                </div>
+                <div className="theme-toggle">
+                  <button
+                    className={`theme-toggle-btn${theme === "dark" ? " active" : ""}`}
+                    onClick={() => onThemeChange("dark")}
+                    title="Dark mode"
+                  >
+                    <Moon size={13} />
+                  </button>
+                  <button
+                    className={`theme-toggle-btn${theme === "light" ? " active" : ""}`}
+                    onClick={() => onThemeChange("light")}
+                    title="Light mode"
+                  >
+                    <Sun size={13} />
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
           {isSettingsMode && (
             <p style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 12 }}>
               Choose which application opens output directories.

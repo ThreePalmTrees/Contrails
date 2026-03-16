@@ -378,7 +378,7 @@ export function AddProjectDialog({ onAdd, onCancel, existingWatchDirs, existingP
                 onClick={() => handleTabClick("vscode")}
               >
                 {selectedVSCode && <Check size={14} className="source-toggle-check" />}
-                <img src={copilotLogo} alt="VSCode" style={{ filter: 'invert(1)', height: '38px', width: '38px', objectFit: 'contain' }} className="source-toggle-icon" />
+                <img src={copilotLogo} alt="VSCode" style={{ height: '38px', width: '38px', objectFit: 'contain' }} className="source-toggle-icon icon-invert" />
                 <span className="source-toggle-label">GitHub Copilot</span>
               </button>
 
@@ -396,7 +396,7 @@ export function AddProjectDialog({ onAdd, onCancel, existingWatchDirs, existingP
                 onClick={() => handleTabClick("cursor")}
               >
                 {selectedCursor && <Check size={14} className="source-toggle-check" />}
-                <img src={cursorLogo} alt="Cursor" style={{ height: '34px', width: '34px', objectFit: 'contain' }} className="source-toggle-icon" />
+                <img src={cursorLogo} alt="Cursor" style={{ height: '34px', width: '34px', objectFit: 'contain', borderRadius: '4px' }} className="source-toggle-icon" />
                 <span className="source-toggle-label">Cursor</span>
               </button>
             </div>
@@ -780,7 +780,7 @@ export function AddProjectDialog({ onAdd, onCancel, existingWatchDirs, existingP
             <div className="source-summary">
               {selectedVSCode && (
                 <div className="source-summary-item">
-                  <img src={copilotLogo} alt="GitHub Copilot" title="GitHub Copilot" style={{ filter: 'invert(1)', height: '30px', width: '30px', objectFit: 'contain' }} />
+                  <img src={copilotLogo} alt="GitHub Copilot" title="GitHub Copilot" className="icon-invert" style={{ height: '30px', width: '30px', objectFit: 'contain' }} />
                   <span className="mono source-summary-path">{shortenPath(selectedVSCode.chatSessionsDir)}</span>
                 </div>
               )}
@@ -792,7 +792,7 @@ export function AddProjectDialog({ onAdd, onCancel, existingWatchDirs, existingP
               )}
               {selectedCursor && (
                 <div className="source-summary-item">
-                  <img src={cursorLogo} alt="Cursor" title="Cursor" style={{ height: '24px', width: '24px', objectFit: 'contain' }} />
+                  <img src={cursorLogo} alt="Cursor" title="Cursor" style={{ height: '24px', width: '24px', objectFit: 'contain', borderRadius: '4px' }} />
                   <span className="mono source-summary-path">{shortenPath(selectedCursor.workspacePath)}</span>
                 </div>
               )}

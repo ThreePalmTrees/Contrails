@@ -251,7 +251,7 @@ export function ProjectDetail({ project, onToggle, onProcess, onEdit, onUpdatePr
             <div className="detail-card-content" style={{ flex: 1 }}>
               <span className="detail-card-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 Watching Directory
-                <img src={copilotLogo} alt="GitHub Copilot" style={{ filter: 'invert(1)', height: '22px', width: '22px', objectFit: 'contain' }} title="GitHub Copilot" />
+                <img src={copilotLogo} alt="GitHub Copilot" className="icon-invert" style={{ height: '22px', width: '22px', objectFit: 'contain' }} title="GitHub Copilot" />
               </span>
               <span className="detail-card-value mono">{project.sources?.find(s => s.type === "vscode")?.watchDir || project.watchDir}</span>
             </div>
@@ -306,7 +306,7 @@ export function ProjectDetail({ project, onToggle, onProcess, onEdit, onUpdatePr
             <div className="detail-card-content" style={{ flex: 1 }}>
               <span className="detail-card-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 Watching Directory
-                <img src={cursorLogo} alt="Cursor" style={{ height: '20px', width: '20px', objectFit: 'contain' }} title="Cursor" />
+                <img src={cursorLogo} alt="Cursor" style={{ height: '20px', width: '20px', objectFit: 'contain', borderRadius: '4px' }} title="Cursor" />
               </span>
               <span className="detail-card-value mono">{project.sources?.find(s => s.type === "cursor")?.watchDir}</span>
             </div>
@@ -563,9 +563,9 @@ function ChatFileRow({ file, onShowDetails, onProcessed, outputDir, onIgnore, on
           : null}
       </div>
       <div style={{ display: 'flex', alignItems: 'center', marginLeft: '2px', marginRight: '6px' }} title={file.sourceType === 'vscode' ? 'GitHub Copilot' : file.sourceType === 'claudecode' ? 'Claude Code' : ''}>
-        {file.sourceType === 'vscode' && <img src={copilotLogo} alt="GitHub Copilot" style={{ filter: 'invert(1)', height: '20px', width: '20px', objectFit: 'contain' }} />}
+        {file.sourceType === 'vscode' && <img src={copilotLogo} alt="GitHub Copilot" className="icon-invert" style={{ height: '20px', width: '20px', objectFit: 'contain' }} />}
         {file.sourceType === 'claudecode' && <img src={claudeLogo} alt="Claude Code" style={{ height: '18px', width: '26px', objectFit: 'contain' }} />}
-        {file.sourceType === 'cursor' && <img src={cursorLogo} alt="Cursor" style={{ height: '18px', width: '18px', objectFit: 'contain' }} />}
+        {file.sourceType === 'cursor' && <img src={cursorLogo} alt="Cursor" style={{ height: '18px', width: '18px', objectFit: 'contain', borderRadius: '4px' }} />}
       </div>
       <span className="chat-file-name chat-file-name-clickable" title={file.filePath} onClick={onShowDetails}>{getFileDisplayName(file)}</span>
       <div className="chat-file-actions">
