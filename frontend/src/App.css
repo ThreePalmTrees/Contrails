@@ -577,11 +577,13 @@ button, input, select, textarea, a, [role="button"] {
   display: flex;
   align-items: flex-start;
   justify-content: center;
-  padding-top: 80px;
+  padding: 80px 0 24px;
   z-index: 300;
+  overflow-y: auto;
 }
 .error-modal {
   width: 380px;
+  flex-shrink: 0;
   background: var(--bg-surface);
   border: 1px solid var(--red-muted);
   border-radius: var(--radius-lg);

@@ -5,7 +5,7 @@ How to install Contrails
 
 2. Open Terminal and run this command:
 
-   xattr -cr /Applications/contrails.app
+xattr -cr /Applications/contrails.app
 
 3. Launch Contrails normally from Applications.
 
