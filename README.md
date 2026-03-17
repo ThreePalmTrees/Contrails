@@ -49,7 +49,6 @@ When working on a related feature in the future, you can reference relevant cont
 - **Multi-agent projects** - A single project can have VS Code Copilot, Claude Code, and Cursor sources attached simultaneously
 - **Markdown output** - Generates clean `.md` files organized by session title, with tool calls rendered in-place between the assistant's narrative text
 - **Project management** - Track multiple workspaces, rename them, pause/resume watching
-- **Native macOS** - Translucent titlebar, native directory pickers, system font rendering
 - **Persistent state** - Projects list persists across restarts; selected project stored in localStorage
 - **Anonymous telemetry** - Optional, anonymous usage telemetry via PostHog (Go SDK). Tracks aggregate metrics like app starts, project counts, and contrails created. No personal data is collected. A persistent device UUID is generated on first launch — no accounts or sign-in required. Telemetry can be toggled on/off from the sidebar footer; the preference is persisted across restarts. Disabled entirely in dev builds (no API key injected)
 - **Auto-update** - On launch, checks GitHub Releases for a newer version. If available, shows a banner with release notes and a one-click install button. Updates replace the full `.app` bundle atomically and relaunch
