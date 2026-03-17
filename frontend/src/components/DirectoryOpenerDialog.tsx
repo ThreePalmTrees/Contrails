@@ -46,6 +46,10 @@ export function DirectoryOpenerDialog({ dirPath, onClose, updateInfo, analyticsE
   const [checkingUpdate, setCheckingUpdate] = useState(false);
   const [checkedUpdate, setCheckedUpdate] = useState<UpdateInfo | null | undefined>(undefined);
 
+  // Local draft state for settings that should only apply on Save
+  const [draftTheme, setDraftTheme] = useState(theme);
+  const [draftAnalytics, setDraftAnalytics] = useState(analyticsEnabled ?? true);
+
   const isSettingsMode = dirPath === null;
   const isCustom = selected === CUSTOM_SENTINEL;
   const effectiveCommand = isCustom ? customCommand.trim() : selected;
@@ -81,6 +85,14 @@ export function DirectoryOpenerDialog({ dirPath, onClose, updateInfo, analyticsE
 
   const allOptions = [...ides, FINDER_OPTION];
 
+  function handleCancel() {
+    // Revert theme preview if it was changed
+    if (draftTheme !== theme && theme) {
+      document.documentElement.setAttribute("data-theme", theme);
+    }
+    onClose();
+  }
+
   async function handleConfirm() {
     if (!effectiveCommand) return;
     if (isSettingsMode || dontAsk) {
@@ -89,16 +101,25 @@ export function DirectoryOpenerDialog({ dirPath, onClose, updateInfo, analyticsE
     if (dirPath) {
       await OpenDirectoryWith(dirPath, effectiveCommand);
     }
+    // Apply theme and analytics changes only on Save
+    if (isSettingsMode) {
+      if (onThemeChange && draftTheme !== theme) {
+        onThemeChange(draftTheme!);
+      }
+      if (onAnalyticsToggle && draftAnalytics !== (analyticsEnabled ?? true)) {
+        onAnalyticsToggle(draftAnalytics);
+      }
+    }
     onClose();
   }
 
   return (
-    <div className="error-modal-overlay" onClick={onClose}>
+    <div className="error-modal-overlay" onClick={handleCancel}>
       <div className="error-modal" style={{ width: 340, border: "1px solid var(--border-subtle)", overflow: "hidden" }} onClick={(e) => e.stopPropagation()}>
         <div className="error-modal-header">
           <FolderOpen size={16} />
           <h3>{isSettingsMode ? 'Default "Open Directory with"' : "Open With"}</h3>
-          <button className="icon-btn icon-btn-sm" onClick={onClose}>
+          <button className="icon-btn icon-btn-sm" onClick={handleCancel}>
             <X size={14} />
           </button>
         </div>
@@ -113,15 +134,21 @@ export function DirectoryOpenerDialog({ dirPath, onClose, updateInfo, analyticsE
                 </div>
                 <div className="theme-toggle">
                   <button
-                    className={`theme-toggle-btn${theme === "dark" ? " active" : ""}`}
-                    onClick={() => onThemeChange("dark")}
+                    className={`theme-toggle-btn${draftTheme === "dark" ? " active" : ""}`}
+                    onClick={() => {
+                      setDraftTheme("dark");
+                      document.documentElement.setAttribute("data-theme", "dark");
+                    }}
                     title="Dark mode"
                   >
                     <Moon size={13} />
                   </button>
                   <button
-                    className={`theme-toggle-btn${theme === "light" ? " active" : ""}`}
-                    onClick={() => onThemeChange("light")}
+                    className={`theme-toggle-btn${draftTheme === "light" ? " active" : ""}`}
+                    onClick={() => {
+                      setDraftTheme("light");
+                      document.documentElement.setAttribute("data-theme", "light");
+                    }}
                     title="Light mode"
                   >
                     <Sun size={13} />
@@ -211,13 +238,13 @@ export function DirectoryOpenerDialog({ dirPath, onClose, updateInfo, analyticsE
                 <label className="settings-telemetry-label">
                   <input
                     type="checkbox"
-                    checked={analyticsEnabled ?? true}
-                    onChange={(e) => onAnalyticsToggle(e.target.checked)}
+                    checked={draftAnalytics}
+                    onChange={(e) => setDraftAnalytics(e.target.checked)}
                   />
                   Anonymous telemetry
                 </label>
                 <span className="settings-telemetry-hint">
-                  {analyticsEnabled
+                  {draftAnalytics
                     ? "Usage data is collected anonymously to help improve Contrails."
                     : "Telemetry is off. Only basic, non-identifiable signals (app version, OS) are sent to help track adoption."}
                 </span>
@@ -289,7 +316,7 @@ export function DirectoryOpenerDialog({ dirPath, onClose, updateInfo, analyticsE
             <div />
           )}
           <div style={{ display: "flex", gap: 8 }}>
-            <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
+            <button className="btn btn-ghost" onClick={handleCancel}>Cancel</button>
             <button className="btn btn-primary" onClick={handleConfirm} disabled={loading || (isCustom && !customCommand.trim())}>
               {isSettingsMode ? "Save" : "Open"}
             </button>
