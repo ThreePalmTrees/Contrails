@@ -1119,11 +1119,39 @@ button, input, select, textarea, a, [role="button"] {
 .chat-preview-markdown {
   font-size: 12px;
   line-height: 1.6;
-  color: var(--text-secondary);
+  color: var(--text-primary);
   white-space: pre-wrap;
   word-break: break-word;
   font-family: var(--font-mono, monospace);
   margin: 0;
+}
+.chat-preview-text {
+  color: var(--text-primary);
+  padding: 2px 0;
+}
+.chat-preview-thinking {
+  display: block;
+  color: var(--text-secondary);
+  white-space: pre-wrap;
+}
+.chat-preview-details {
+  white-space: normal;
+}
+.chat-preview-details > summary {
+  cursor: pointer;
+  color: var(--text-primary);
+  font-weight: 600;
+  user-select: none;
+  white-space: normal;
+  padding: 2px 0;
+}
+.chat-preview-details > span {
+  display: block;
+  padding-left: 12px;
+  white-space: pre-wrap;
+  color: var(--text-secondary);
+  background: var(--bg-elevated);
+
 }
 .chat-processed-badge {
   display: flex;

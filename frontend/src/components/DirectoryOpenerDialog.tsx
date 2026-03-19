@@ -118,7 +118,7 @@ export function DirectoryOpenerDialog({ dirPath, onClose, updateInfo, analyticsE
       <div className="error-modal" style={{ width: 340, border: "1px solid var(--border-subtle)", overflow: "hidden" }} onClick={(e) => e.stopPropagation()}>
         <div className="error-modal-header">
           <FolderOpen size={16} />
-          <h3>{isSettingsMode ? 'Default "Open Directory with"' : "Open With"}</h3>
+          <h3>Settings</h3>
           <button className="icon-btn icon-btn-sm" onClick={handleCancel}>
             <X size={14} />
           </button>

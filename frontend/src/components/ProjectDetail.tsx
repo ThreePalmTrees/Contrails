@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { FolderOpen, FolderUp, Eye, EyeOff, MapPin, Play, Loader2, Layers, CheckCircle2, ChevronLeft, FileText, Pencil, Trash2, ExternalLink, ChevronDown, ChevronRight } from "lucide-react";
 import { OpenDirectoryWith, GetDirectoryOpener } from "../../wailsjs/go/main/App";
 import { DirectoryOpenerDialog } from "./DirectoryOpenerDialog";
@@ -9,6 +9,37 @@ import cursorLogo from "../assets/images/cursor.png";
 import { ListChatFiles, PreviewChatFile, ProcessSingleFile, ReadExistingContrail, IgnoreChat, UnignoreChat } from "../../wailsjs/go/main/App";
 import { EventsOn } from "../../wailsjs/runtime/runtime";
 import { diffLines, Change } from "diff";
+
+function renderMarkdownContent(markdown: string): React.ReactNode {
+  const blockPattern = /(<details>\n<summary>(.*?)<\/summary>\n\n([\s\S]*?)\n<\/details>|<thinking>\n([\s\S]*?)\n<\/thinking>)/g;
+  const nodes: React.ReactNode[] = [];
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+  let key = 0;
+
+  while ((match = blockPattern.exec(markdown)) !== null) {
+    if (match.index > lastIndex) {
+      nodes.push(<span key={key++} className="chat-preview-text">{markdown.slice(lastIndex, match.index)}</span>);
+    }
+    if (match[0].startsWith("<details>")) {
+      nodes.push(
+        <details key={key++} className="chat-preview-details">
+          <summary>{match[2]}</summary>
+          <span>{match[3]}</span>
+        </details>
+      );
+    } else {
+      nodes.push(<span key={key++} className="chat-preview-thinking">{match[0]}</span>);
+    }
+    lastIndex = match.index + match[0].length;
+  }
+
+  if (lastIndex < markdown.length) {
+    nodes.push(<span key={key++} className="chat-preview-text">{markdown.slice(lastIndex)}</span>);
+  }
+
+  return nodes.length > 0 ? <>{nodes}</> : <span className="chat-preview-text">{markdown}</span>;
+}
 
 interface Props {
   project: Project;
@@ -182,7 +213,7 @@ export function ProjectDetail({ project, onToggle, onProcess, onEdit, onUpdatePr
                 })}
               </pre>
             ) : (
-              <pre className="chat-preview-markdown">{preview.markdown}</pre>
+              <div className="chat-preview-markdown">{renderMarkdownContent(preview.markdown)}</div>
             )}
           </div>
         </div>

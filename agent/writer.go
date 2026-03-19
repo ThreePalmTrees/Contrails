@@ -49,13 +49,7 @@ func RenderMarkdown(session *ParsedSession) string {
 				markdown.WriteString(fmt.Sprintf("*Model: %s*\n\n", message.Model))
 			}
 			writeInterleavedParts(&markdown, message.Parts)
-			if len(message.FilesEdited) > 0 {
-				markdown.WriteString("### Files Edited\n\n")
-				for _, file := range message.FilesEdited {
-					markdown.WriteString(fmt.Sprintf("- `%s`\n", file))
-				}
-				markdown.WriteString("\n")
-			}
+
 			if message.MaxToolCallsExceeded {
 				markdown.WriteString("*⚠️ Max tool calls exceeded - the agent hit its tool call limit.*\n\n")
 			}
@@ -138,7 +132,7 @@ func writeInterleavedParts(markdown *strings.Builder, parts []MessagePart) {
 		switch part.Type {
 		case PartText:
 			if inToolGroup {
-				markdown.WriteString("\n")
+				markdown.WriteString("\n</details>\n\n")
 				inToolGroup = false
 			}
 			markdown.WriteString(part.Content)
@@ -146,7 +140,7 @@ func writeInterleavedParts(markdown *strings.Builder, parts []MessagePart) {
 
 		case PartToolCall:
 			if !inToolGroup {
-				markdown.WriteString("### Tool Calls\n\n")
+				markdown.WriteString("<details>\n<summary>Tool Calls</summary>\n\n")
 				inToolGroup = true
 			}
 			// Render based on tool-specific detail when available
@@ -163,7 +157,7 @@ func writeInterleavedParts(markdown *strings.Builder, parts []MessagePart) {
 		case PartFileEdit, PartCodeBlock:
 			// These are interleaved with tool calls, keep them in the flow
 			if !inToolGroup {
-				markdown.WriteString("### Tool Calls\n\n")
+				markdown.WriteString("<details>\n<summary>Tool Calls</summary>\n\n")
 				inToolGroup = true
 			}
 			action := "Edited"
@@ -174,7 +168,7 @@ func writeInterleavedParts(markdown *strings.Builder, parts []MessagePart) {
 
 		case PartThinking:
 			if inToolGroup {
-				markdown.WriteString("\n")
+				markdown.WriteString("\n</details>\n\n")
 				inToolGroup = false
 			}
 			markdown.WriteString("<thinking>\n")
@@ -199,7 +193,7 @@ func writeInterleavedParts(markdown *strings.Builder, parts []MessagePart) {
 	}
 
 	if inToolGroup {
-		markdown.WriteString("\n")
+		markdown.WriteString("\n</details>\n\n")
 	}
 }
 
