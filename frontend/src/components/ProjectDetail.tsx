@@ -10,6 +10,60 @@ import { ListChatFiles, PreviewChatFile, ProcessSingleFile, ReadExistingContrail
 import { EventsOn } from "../../wailsjs/runtime/runtime";
 import { diffLines, Change } from "diff";
 
+function renderTextSegment(text: string, key: number): React.ReactNode {
+  if (!text.includes('|')) {
+    return <span key={key} className="chat-preview-text">{text}</span>;
+  }
+
+  const lines = text.split('\n');
+  const parts: React.ReactNode[] = [];
+  let i = 0;
+  let partKey = 0;
+  let textBuffer = '';
+
+  while (i < lines.length) {
+    const line = lines[i];
+    const nextLine = i + 1 < lines.length ? lines[i + 1] : '';
+
+    if (line.trim().startsWith('|') && /^\|[\s\-:|]+\|/.test(nextLine.trim())) {
+      if (textBuffer !== '') {
+        parts.push(<span key={partKey++} className="chat-preview-text">{textBuffer}</span>);
+        textBuffer = '';
+      }
+
+      const tableLines: string[] = [];
+      while (i < lines.length && lines[i].trim().startsWith('|')) {
+        tableLines.push(lines[i]);
+        i++;
+      }
+
+      const headers = tableLines[0].split('|').slice(1, -1).map(h => h.trim());
+      const bodyLines = tableLines.slice(2);
+      const rows = bodyLines.map(row => row.split('|').slice(1, -1).map(c => c.trim()));
+
+      parts.push(
+        <table key={partKey++} className="chat-preview-table">
+          <thead><tr>{headers.map((h, hi) => <th key={hi}>{h}</th>)}</tr></thead>
+          <tbody>
+            {rows.map((row, ri) => (
+              <tr key={ri}>{row.map((cell, ci) => <td key={ci}>{cell}</td>)}</tr>
+            ))}
+          </tbody>
+        </table>
+      );
+    } else {
+      textBuffer += line + (i < lines.length - 1 ? '\n' : '');
+      i++;
+    }
+  }
+
+  if (textBuffer !== '') {
+    parts.push(<span key={partKey++} className="chat-preview-text">{textBuffer}</span>);
+  }
+
+  return <React.Fragment key={key}>{parts}</React.Fragment>;
+}
+
 function renderMarkdownContent(markdown: string): React.ReactNode {
   const blockPattern = /(<details>\n<summary>(.*?)<\/summary>\n\n([\s\S]*?)\n<\/details>|<thinking>\n([\s\S]*?)\n<\/thinking>)/g;
   const nodes: React.ReactNode[] = [];
@@ -19,7 +73,7 @@ function renderMarkdownContent(markdown: string): React.ReactNode {
 
   while ((match = blockPattern.exec(markdown)) !== null) {
     if (match.index > lastIndex) {
-      nodes.push(<span key={key++} className="chat-preview-text">{markdown.slice(lastIndex, match.index)}</span>);
+      nodes.push(renderTextSegment(markdown.slice(lastIndex, match.index), key++));
     }
     if (match[0].startsWith("<details>")) {
       nodes.push(
@@ -35,10 +89,10 @@ function renderMarkdownContent(markdown: string): React.ReactNode {
   }
 
   if (lastIndex < markdown.length) {
-    nodes.push(<span key={key++} className="chat-preview-text">{markdown.slice(lastIndex)}</span>);
+    nodes.push(renderTextSegment(markdown.slice(lastIndex), key++));
   }
 
-  return nodes.length > 0 ? <>{nodes}</> : <span className="chat-preview-text">{markdown}</span>;
+  return nodes.length > 0 ? <>{nodes}</> : renderTextSegment(markdown, key++);
 }
 
 interface Props {

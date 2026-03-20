@@ -1134,6 +1134,21 @@ button, input, select, textarea, a, [role="button"] {
   color: var(--text-secondary);
   white-space: pre-wrap;
 }
+.chat-preview-table {
+  border-collapse: collapse;
+  margin: 4px 0;
+  white-space: normal;
+}
+.chat-preview-table th,
+.chat-preview-table td {
+  border: 1px solid var(--border);
+  padding: 3px 8px;
+  text-align: left;
+}
+.chat-preview-table th {
+  background: var(--bg-elevated);
+  font-weight: 600;
+}
 .chat-preview-details {
   white-space: normal;
 }
