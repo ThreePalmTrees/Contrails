@@ -10,7 +10,7 @@ import { useTheme, Theme } from "./hooks/useTheme";
 import { DirectoryOpenerDialog } from "./components/DirectoryOpenerDialog";
 import { Project } from "./types";
 import { BrowserOpenURL, EventsOn } from "../wailsjs/runtime/runtime";
-import { GetAnalyticsEnabled, SetAnalyticsEnabled, ApplyAppUpdate } from "../wailsjs/go/main/App";
+import { GetAnalyticsEnabled, SetAnalyticsEnabled, ApplyAppUpdate, GetVersion } from "../wailsjs/go/main/App";
 import "./App.css";
 
 function App() {
@@ -45,9 +45,11 @@ function App() {
   } | null>(null);
   const [updating, setUpdating] = useState(false);
   const [showOpenerSettings, setShowOpenerSettings] = useState(false);
+  const [isDevBuild, setIsDevBuild] = useState(false);
 
   useEffect(() => {
     GetAnalyticsEnabled().then(setAnalyticsEnabled).catch(() => {});
+    GetVersion().then((v) => setIsDevBuild(v === "dev")).catch(() => {});
     const cancel = EventsOn("update:available", (info: any) => {
       if (info && info.latestVersion) {
         setUpdateInfo(info);
@@ -97,7 +99,25 @@ function App() {
 
   return (
     <div className="app">
-      <div className="titlebar" />
+      <div className="titlebar">
+        {isDevBuild && 
+        <>
+        <span style={{
+          position: 'absolute',
+          top: '0',
+          left: '0',
+          width: '100%',
+          height: '2px',
+          background: 'linear-gradient(to right, transparent, #00fff7, transparent)',
+        }}/>
+        <span style={{
+          position: 'absolute',
+          right: 16,
+          top: 8,
+        }}>dev</span>
+        </>
+        }
+      </div>
       <aside className="sidebar">
         <div className="sidebar-brand">
           <ContrailsIcon style={{ width: '34px' }} />
