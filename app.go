@@ -467,12 +467,9 @@ func (app *App) RemoveProject(projectID string) error {
 
 // SelectChatSessionsDir opens a native directory picker
 func (app *App) SelectChatSessionsDir() (string, error) {
-	home, _ := os.UserHomeDir()
-	defaultDir := filepath.Join(home, "Library", "Application Support", "Code", "User", "workspaceStorage")
-
 	result, err := app.dialogOpener.OpenDirectoryDialog(wailsRuntime.OpenDialogOptions{
 		Title:            "Select chatSessions directory",
-		DefaultDirectory: defaultDir,
+		DefaultDirectory: vscodeWorkspaceStorageDir(),
 	})
 	if err != nil {
 		return "", err
@@ -493,8 +490,7 @@ func (app *App) SelectOutputDir() (string, error) {
 
 // BrowseWorkspaceStorages lists available workspace storage directories
 func (app *App) BrowseWorkspaceStorages() ([]map[string]string, error) {
-	home, _ := os.UserHomeDir()
-	storageDir := filepath.Join(home, "Library", "Application Support", "Code", "User", "workspaceStorage")
+	storageDir := vscodeWorkspaceStorageDir()
 
 	entries, err := os.ReadDir(storageDir)
 	if err != nil {
@@ -663,7 +659,7 @@ type IDEOption struct {
 }
 
 // DetectIDEs returns a list of available IDEs/editors on the system.
-// It checks both CLI commands on PATH and .app bundles in /Applications.
+// It checks CLI commands on PATH and platform-specific install locations.
 func (app *App) DetectIDEs() []IDEOption {
 	// CLI commands to check on PATH
 	cliCandidates := []IDEOption{
@@ -672,18 +668,6 @@ func (app *App) DetectIDEs() []IDEOption {
 		{Name: "Zed", Command: "zed"},
 		{Name: "WebStorm", Command: "webstorm"},
 		{Name: "Antigravity", Command: "agy"},
-	}
-
-	// macOS .app bundles: display name → bundle name in /Applications
-	appBundles := []struct {
-		Name    string
-		Bundles []string // possible .app names (without .app suffix)
-	}{
-		{Name: "VS Code", Bundles: []string{"Visual Studio Code"}},
-		{Name: "Cursor", Bundles: []string{"Cursor"}},
-		{Name: "Zed", Bundles: []string{"Zed"}},
-		{Name: "WebStorm", Bundles: []string{"WebStorm"}},
-		{Name: "Antigravity", Bundles: []string{"Antigravity"}},
 	}
 
 	seen := make(map[string]bool)
@@ -699,25 +683,18 @@ func (app *App) DetectIDEs() []IDEOption {
 		}
 	}
 
-	// Check /Applications for .app bundles (use "open -a" to launch them)
-	for _, ab := range appBundles {
-		if seen[ab.Name] {
-			continue
-		}
-		for _, bundle := range ab.Bundles {
-			appPath := filepath.Join("/Applications", bundle+".app")
-			if _, err := os.Stat(appPath); err == nil {
-				seen[ab.Name] = true
-				found = append(found, IDEOption{
-					Name:    ab.Name,
-					Command: "open -a \"" + bundle + "\"",
-				})
-				break
-			}
-		}
-	}
+	// Check platform-specific install locations (e.g., /Applications on macOS, Program Files on Windows)
+	found = append(found, detectPlatformApps(seen)...)
 
 	return found
+}
+
+// GetFileManagerInfo returns the platform's default file manager name and command.
+func (app *App) GetFileManagerInfo() IDEOption {
+	return IDEOption{
+		Name:    defaultFileManagerName(),
+		Command: defaultOpenCommand(),
+	}
 }
 
 // GetDirectoryOpener returns the saved directory opener command (empty string means not set).
@@ -735,21 +712,7 @@ func (app *App) SetDirectoryOpener(command string) error {
 
 // OpenDirectoryWith opens a directory using the given command.
 func (app *App) OpenDirectoryWith(dirPath, command string) error {
-	if command == "" {
-		command = "open"
-	}
-	// Use interactive login shell to support commands like: open -a "Antigravity"
-	// and custom aliases/functions like: ide
-	shell := os.Getenv("SHELL")
-	if shell == "" {
-		shell = "/bin/sh"
-	}
-	return exec.Command(shell, "-ic", command+" "+shellescape(dirPath)).Start()
-}
-
-// shellescape wraps a string in single quotes for safe shell usage.
-func shellescape(s string) string {
-	return "'" + strings.ReplaceAll(s, "'", "'\"'\"'") + "'"
+	return openDirectory(dirPath, command)
 }
 
 // --- Update ---
@@ -1575,8 +1538,7 @@ func (app *App) ProcessModifiedSince(projectID, watchDir, outputDir string) (int
 
 // GetWorkspaceStoragePath returns the default workspace storage path
 func (app *App) GetWorkspaceStoragePath() string {
-	home, _ := os.UserHomeDir()
-	return filepath.Join(home, "Library", "Application Support", "Code", "User", "workspaceStorage")
+	return vscodeWorkspaceStorageDir()
 }
 
 // --- Claude Code Integration ---

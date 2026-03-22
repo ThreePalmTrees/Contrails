@@ -1,0 +1,78 @@
+name: Release Candidate
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.26"
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24.11.1"
+
+      - name: Install Yarn
+        run: npm install -g yarn
+
+      - name: Install Wails
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.11.0
+
+      - name: Build
+        run: ./buildMacOS.sh "rc-$(git rev-parse --short HEAD)" "${{ secrets.POSTHOGAPIKEY }}"
+
+      - name: Zip .app bundle
+        run: |
+          cd build/bin
+          zip -r ../../Contrails-macos-rc.zip contrails.app
+
+      - name: Upload macOS artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Contrails-macos-rc
+          path: Contrails-macos-rc.zip
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.26"
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24.11.1"
+
+      - name: Install Yarn
+        run: npm install -g yarn
+
+      - name: Install Wails
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.11.0
+
+      - name: Build
+        shell: bash
+        run: ./buildWindows.sh "rc-$(git rev-parse --short HEAD)" "${{ secrets.POSTHOGAPIKEY }}"
+
+      - name: Zip Windows executable
+        shell: pwsh
+        run: Compress-Archive -Path build/bin/contrails.exe -DestinationPath Contrails-windows-rc.zip
+
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Contrails-windows-rc
+          path: Contrails-windows-rc.zip

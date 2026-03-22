@@ -31,6 +31,8 @@ export function GetDefaultOutputDir(arg1:string):Promise<string>;
 
 export function GetDirectoryOpener():Promise<string>;
 
+export function GetFileManagerInfo():Promise<main.IDEOption>;
+
 export function GetProjects():Promise<Array<main.Project>>;
 
 export function GetVersion():Promise<string>;

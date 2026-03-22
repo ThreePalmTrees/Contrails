@@ -10,6 +10,7 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
 	"github.com/wailsapp/wails/v2/pkg/options/mac"
+	"github.com/wailsapp/wails/v2/pkg/options/windows"
 )
 
 // Style: Prefix Unexported Globals with _ (go-style-guide.md)
@@ -65,6 +66,9 @@ func main() {
 				Title:   "Contrails",
 				Message: "Chat history preserver for coding agents\nVersion: " + Version,
 			},
+		},
+		Windows: &windows.Options{
+			WebviewIsTransparent: true,
 		},
 		Bind: []interface{}{
 			app,

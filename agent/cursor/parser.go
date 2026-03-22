@@ -4,8 +4,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -22,17 +20,7 @@ var _ agent.SessionParser = (*Parser)(nil)
 // The filePath argument to ParseFile is a composer UUID, not a filesystem path.
 type Parser struct{}
 
-// dbPath returns the absolute path to the Cursor state database.
-func dbPath() (string, error) {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return "", fmt.Errorf("resolving home directory: %w", err)
-	}
-	return filepath.Join(
-		home, "Library", "Application Support",
-		"Cursor", "User", "globalStorage", "state.vscdb",
-	), nil
-}
+// dbPath is defined in paths_darwin.go / paths_windows.go
 
 // openDB opens the Cursor state database read-only.
 func openDB() (*sql.DB, error) {

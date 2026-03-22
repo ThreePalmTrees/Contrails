@@ -2,7 +2,6 @@ package cursor
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -261,14 +260,7 @@ func (d *Driver) removeWatchDirLocked(dir string) {
 	}
 }
 
-// globalStorageDir returns the directory containing Cursor's global state.vscdb.
-func globalStorageDir() string {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return ""
-	}
-	return filepath.Join(home, "Library", "Application Support", "Cursor", "User", "globalStorage")
-}
+// globalStorageDir is defined in paths_darwin.go / paths_windows.go
 
 // startWatcherLocked starts the fsnotify watcher and its event loop.
 // Must be called with d.mu held.

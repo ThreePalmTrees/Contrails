@@ -7,11 +7,7 @@ import (
 	"path/filepath"
 )
 
-// hookCommand is the shell command written into .claude/settings.local.json.
-// It pipes the hook's stdin JSON into a timestamped signal file.
-// Uses epoch seconds + PID for the filename — $$ is unique per hook invocation
-// and works on all macOS versions (BSD date doesn't support %N on older macOS).
-const hookCommand = "cat > ~/contrails/hook-signals/$(date +%s)_$$.json"
+// hookCommand is defined in hook_command_darwin.go / hook_command_windows.go
 
 
 // hookEntry represents a single hook command entry.

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { X, FolderOpen, Download, Sun, Moon } from "lucide-react";
 import type { Theme } from "../hooks/useTheme";
-import { DetectIDEs, GetDirectoryOpener, SetDirectoryOpener, OpenDirectoryWith, GetVersion, ApplyAppUpdate, CheckForAppUpdate } from "../../wailsjs/go/main/App";
+import { DetectIDEs, GetFileManagerInfo, GetDirectoryOpener, SetDirectoryOpener, OpenDirectoryWith, GetVersion, ApplyAppUpdate, CheckForAppUpdate } from "../../wailsjs/go/main/App";
 import { BrowserOpenURL } from "../../wailsjs/runtime/runtime";
 import { main } from "../../wailsjs/go/models";
 
@@ -10,7 +10,6 @@ interface IDEChoice {
   command: string;
 }
 
-const FINDER_OPTION: IDEChoice = { name: "Finder", command: "open" };
 const CUSTOM_SENTINEL = "__custom__";
 
 interface UpdateInfo {
@@ -40,6 +39,7 @@ export function DirectoryOpenerDialog({ dirPath, onClose, updateInfo, analyticsE
   const [selected, setSelected] = useState("open");
   const [customCommand, setCustomCommand] = useState("");
   const [dontAsk, setDontAsk] = useState(false);
+  const [fileManager, setFileManager] = useState<IDEChoice>({ name: "Finder", command: "open" });
   const [loading, setLoading] = useState(true);
   const [version, setVersion] = useState("");
   const [updating, setUpdating] = useState(false);
@@ -59,16 +59,19 @@ export function DirectoryOpenerDialog({ dirPath, onClose, updateInfo, analyticsE
   }, []);
 
   useEffect(() => {
-    Promise.all([DetectIDEs(), GetDirectoryOpener()]).then(([detected, saved]) => {
+    Promise.all([DetectIDEs(), GetDirectoryOpener(), GetFileManagerInfo()]).then(([detected, saved, fm]) => {
       const options: IDEChoice[] = detected.map((d: main.IDEOption) => ({
         name: d.name,
         command: d.command,
       }));
       setIdes(options);
+      if (fm && fm.name) {
+        setFileManager({ name: fm.name, command: fm.command });
+      }
 
       if (saved) {
-        // Check if saved command matches a known option or Finder
-        const knownCommands = [...options.map(o => o.command), "open"];
+        // Check if saved command matches a known option or the file manager
+        const knownCommands = [...options.map(o => o.command), fm?.command || "open"];
         if (knownCommands.includes(saved)) {
           setSelected(saved);
         } else {
@@ -83,7 +86,7 @@ export function DirectoryOpenerDialog({ dirPath, onClose, updateInfo, analyticsE
     });
   }, []);
 
-  const allOptions = [...ides, FINDER_OPTION];
+  const allOptions = [...ides, fileManager];
 
   function handleCancel() {
     // Revert theme preview if it was changed

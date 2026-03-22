@@ -26,17 +26,7 @@ type ScannedProject struct {
 	LastActivityAt int64 `json:"lastActivityAt"`
 }
 
-// workspaceStorageDir returns the path to Cursor's workspaceStorage directory.
-func workspaceStorageDir() (string, error) {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return "", fmt.Errorf("resolving home directory: %w", err)
-	}
-	return filepath.Join(
-		home, "Library", "Application Support",
-		"Cursor", "User", "workspaceStorage",
-	), nil
-}
+// workspaceStorageDir is defined in paths_darwin.go / paths_windows.go
 
 // workspaceEntry holds the resolved info for one workspaceStorage subdirectory.
 type workspaceEntry struct {

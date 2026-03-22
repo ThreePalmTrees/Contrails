@@ -6,8 +6,14 @@ BUMP="${1:-minor}"
 
 case "$BUMP" in
   patch|minor|major) ;;
+  rc)
+    echo "Triggering release candidate build on main..."
+    gh workflow run rc.yml --ref main
+    echo "RC build dispatched. Check: gh run list --workflow=rc.yml"
+    exit 0
+    ;;
   *)
-    echo "Usage: $0 [patch|minor|major]" >&2
+    echo "Usage: $0 [patch|minor|major|rc]" >&2
     exit 1
     ;;
 esac

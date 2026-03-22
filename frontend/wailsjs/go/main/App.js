@@ -54,6 +54,10 @@ export function GetDirectoryOpener() {
   return window['go']['main']['App']['GetDirectoryOpener']();
 }
 
+export function GetFileManagerInfo() {
+  return window['go']['main']['App']['GetFileManagerInfo']();
+}
+
 export function GetProjects() {
   return window['go']['main']['App']['GetProjects']();
 }
