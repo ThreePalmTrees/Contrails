@@ -5,28 +5,7 @@ set -e
 BUMP="${1:-minor}"
 
 case "$BUMP" in
-  patch|minor|major) ;;
-  rc)
-    if [ -z "$GITHUB_TOKEN" ]; then
-      echo "Error: GITHUB_TOKEN env var required. Create one at https://github.com/settings/tokens (needs 'actions' scope)" >&2
-      exit 1
-    fi
-    REPO="ThreePalmTrees/Contrails"
-    echo "Triggering release candidate build on main..."
-    HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
-      -X POST \
-      -H "Authorization: token $GITHUB_TOKEN" \
-      -H "Accept: application/vnd.github.v3+json" \
-      "https://api.github.com/repos/$REPO/actions/workflows/rc.yml/dispatches" \
-      -d '{"ref":"main"}')
-    if [ "$HTTP_CODE" = "204" ]; then
-      echo "RC build dispatched. Check: https://github.com/$REPO/actions/workflows/rc.yml"
-    else
-      echo "Failed to dispatch (HTTP $HTTP_CODE). Check your GITHUB_TOKEN has 'actions' scope." >&2
-      exit 1
-    fi
-    exit 0
-    ;;
+  patch|minor|major|rc) ;;
   *)
     echo "Usage: $0 [patch|minor|major|rc]" >&2
     exit 1
@@ -47,9 +26,14 @@ case "$BUMP" in
   major) MAJOR=$((MAJOR + 1)); MINOR=0; PATCH=0 ;;
   minor) MINOR=$((MINOR + 1)); PATCH=0 ;;
   patch) PATCH=$((PATCH + 1)) ;;
+  rc)    PATCH=$((PATCH + 1)) ;;
 esac
 
-NEW_TAG="v${MAJOR}.${MINOR}.${PATCH}"
+if [ "$BUMP" = "rc" ]; then
+  NEW_TAG="v${MAJOR}.${MINOR}.${PATCH}-rc"
+else
+  NEW_TAG="v${MAJOR}.${MINOR}.${PATCH}"
+fi
 
 git tag "$NEW_TAG"
 git push origin "$NEW_TAG"

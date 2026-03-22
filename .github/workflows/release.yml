@@ -90,6 +90,7 @@ jobs:
           path: Contrails-windows.zip
 
   release:
+    if: ${{ !contains(github.ref_name, '-rc') }}
     needs: [build-macos, build-windows]
     runs-on: ubuntu-latest
     steps:
