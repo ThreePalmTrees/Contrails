@@ -7,9 +7,24 @@ BUMP="${1:-minor}"
 case "$BUMP" in
   patch|minor|major) ;;
   rc)
+    if [ -z "$GITHUB_TOKEN" ]; then
+      echo "Error: GITHUB_TOKEN env var required. Create one at https://github.com/settings/tokens (needs 'actions' scope)" >&2
+      exit 1
+    fi
+    REPO="ThreePalmTrees/Contrails"
     echo "Triggering release candidate build on main..."
-    gh workflow run rc.yml --ref main
-    echo "RC build dispatched. Check: gh run list --workflow=rc.yml"
+    HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
+      -X POST \
+      -H "Authorization: token $GITHUB_TOKEN" \
+      -H "Accept: application/vnd.github.v3+json" \
+      "https://api.github.com/repos/$REPO/actions/workflows/rc.yml/dispatches" \
+      -d '{"ref":"main"}')
+    if [ "$HTTP_CODE" = "204" ]; then
+      echo "RC build dispatched. Check: https://github.com/$REPO/actions/workflows/rc.yml"
+    else
+      echo "Failed to dispatch (HTTP $HTTP_CODE). Check your GITHUB_TOKEN has 'actions' scope." >&2
+      exit 1
+    fi
     exit 0
     ;;
   *)
