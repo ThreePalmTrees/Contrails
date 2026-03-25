@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { FolderOpen, FolderUp, Eye, EyeOff, MapPin, Play, Loader2, Layers, CheckCircle2, ChevronLeft, FileText, Pencil, Trash2, ExternalLink, ChevronDown, ChevronRight } from "lucide-react";
+import { FolderOpen, FolderUp, Eye, EyeOff, MapPin, Play, Loader2, Layers, CheckCircle2, ChevronLeft, FileText, Pencil, Trash2, ExternalLink, ChevronDown, ChevronRight, Search } from "lucide-react";
 import { OpenDirectoryWith, GetDirectoryOpener } from "../../wailsjs/go/main/App";
 import { DirectoryOpenerDialog } from "./DirectoryOpenerDialog";
 import { Project, ProcessingProgress, ChatFileInfo } from "../types";
@@ -138,6 +138,7 @@ export function ProjectDetail({ project, onToggle, onProcess, onEdit, onUpdatePr
   const [openDirPath, setOpenDirPath] = useState<string | null>(null);
   const [showOpenerDialog, setShowOpenerDialog] = useState(false);
   const [ignoredExpanded, setIgnoredExpanded] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   async function handleOpenDir(dirPath: string) {
     const saved = await GetDirectoryOpener();
@@ -296,11 +297,16 @@ export function ProjectDetail({ project, onToggle, onProcess, onEdit, onUpdatePr
   }
 
   const sortByCreated = (a: ChatFileInfo, b: ChatFileInfo) => (b.createdAt || 0) - (a.createdAt || 0);
+  const matchesSearch = (f: ChatFileInfo) => {
+    if (!searchQuery) return true;
+    const q = searchQuery.toLowerCase();
+    return (f.title || f.fileName || "").toLowerCase().includes(q);
+  };
   const activeFiles = chatFiles.filter((f) => !f.ignored);
-  const ignoredFiles = chatFiles.filter((f) => f.ignored).sort(sortByCreated);
-  const parsedFiles = activeFiles.filter((f) => f.parsed && !f.partiallyParsed).sort(sortByCreated);
-  const partiallyParsedFiles = activeFiles.filter((f) => f.partiallyParsed).sort(sortByCreated);
-  const unparsedFiles = activeFiles.filter((f) => !f.parsed && !f.partiallyParsed).sort(sortByCreated);
+  const ignoredFiles = chatFiles.filter((f) => f.ignored && matchesSearch(f)).sort(sortByCreated);
+  const parsedFiles = activeFiles.filter((f) => f.parsed && !f.partiallyParsed && matchesSearch(f)).sort(sortByCreated);
+  const partiallyParsedFiles = activeFiles.filter((f) => f.partiallyParsed && matchesSearch(f)).sort(sortByCreated);
+  const unparsedFiles = activeFiles.filter((f) => !f.parsed && !f.partiallyParsed && matchesSearch(f)).sort(sortByCreated);
 
   return (
     <div className="project-detail">
@@ -515,7 +521,19 @@ export function ProjectDetail({ project, onToggle, onProcess, onEdit, onUpdatePr
         </div>
       ) : chatFiles.length > 0 ? (
         <div className="chat-files-section">
-          <h3 className="chat-files-heading">Chat Sessions ({activeFiles.length})</h3>
+          <div className="chat-files-header">
+            <h3 className="chat-files-heading">Chat Sessions ({activeFiles.length})</h3>
+            <div className="chat-files-search">
+              <Search size={12} />
+              <input
+                type="text"
+                placeholder="Search…"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="chat-files-search-input"
+              />
+            </div>
+          </div>
           {parsedFiles.length > 0 && (
             <div className="chat-files-group">
               <div className="chat-files-group-label">Processed ({parsedFiles.length})</div>
@@ -594,6 +612,9 @@ export function ProjectDetail({ project, onToggle, onProcess, onEdit, onUpdatePr
                 </div>
               )}
             </div>
+          )}
+          {searchQuery && parsedFiles.length === 0 && partiallyParsedFiles.length === 0 && unparsedFiles.length === 0 && ignoredFiles.length === 0 && (
+            <div style={{ padding: '8px 0', opacity: 0.5, fontSize: '13px' }}>No results for "{searchQuery}"</div>
           )}
         </div>
       ) : (

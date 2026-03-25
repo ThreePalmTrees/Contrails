@@ -1007,6 +1007,15 @@ button, input, select, textarea, a, [role="button"] {
 .chat-files-section {
   margin-top: 20px;
 }
+.chat-files-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.chat-files-header .chat-files-heading {
+  margin-bottom: 0;
+}
 .chat-files-heading {
   font-size: 13px;
   font-weight: 600;
@@ -1014,6 +1023,25 @@ button, input, select, textarea, a, [role="button"] {
   margin-bottom: 10px;
   text-transform: uppercase;
   letter-spacing: 0.05em;
+}
+.chat-files-search {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--text-muted);
+}
+.chat-files-search-input {
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--border-color);
+  color: var(--text-primary);
+  font-size: 11px;
+  padding: 1px 2px;
+  outline: none;
+  width: 120px;
+}
+.chat-files-search-input::placeholder {
+  color: var(--text-muted);
 }
 .chat-files-group {
   margin-bottom: 14px;
