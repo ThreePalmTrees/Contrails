@@ -626,7 +626,6 @@ export function ProjectDetail({ project, onToggle, onProcess, onEdit, onUpdatePr
                       onUnassignCategory={() => handleUnassignCategory(file)}
                       onCreateCategory={handleCreateCategory}
                       onRenameCategory={handleRenameCategory}
-                      onDeleteCategory={handleDeleteCategory}
                     />
                   ))}
                 </div>
