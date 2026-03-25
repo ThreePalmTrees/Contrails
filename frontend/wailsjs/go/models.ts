@@ -256,6 +256,20 @@ export namespace main {
 	        this.watchDir = source["watchDir"];
 	    }
 	}
+	export class Category {
+	    id: string;
+	    name: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new Category(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.name = source["name"];
+	    }
+	}
 	export class ChatFileInfo {
 	    fileName: string;
 	    filePath: string;
@@ -267,6 +281,7 @@ export namespace main {
 	    processedAt: number;
 	    createdAt: number;
 	    ignored: boolean;
+	    categoryId?: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new ChatFileInfo(source);
@@ -284,6 +299,7 @@ export namespace main {
 	        this.processedAt = source["processedAt"];
 	        this.createdAt = source["createdAt"];
 	        this.ignored = source["ignored"];
+	        this.categoryId = source["categoryId"];
 	    }
 	}
 	export class IDEOption {
@@ -311,6 +327,8 @@ export namespace main {
 	    lastProcessed?: number;
 	    pausedAt?: number;
 	    ignoredChats?: Record<string, string>;
+	    categories?: Category[];
+	    chatCategories?: Record<string, string>;
 	
 	    static createFrom(source: any = {}) {
 	        return new Project(source);
@@ -328,6 +346,8 @@ export namespace main {
 	        this.lastProcessed = source["lastProcessed"];
 	        this.pausedAt = source["pausedAt"];
 	        this.ignoredChats = source["ignoredChats"];
+	        this.categories = this.convertValues(source["categories"], Category);
+	        this.chatCategories = source["chatCategories"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

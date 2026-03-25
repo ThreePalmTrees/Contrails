@@ -9,6 +9,8 @@ export function AddProject(arg1:main.Project):Promise<void>;
 
 export function ApplyAppUpdate(arg1:string):Promise<void>;
 
+export function AssignCategory(arg1:string,arg2:string,arg3:string):Promise<void>;
+
 export function BrowseClaudeCodeProjects():Promise<Array<claudecode.ScannedProject>>;
 
 export function BrowseCursorProjects():Promise<Array<cursor.ScannedProject>>;
@@ -16,6 +18,10 @@ export function BrowseCursorProjects():Promise<Array<cursor.ScannedProject>>;
 export function BrowseWorkspaceStorages():Promise<Array<Record<string, string>>>;
 
 export function CheckForAppUpdate():Promise<main.UpdateInfo>;
+
+export function CreateCategory(arg1:string,arg2:string):Promise<main.Category>;
+
+export function DeleteCategory(arg1:string,arg2:string):Promise<void>;
 
 export function DetectIDEs():Promise<Array<main.IDEOption>>;
 
@@ -71,6 +77,8 @@ export function ReadExistingContrail(arg1:string,arg2:string):Promise<string>;
 
 export function RemoveProject(arg1:string):Promise<void>;
 
+export function RenameCategory(arg1:string,arg2:string,arg3:string):Promise<void>;
+
 export function SaveProjects(arg1:Array<main.Project>):Promise<void>;
 
 export function SelectChatSessionsDir():Promise<string>;
@@ -80,6 +88,8 @@ export function SelectOutputDir():Promise<string>;
 export function SetAnalyticsEnabled(arg1:boolean):Promise<void>;
 
 export function SetDirectoryOpener(arg1:string):Promise<void>;
+
+export function UnassignCategory(arg1:string,arg2:string):Promise<void>;
 
 export function UnignoreChat(arg1:string,arg2:string):Promise<void>;
 

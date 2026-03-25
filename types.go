@@ -39,18 +39,26 @@ type AgentSource struct {
 	WatchDir string          `json:"watchDir,omitempty"` // VS Code: chatSessions/ dir; Claude Code: empty (signal-based)
 }
 
+// Category represents a user-defined category for organizing processed contrails.
+type Category struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
 // Project represents a watched workspace project
 type Project struct {
-	ID            string            `json:"id"`
-	Name          string            `json:"name"`
-	WatchDir      string            `json:"watchDir"`                // kept for backward compat with existing VS Code projects
-	OutputDir     string            `json:"outputDir"`
-	Active        bool              `json:"active"`
-	WorkspacePath string            `json:"workspacePath,omitempty"`
-	Sources       []AgentSource     `json:"sources,omitempty"`       // one or both agent sources
-	LastProcessed int64             `json:"lastProcessed,omitempty"`
-	PausedAt      int64             `json:"pausedAt,omitempty"`
-	IgnoredChats  map[string]string `json:"ignoredChats,omitempty"`  // filePath → title (for display when source unavailable)
+	ID             string            `json:"id"`
+	Name           string            `json:"name"`
+	WatchDir       string            `json:"watchDir"`                 // kept for backward compat with existing VS Code projects
+	OutputDir      string            `json:"outputDir"`
+	Active         bool              `json:"active"`
+	WorkspacePath  string            `json:"workspacePath,omitempty"`
+	Sources        []AgentSource     `json:"sources,omitempty"`        // one or both agent sources
+	LastProcessed  int64             `json:"lastProcessed,omitempty"`
+	PausedAt       int64             `json:"pausedAt,omitempty"`
+	IgnoredChats   map[string]string `json:"ignoredChats,omitempty"`   // filePath → title (for display when source unavailable)
+	Categories     []Category        `json:"categories,omitempty"`     // user-defined categories
+	ChatCategories map[string]string `json:"chatCategories,omitempty"` // filePath → categoryID
 }
 
 // ProcessingProgress reports progress during batch processing
@@ -83,14 +91,15 @@ type FileProcessedEvent struct {
 // ChatFileInfo describes a single source chat session file and whether
 // it has already been parsed into a contrail markdown file.
 type ChatFileInfo struct {
-	FileName      string `json:"fileName"`
-	FilePath      string `json:"filePath"`
-	SourceType    string `json:"sourceType"` // "vscode" | "claudecode" | "cursor"
+	FileName        string `json:"fileName"`
+	FilePath        string `json:"filePath"`
+	SourceType      string `json:"sourceType"` // "vscode" | "claudecode" | "cursor"
 	Parsed          bool   `json:"parsed"`
 	PartiallyParsed bool   `json:"partiallyParsed"`
 	Title           string `json:"title"`
 	LastMessageAt   string `json:"lastMessageAt"`
-	ProcessedAt     int64  `json:"processedAt"` // unix ms of the output .md file's mtime; 0 if not parsed
-	CreatedAt       int64  `json:"createdAt"`   // unix ms of the first message / session creation
+	ProcessedAt     int64  `json:"processedAt"`           // unix ms of the output .md file's mtime; 0 if not parsed
+	CreatedAt       int64  `json:"createdAt"`             // unix ms of the first message / session creation
 	Ignored         bool   `json:"ignored"`
+	CategoryID      string `json:"categoryId,omitempty"` // category assigned to this contrail
 }

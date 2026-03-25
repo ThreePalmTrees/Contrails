@@ -1,12 +1,13 @@
-import React, { useState, useEffect, useMemo } from "react";
-import { FolderOpen, FolderUp, Eye, EyeOff, MapPin, Play, Loader2, Layers, CheckCircle2, ChevronLeft, FileText, Pencil, Trash2, ExternalLink, ChevronDown, ChevronRight, Search } from "lucide-react";
+import React, { useState, useEffect, useLayoutEffect, useMemo, useRef, useCallback } from "react";
+import { createPortal } from "react-dom";
+import { FolderOpen, FolderUp, Eye, EyeOff, MapPin, Play, Loader2, Layers, CheckCircle2, ChevronLeft, Pencil, Trash2, ExternalLink, ChevronDown, ChevronRight, Search, MoreHorizontal, Tag, X, Plus, Check } from "lucide-react";
 import { OpenDirectoryWith, GetDirectoryOpener } from "../../wailsjs/go/main/App";
 import { DirectoryOpenerDialog } from "./DirectoryOpenerDialog";
-import { Project, ProcessingProgress, ChatFileInfo } from "../types";
+import { Project, ProcessingProgress, ChatFileInfo, Category } from "../types";
 import copilotLogo from "../assets/images/gh-copilot.png";
 import claudeLogo from "../assets/images/claude.png";
 import cursorLogo from "../assets/images/cursor.png";
-import { ListChatFiles, PreviewChatFile, ProcessSingleFile, ReadExistingContrail, IgnoreChat, UnignoreChat } from "../../wailsjs/go/main/App";
+import { ListChatFiles, PreviewChatFile, ProcessSingleFile, ReadExistingContrail, IgnoreChat, UnignoreChat, CreateCategory, RenameCategory, DeleteCategory, AssignCategory, UnassignCategory } from "../../wailsjs/go/main/App";
 import { EventsOn } from "../../wailsjs/runtime/runtime";
 import { diffLines, Change } from "diff";
 
@@ -101,6 +102,7 @@ interface Props {
   onProcess: (project: Project) => void;
   onEdit?: (project: Project, tab?: "vscode" | "claudecode" | "cursor" | "output") => void;
   onUpdateProject?: (project: Project) => void;
+  onProjectDataChanged?: () => void;
   processing: string | null;
   processingProgress: ProcessingProgress | null;
 }
@@ -128,7 +130,7 @@ interface PreviewState {
   processed: boolean;
 }
 
-export function ProjectDetail({ project, onToggle, onProcess, onEdit, onUpdateProject, processing, processingProgress }: Props) {
+export function ProjectDetail({ project, onToggle, onProcess, onEdit, onUpdateProject, onProjectDataChanged, processing, processingProgress }: Props) {
   const isProcessing = processing === project.id;
   const progress = processingProgress?.projectId === project.id ? processingProgress : null;
   const [chatFiles, setChatFiles] = useState<ChatFileInfo[]>([]);
@@ -139,6 +141,7 @@ export function ProjectDetail({ project, onToggle, onProcess, onEdit, onUpdatePr
   const [showOpenerDialog, setShowOpenerDialog] = useState(false);
   const [ignoredExpanded, setIgnoredExpanded] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const categories = project.categories ?? [];
 
   async function handleOpenDir(dirPath: string) {
     const saved = await GetDirectoryOpener();
@@ -175,7 +178,7 @@ export function ProjectDetail({ project, onToggle, onProcess, onEdit, onUpdatePr
       if (mounted) setChatFilesLoading(false);
     });
     return () => { mounted = false; };
-  }, [project.id, isProcessing, filesVersion, project.sources, project.watchDir]);
+  }, [project.id, isProcessing, filesVersion]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const unbindProcessed = EventsOn("file:processed", (event: { projectId: string }) => {
@@ -186,14 +189,12 @@ export function ProjectDetail({ project, onToggle, onProcess, onEdit, onUpdatePr
 
     const unbindWatcher = EventsOn("watcher:event", (event: { projectId: string }) => {
       if (event.projectId === project.id) {
-        // Refresh when files are created/modified so new titles show up
         setFilesVersion((v) => v + 1);
       }
     });
 
     const unbindCursor = EventsOn("cursor:changed", (event: { projectId: string }) => {
       if (event.projectId === project.id) {
-        // Refresh list so new/updated chats appear immediately
         setFilesVersion((v) => v + 1);
       }
     });
@@ -209,7 +210,7 @@ export function ProjectDetail({ project, onToggle, onProcess, onEdit, onUpdatePr
     setPreview({ file, markdown: "", loading: true, processing: false, processed: false });
     try {
       const md = await PreviewChatFile(file.filePath, file.sourceType);
-      
+
       let diffs: Change[] | undefined = undefined;
       if (file.partiallyParsed) {
         const oldMd = await ReadExistingContrail(file.fileName, project.outputDir);
@@ -255,6 +256,35 @@ export function ProjectDetail({ project, onToggle, onProcess, onEdit, onUpdatePr
     );
   }
 
+  const handleCreateCategory = useCallback(async (name: string): Promise<Category> => {
+    const cat = await CreateCategory(project.id, name);
+    onProjectDataChanged?.();
+    return cat;
+  }, [project.id, onProjectDataChanged]);
+
+  const handleRenameCategory = useCallback(async (categoryId: string, newName: string) => {
+    await RenameCategory(project.id, categoryId, newName);
+    onProjectDataChanged?.();
+  }, [project.id, onProjectDataChanged]);
+
+  const handleDeleteCategory = useCallback(async (categoryId: string) => {
+    await DeleteCategory(project.id, categoryId);
+    setChatFiles((prev) => prev.map((f) => f.categoryId === categoryId ? { ...f, categoryId: undefined } : f));
+    onProjectDataChanged?.();
+  }, [project.id, onProjectDataChanged]);
+
+  const handleAssignCategory = useCallback(async (file: ChatFileInfo, categoryId: string) => {
+    await AssignCategory(project.id, file.filePath, categoryId);
+    setChatFiles((prev) => prev.map((f) => f.filePath === file.filePath ? { ...f, categoryId } : f));
+    onProjectDataChanged?.();
+  }, [project.id, onProjectDataChanged]);
+
+  const handleUnassignCategory = useCallback(async (file: ChatFileInfo) => {
+    await UnassignCategory(project.id, file.filePath);
+    setChatFiles((prev) => prev.map((f) => f.filePath === file.filePath ? { ...f, categoryId: undefined } : f));
+    onProjectDataChanged?.();
+  }, [project.id, onProjectDataChanged]);
+
   const sortByCreated = (a: ChatFileInfo, b: ChatFileInfo) => (b.createdAt || 0) - (a.createdAt || 0);
   const matchesSearch = (f: ChatFileInfo) => {
     if (!searchQuery) return true;
@@ -266,6 +296,19 @@ export function ProjectDetail({ project, onToggle, onProcess, onEdit, onUpdatePr
   const parsedFiles = activeFiles.filter((f) => f.parsed && !f.partiallyParsed && matchesSearch(f)).sort(sortByCreated);
   const partiallyParsedFiles = activeFiles.filter((f) => f.partiallyParsed && matchesSearch(f)).sort(sortByCreated);
   const unparsedFiles = activeFiles.filter((f) => !f.parsed && !f.partiallyParsed && matchesSearch(f)).sort(sortByCreated);
+
+  // Group processed files by category (only non-empty groups, sorted alphabetically)
+  const categoryGroups = useMemo(() => {
+    return [...categories]
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .map((cat) => ({ category: cat, files: parsedFiles.filter((f) => f.categoryId === cat.id) }))
+      .filter((g) => g.files.length > 0);
+  }, [categories, parsedFiles]);
+
+  const uncategorizedParsed = useMemo(
+    () => parsedFiles.filter((f) => !f.categoryId),
+    [parsedFiles]
+  );
 
   return (
     <div className="project-detail">
@@ -396,7 +439,7 @@ export function ProjectDetail({ project, onToggle, onProcess, onEdit, onUpdatePr
               </span>
               <span className="detail-card-value mono">{project.sources?.find(s => s.type === "cursor")?.watchDir}</span>
             </div>
-            
+
             {onEdit && (
               <div style={{ display: 'flex', gap: '4px', opacity: 0.7 }}>
                 <button className="btn btn-ghost btn-sm" style={{ padding: '0 6px' }} onClick={() => onEdit(project, 'cursor')} title="Edit watching directory">
@@ -410,7 +453,6 @@ export function ProjectDetail({ project, onToggle, onProcess, onEdit, onUpdatePr
               </div>
             )}
           </div>
-          {/* display disclaimer that contrails might take up to 1 minute to appear */}
           {hasCursor && project.sources?.find(s => s.type === "cursor")?.watchDir &&
           <div className="detail-info-message">
             <p>Cursor contrails might take up to 1 minute to appear</p>
@@ -533,18 +575,63 @@ export function ProjectDetail({ project, onToggle, onProcess, onEdit, onUpdatePr
             <div className="chat-files-group">
               <div className="chat-files-group-label">Processed ({parsedFiles.length})</div>
               <div className="chat-files-group-hint">Click any item below to show its content</div>
-              <div className="chat-files-scroll">
-                {parsedFiles.map((file) => (
-                  <ChatFileRow
-                    key={file.filePath}
-                    file={file}
-                    onShowDetails={() => handleShowDetails(file)}
-                    onProcessed={() => markFileProcessed(file.filePath)}
-                    outputDir={project.outputDir}
-                    onIgnore={() => handleIgnoreChat(file)}
+
+              {/* Category groups */}
+              {categoryGroups.map(({ category, files }) => (
+                <div key={category.id} className="chat-files-category-group">
+                  <CategoryGroupHeader
+                    category={category}
+                    onRename={(newName) => handleRenameCategory(category.id, newName)}
+                    onDelete={() => handleDeleteCategory(category.id)}
                   />
-                ))}
-              </div>
+                  <div className="chat-files-scroll">
+                    {files.map((file) => (
+                      <ChatFileRow
+                        key={file.filePath}
+                        file={file}
+                        onShowDetails={() => handleShowDetails(file)}
+                        onProcessed={() => markFileProcessed(file.filePath)}
+                        outputDir={project.outputDir}
+                        onIgnore={() => handleIgnoreChat(file)}
+                        categories={categories}
+                        onAssignCategory={(catId) => handleAssignCategory(file, catId)}
+                        onUnassignCategory={() => handleUnassignCategory(file)}
+                        onCreateCategory={handleCreateCategory}
+                        onRenameCategory={handleRenameCategory}
+                      />
+                    ))}
+                  </div>
+                </div>
+              ))}
+
+              {/* Uncategorized */}
+              {uncategorizedParsed.length > 0 && (
+                <div className="chat-files-category-group">
+                {categoryGroups.length > 0 && (
+                  <div className="chat-files-category-header">
+                    <span>- Unassigned -</span>
+                  </div>
+                )}
+                <div className="chat-files-scroll">
+                  {uncategorizedParsed.map((file) => (
+                    <ChatFileRow
+                      key={file.filePath}
+                      file={file}
+                      onShowDetails={() => handleShowDetails(file)}
+                      onProcessed={() => markFileProcessed(file.filePath)}
+                      outputDir={project.outputDir}
+                      onIgnore={() => handleIgnoreChat(file)}
+                      categories={categories}
+                      onAssignCategory={(catId) => handleAssignCategory(file, catId)}
+                      onUnassignCategory={() => handleUnassignCategory(file)}
+                      onCreateCategory={handleCreateCategory}
+                      onRenameCategory={handleRenameCategory}
+                      onDeleteCategory={handleDeleteCategory}
+                    />
+                  ))}
+                </div>
+                </div>
+              )}
             </div>
           )}
           {partiallyParsedFiles.length > 0 && (
@@ -559,6 +646,7 @@ export function ProjectDetail({ project, onToggle, onProcess, onEdit, onUpdatePr
                     onProcessed={() => markFileProcessed(file.filePath)}
                     outputDir={project.outputDir}
                     onIgnore={() => handleIgnoreChat(file)}
+                    categories={categories}
                   />
                 ))}
               </div>
@@ -629,6 +717,94 @@ export function ProjectDetail({ project, onToggle, onProcess, onEdit, onUpdatePr
   );
 }
 
+// ─── Category group header with inline rename ────────────────────────────────
+
+interface CategoryGroupHeaderProps {
+  category: Category;
+  onRename: (newName: string) => void;
+  onDelete: () => void;
+}
+
+function CategoryGroupHeader({ category, onRename, onDelete }: CategoryGroupHeaderProps) {
+  const [renaming, setRenaming] = useState(false);
+  const [value, setValue] = useState(category.name);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (renaming) inputRef.current?.focus();
+  }, [renaming]);
+
+  function commit() {
+    const trimmed = value.trim();
+    if (trimmed && trimmed !== category.name) onRename(trimmed);
+    else setValue(category.name);
+    setRenaming(false);
+  }
+
+  return (
+    <div className="chat-files-category-header">
+      {renaming ? (
+        <input
+          ref={inputRef}
+          className="chat-files-category-rename-input"
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          onBlur={commit}
+          onKeyDown={(e) => { if (e.key === "Enter") commit(); if (e.key === "Escape") { setValue(category.name); setRenaming(false); } }}
+        />
+      ) : (
+        <span style={{ flex: 1 }}>{category.name}</span>
+      )}
+      <div className="chat-files-category-header-actions">
+        {renaming ? (
+          <button
+            className="btn btn-ghost btn-sm"
+            style={{ padding: '0 3px', opacity: 0.6 }}
+            title="Confirm rename"
+            onMouseDown={(e) => { e.preventDefault(); commit(); }}
+          >
+            <Check size={11} />
+          </button>
+        ) : (
+          <>
+            <button
+              className="btn btn-ghost btn-sm"
+              style={{ padding: '0 3px', opacity: 0.6 }}
+              title="Rename category"
+              onClick={() => { setValue(category.name); setRenaming(true); }}
+            >
+              <Pencil size={11} />
+            </button>
+            <button
+              className="btn btn-ghost btn-sm"
+              style={{ padding: '0 3px', opacity: 0.6, color: 'var(--red)' }}
+              title="Delete category"
+              onClick={onDelete}
+            >
+              <Trash2 size={11} />
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Shared positioning helper ───────────────────────────────────────────────
+
+function computePosition(rect: DOMRect, width: number, estimatedHeight: number): { top: number; left: number } {
+  const margin = 8;
+  const gap = 4;
+  const spaceBelow = window.innerHeight - rect.bottom - margin;
+  const top = spaceBelow >= estimatedHeight
+    ? rect.bottom + gap
+    : Math.max(margin, rect.top - estimatedHeight - gap);
+  const left = Math.max(margin, Math.min(rect.right - width, window.innerWidth - width - margin));
+  return { top, left };
+}
+
+// ─── ChatFileRow ─────────────────────────────────────────────────────────────
+
 interface ChatFileRowProps {
   file: ChatFileInfo;
   onShowDetails: () => void;
@@ -636,10 +812,20 @@ interface ChatFileRowProps {
   outputDir: string;
   onIgnore?: () => void;
   onUnignore?: () => void;
+  // Category props — only provided for processed rows; partially-processed rows
+  // get categories for the badge display only (no assign actions)
+  categories?: Category[];
+  onAssignCategory?: (categoryId: string) => void;
+  onUnassignCategory?: () => void;
+  onCreateCategory?: (name: string) => Promise<Category>;
+  onRenameCategory?: (id: string, newName: string) => void;
 }
 
-function ChatFileRow({ file, onShowDetails, onProcessed, outputDir, onIgnore, onUnignore }: ChatFileRowProps) {
+function ChatFileRow({ file, onShowDetails, onProcessed, outputDir, onIgnore, onUnignore, categories, onAssignCategory, onUnassignCategory, onCreateCategory, onRenameCategory }: ChatFileRowProps) {
   const [processing, setProcessing] = useState(false);
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
+  const [pickerAnchorRect, setPickerAnchorRect] = useState<DOMRect | null>(null);
+  const menuBtnRef = useRef<HTMLButtonElement>(null);
 
   async function handleProcess() {
     setProcessing(true);
@@ -653,6 +839,20 @@ function ChatFileRow({ file, onShowDetails, onProcessed, outputDir, onIgnore, on
 
   const isParsed = file.parsed && !file.partiallyParsed;
   const isPartiallyParsed = file.partiallyParsed;
+  const canManageCategory = isParsed && !!onAssignCategory;
+
+  function openMenu() {
+    if (!menuBtnRef.current) return;
+    setMenuPos(computePosition(menuBtnRef.current.getBoundingClientRect(), 160, 130));
+  }
+
+  function openPicker() {
+    if (!menuBtnRef.current) return;
+    setPickerAnchorRect(menuBtnRef.current.getBoundingClientRect());
+    setMenuPos(null);
+  }
+
+  const currentCategory = categories?.find((c) => c.id === file.categoryId);
 
   return (
     <div className={`chat-file-row ${isParsed ? "chat-file-row-parsed" : ""}`}>
@@ -669,14 +869,73 @@ function ChatFileRow({ file, onShowDetails, onProcessed, outputDir, onIgnore, on
         {file.sourceType === 'cursor' && <img src={cursorLogo} alt="Cursor" style={{ height: '18px', width: '18px', objectFit: 'contain', borderRadius: '4px' }} />}
       </div>
       <span className="chat-file-name chat-file-name-clickable" title={file.filePath} onClick={onShowDetails}>{getFileDisplayName(file)}</span>
+
+      {/* Category badge on partially-processed rows */}
+      {isPartiallyParsed && currentCategory && (
+        <span className="category-tag" title={`Category: ${currentCategory.name}`}>
+          <Tag size={9} />
+          {currentCategory.name}
+        </span>
+      )}
+
       <div className="chat-file-actions">
-        {isParsed && file.processedAt > 0 && (
-          <span className="chat-file-processed-time">{formatDateTime(file.processedAt)}</span>
-        )}
         {onUnignore ? (
           <button className="btn btn-outline btn-sm" onClick={onUnignore} title="Stop ignoring this chat">
             <Eye size={12} /> Unignore
           </button>
+        ) : isParsed ? (
+          <>
+            {file.processedAt > 0 && (
+              <span className="chat-file-processed-time">{formatDateTime(file.processedAt)}</span>
+            )}
+            <button
+              ref={menuBtnRef}
+              className="btn btn-ghost btn-sm"
+              style={{ padding: '0 4px' }}
+              title="More actions"
+              onClick={openMenu}
+            >
+              <MoreHorizontal size={14} />
+            </button>
+            {menuPos && createPortal(
+              <>
+                <div className="chat-menu-overlay" onClick={() => setMenuPos(null)} />
+                <div className="chat-menu" style={{ top: menuPos.top, left: menuPos.left }}>
+                  <div className="chat-menu-item" onClick={() => { setMenuPos(null); handleProcess(); }}>
+                    <Play size={12} />
+                    {processing ? "Processing…" : "Re-process"}
+                  </div>
+                  {canManageCategory && (
+                    <div className="chat-menu-item" onClick={() => openPicker()}>
+                      <Tag size={12} />
+                      {file.categoryId ? "Change category" : "Add to category"}
+                    </div>
+                  )}
+                  <div className="chat-menu-divider" />
+                  {onIgnore && (
+                    <div className="chat-menu-item chat-menu-item-danger" onClick={() => { setMenuPos(null); onIgnore(); }}>
+                      <EyeOff size={12} />
+                      Ignore
+                    </div>
+                  )}
+                </div>
+              </>,
+              document.body
+            )}
+            {pickerAnchorRect && canManageCategory && createPortal(
+              <CategoryPicker
+                categories={categories!}
+                currentCategoryId={file.categoryId}
+                anchorRect={pickerAnchorRect}
+                onAssign={(catId) => { setPickerAnchorRect(null); onAssignCategory!(catId); }}
+                onUnassign={() => { setPickerAnchorRect(null); onUnassignCategory!(); }}
+                onCreate={onCreateCategory!}
+                onRename={onRenameCategory!}
+                onClose={() => setPickerAnchorRect(null)}
+              />,
+              document.body
+            )}
+          </>
         ) : (
           <>
             {isPartiallyParsed && (
@@ -691,8 +950,6 @@ function ChatFileRow({ file, onShowDetails, onProcessed, outputDir, onIgnore, on
             >
               {processing ? (
                 <><Loader2 size={12} className="spin" /> Processing…</>
-              ) : isParsed && !isPartiallyParsed ? (
-                <><Play size={12} /> Re-process</>
               ) : (
                 <><Play size={12} /> Process Now</>
               )}
@@ -706,5 +963,157 @@ function ChatFileRow({ file, onShowDetails, onProcessed, outputDir, onIgnore, on
         )}
       </div>
     </div>
+  );
+}
+
+// ─── CategoryPicker popover ───────────────────────────────────────────────────
+
+interface CategoryPickerProps {
+  categories: Category[];
+  currentCategoryId?: string;
+  anchorRect: DOMRect;
+  onAssign: (categoryId: string) => void;
+  onUnassign: () => void;
+  onCreate: (name: string) => Promise<Category>;
+  onRename: (id: string, newName: string) => void;
+  onClose: () => void;
+}
+
+const PICKER_WIDTH = 224;
+
+function CategoryPicker({ categories, currentCategoryId, anchorRect, onAssign, onUnassign, onCreate, onRename, onClose }: CategoryPickerProps) {
+  const [newName, setNewName] = useState("");
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState("");
+  const pickerRef = useRef<HTMLDivElement>(null);
+  const renameInputRef = useRef<HTMLInputElement>(null);
+  const newInputRef = useRef<HTMLInputElement>(null);
+
+  // Compute left (horizontal) immediately — doesn't depend on height
+  const left = Math.max(8, Math.min(anchorRect.right - PICKER_WIDTH, window.innerWidth - PICKER_WIDTH - 8));
+
+  // Start off-screen invisible, then measure actual height and snap into place
+  const [top, setTop] = useState<number | null>(null);
+
+  useLayoutEffect(() => {
+    if (!pickerRef.current) return;
+    const height = pickerRef.current.offsetHeight;
+    const margin = 8;
+    const gap = 4;
+    const spaceBelow = window.innerHeight - anchorRect.bottom - margin;
+    const computedTop = spaceBelow >= height
+      ? anchorRect.bottom + gap
+      : Math.max(margin, anchorRect.top - height - gap);
+    setTop(computedTop);
+    // Focus the new-category input after positioning
+    newInputRef.current?.focus();
+  }, [anchorRect]);
+
+  useEffect(() => {
+    if (renamingId) renameInputRef.current?.focus();
+  }, [renamingId]);
+
+  async function handleCreate(e: React.KeyboardEvent) {
+    if (e.key !== "Enter") return;
+    const trimmed = newName.trim();
+    if (!trimmed) return;
+    const cat = await onCreate(trimmed);
+    setNewName("");
+    onAssign(cat.id);
+  }
+
+  function startRename(cat: Category) {
+    setRenamingId(cat.id);
+    setRenameValue(cat.name);
+  }
+
+  function commitRename(id: string) {
+    const trimmed = renameValue.trim();
+    if (trimmed && trimmed !== categories.find((c) => c.id === id)?.name) {
+      onRename(id, trimmed);
+    }
+    setRenamingId(null);
+  }
+
+  return (
+    <>
+      <div className="category-picker-overlay" onClick={onClose} />
+      <div
+        ref={pickerRef}
+        className="category-picker"
+        style={{ left, top: top ?? -9999, visibility: top === null ? 'hidden' : 'visible' }}
+      >
+        <div className="category-picker-title">
+          {currentCategoryId ? "Change category" : "Add to category"}
+        </div>
+
+        {categories.length === 0 && (
+          <div style={{ padding: '4px 12px 4px 14px', fontSize: '11px', color: 'var(--text-muted)', fontStyle: 'italic', opacity: 0.7 }}>
+            No categories yet
+          </div>
+        )}
+
+        {categories.map((cat) => (
+          <div key={cat.id} className="category-picker-item">
+            {renamingId === cat.id ? (
+              <input
+                ref={renameInputRef}
+                className="category-picker-rename-input"
+                value={renameValue}
+                onChange={(e) => setRenameValue(e.target.value)}
+                onBlur={() => commitRename(cat.id)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") commitRename(cat.id);
+                  if (e.key === "Escape") setRenamingId(null);
+                  e.stopPropagation();
+                }}
+              />
+            ) : (
+              <span
+                className={`category-picker-item-name ${cat.id === currentCategoryId ? "category-picker-item-selected" : ""}`}
+                onClick={() => cat.id !== currentCategoryId && onAssign(cat.id)}
+              >
+                {cat.name}
+              </span>
+            )}
+            {cat.id === currentCategoryId && renamingId !== cat.id && (
+              <Check size={12} style={{ color: 'var(--accent)', flexShrink: 0 }} />
+            )}
+            <div className="category-picker-item-actions">
+              <button
+                className="btn btn-ghost btn-sm"
+                style={{ padding: '0 3px' }}
+                title="Rename"
+                onClick={(e) => { e.stopPropagation(); startRename(cat); }}
+              >
+                <Pencil size={11} />
+              </button>
+            </div>
+          </div>
+        ))}
+
+        {currentCategoryId && (
+          <>
+            <div className="category-picker-divider" />
+            <div className="category-picker-unassign" onClick={onUnassign}>
+              <X size={12} /> Remove from category
+            </div>
+          </>
+        )}
+
+        <div className="category-picker-divider" />
+        <div className="category-picker-new">
+          <Plus size={12} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
+          <input
+            ref={newInputRef}
+            className="category-picker-new-input"
+            placeholder="New category…"
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            onKeyDown={(e) => { handleCreate(e); e.stopPropagation(); }}
+          />
+        </div>
+      </div>
+    </>
   );
 }

@@ -10,6 +10,10 @@ export function ApplyAppUpdate(arg1) {
   return window['go']['main']['App']['ApplyAppUpdate'](arg1);
 }
 
+export function AssignCategory(arg1, arg2, arg3) {
+  return window['go']['main']['App']['AssignCategory'](arg1, arg2, arg3);
+}
+
 export function BrowseClaudeCodeProjects() {
   return window['go']['main']['App']['BrowseClaudeCodeProjects']();
 }
@@ -24,6 +28,14 @@ export function BrowseWorkspaceStorages() {
 
 export function CheckForAppUpdate() {
   return window['go']['main']['App']['CheckForAppUpdate']();
+}
+
+export function CreateCategory(arg1, arg2) {
+  return window['go']['main']['App']['CreateCategory'](arg1, arg2);
+}
+
+export function DeleteCategory(arg1, arg2) {
+  return window['go']['main']['App']['DeleteCategory'](arg1, arg2);
 }
 
 export function DetectIDEs() {
@@ -134,6 +146,10 @@ export function RemoveProject(arg1) {
   return window['go']['main']['App']['RemoveProject'](arg1);
 }
 
+export function RenameCategory(arg1, arg2, arg3) {
+  return window['go']['main']['App']['RenameCategory'](arg1, arg2, arg3);
+}
+
 export function SaveProjects(arg1) {
   return window['go']['main']['App']['SaveProjects'](arg1);
 }
@@ -152,6 +168,10 @@ export function SetAnalyticsEnabled(arg1) {
 
 export function SetDirectoryOpener(arg1) {
   return window['go']['main']['App']['SetDirectoryOpener'](arg1);
+}
+
+export function UnassignCategory(arg1, arg2) {
+  return window['go']['main']['App']['UnassignCategory'](arg1, arg2);
 }
 
 export function UnignoreChat(arg1, arg2) {

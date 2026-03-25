@@ -16,6 +16,7 @@ import (
 	"contrails/agent/cursor"
 	"contrails/agent/vscode"
 
+	"github.com/google/uuid"
 	wailsRuntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
@@ -1352,7 +1353,117 @@ func (app *App) ListChatFiles(projectID string) ([]ChatFileInfo, error) {
 		}
 	}
 
+	// Mark category assignments
+	if project.ChatCategories != nil {
+		for i := range files {
+			if catID, ok := project.ChatCategories[files[i].FilePath]; ok {
+				files[i].CategoryID = catID
+			}
+		}
+	}
+
 	return files, nil
+}
+
+// CreateCategory creates a new category for organizing processed contrails.
+func (app *App) CreateCategory(projectID, name string) (Category, error) {
+	projects, err := app.GetProjects()
+	if err != nil {
+		return Category{}, err
+	}
+	for i := range projects {
+		if projects[i].ID == projectID {
+			cat := Category{
+				ID:   uuid.New().String(),
+				Name: name,
+			}
+			projects[i].Categories = append(projects[i].Categories, cat)
+			if err := app.SaveProjects(projects); err != nil {
+				return Category{}, err
+			}
+			return cat, nil
+		}
+	}
+	return Category{}, fmt.Errorf("project %s not found", projectID)
+}
+
+// RenameCategory renames an existing category.
+func (app *App) RenameCategory(projectID, categoryID, newName string) error {
+	projects, err := app.GetProjects()
+	if err != nil {
+		return err
+	}
+	for i := range projects {
+		if projects[i].ID == projectID {
+			for j := range projects[i].Categories {
+				if projects[i].Categories[j].ID == categoryID {
+					projects[i].Categories[j].Name = newName
+					return app.SaveProjects(projects)
+				}
+			}
+			return fmt.Errorf("category %s not found", categoryID)
+		}
+	}
+	return fmt.Errorf("project %s not found", projectID)
+}
+
+// DeleteCategory deletes a category and unassigns all contrails from it.
+func (app *App) DeleteCategory(projectID, categoryID string) error {
+	projects, err := app.GetProjects()
+	if err != nil {
+		return err
+	}
+	for i := range projects {
+		if projects[i].ID == projectID {
+			kept := projects[i].Categories[:0]
+			for _, c := range projects[i].Categories {
+				if c.ID != categoryID {
+					kept = append(kept, c)
+				}
+			}
+			projects[i].Categories = kept
+			for k, v := range projects[i].ChatCategories {
+				if v == categoryID {
+					delete(projects[i].ChatCategories, k)
+				}
+			}
+			return app.SaveProjects(projects)
+		}
+	}
+	return fmt.Errorf("project %s not found", projectID)
+}
+
+// AssignCategory assigns a contrail to a category.
+func (app *App) AssignCategory(projectID, filePath, categoryID string) error {
+	projects, err := app.GetProjects()
+	if err != nil {
+		return err
+	}
+	for i := range projects {
+		if projects[i].ID == projectID {
+			if projects[i].ChatCategories == nil {
+				projects[i].ChatCategories = make(map[string]string)
+			}
+			projects[i].ChatCategories[filePath] = categoryID
+			return app.SaveProjects(projects)
+		}
+	}
+	return fmt.Errorf("project %s not found", projectID)
+}
+
+// UnassignCategory removes a contrail's category assignment.
+func (app *App) UnassignCategory(projectID, filePath string) error {
+	projects, err := app.GetProjects()
+	if err != nil {
+		return err
+	}
+	for i := range projects {
+		if projects[i].ID == projectID {
+			delete(projects[i].ChatCategories, filePath)
+			return app.SaveProjects(projects)
+		}
+	}
+	return fmt.Errorf("project %s not found", projectID)
 }
 
 // IgnoreChat adds a chat file to the project's ignored list.

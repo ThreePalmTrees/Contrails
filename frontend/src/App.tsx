@@ -31,6 +31,7 @@ function App() {
     dismissError,
     onboardingComplete,
     completeOnboarding,
+    loadProjects,
   } = useProjects();
 
   const { theme, setTheme } = useTheme();
@@ -194,6 +195,7 @@ function App() {
               setEditTab(tab);
             }}
             onUpdateProject={updateProject}
+            onProjectDataChanged={loadProjects}
             processing={processing}
             processingProgress={processingProgress}
           />

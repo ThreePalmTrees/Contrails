@@ -3,6 +3,11 @@ export interface AgentSource {
   watchDir?: string;
 }
 
+export interface Category {
+  id: string;
+  name: string;
+}
+
 export interface Project {
   id: string;
   name: string;
@@ -14,6 +19,8 @@ export interface Project {
   lastProcessed?: number;
   pausedAt?: number;
   ignoredChats?: Record<string, string>;
+  categories?: Category[];
+  chatCategories?: Record<string, string>;
 }
 
 export interface WorkspaceInfo {
@@ -52,6 +59,7 @@ export interface ChatFileInfo {
   processedAt: number;
   createdAt: number;
   ignored: boolean;
+  categoryId?: string;
 }
 
 export interface AppError {
