@@ -235,10 +235,42 @@ export function ProjectDetail({ project, onToggle, onProcess, onEdit, onUpdatePr
     }
   }
 
-  if (preview) {
-    return (
-      <div className="project-detail">
-        <div className="chat-preview">
+  async function handleIgnoreChat(file: ChatFileInfo) {
+    await IgnoreChat(project.id, file.filePath, getFileDisplayName(file));
+    setChatFiles((prev) => prev.map((f) => f.filePath === file.filePath ? { ...f, ignored: true } : f));
+  }
+
+  async function handleUnignoreChat(file: ChatFileInfo) {
+    await UnignoreChat(project.id, file.filePath);
+    setChatFiles((prev) => prev.map((f) => f.filePath === file.filePath ? { ...f, ignored: false } : f));
+  }
+
+  function markFileProcessed(filePath: string) {
+    setChatFiles((prev) =>
+      prev.map((f) =>
+        f.filePath === filePath
+          ? { ...f, parsed: true, partiallyParsed: false, processedAt: Date.now() }
+          : f
+      )
+    );
+  }
+
+  const sortByCreated = (a: ChatFileInfo, b: ChatFileInfo) => (b.createdAt || 0) - (a.createdAt || 0);
+  const matchesSearch = (f: ChatFileInfo) => {
+    if (!searchQuery) return true;
+    const q = searchQuery.toLowerCase();
+    return (f.title || f.fileName || "").toLowerCase().includes(q);
+  };
+  const activeFiles = chatFiles.filter((f) => !f.ignored);
+  const ignoredFiles = chatFiles.filter((f) => f.ignored && matchesSearch(f)).sort(sortByCreated);
+  const parsedFiles = activeFiles.filter((f) => f.parsed && !f.partiallyParsed && matchesSearch(f)).sort(sortByCreated);
+  const partiallyParsedFiles = activeFiles.filter((f) => f.partiallyParsed && matchesSearch(f)).sort(sortByCreated);
+  const unparsedFiles = activeFiles.filter((f) => !f.parsed && !f.partiallyParsed && matchesSearch(f)).sort(sortByCreated);
+
+  return (
+    <div className="project-detail">
+      {preview && (
+        <div className="chat-preview" style={{ position: 'fixed', top: 36, left: 'var(--sidebar-width)', right: 0, bottom: 0, zIndex: 10, background: 'var(--bg-base)' }}>
           <div className="chat-preview-header">
             <button className="btn btn-ghost btn-sm" onClick={() => setPreview(null)}>
               <ChevronLeft size={14} /> Back
@@ -272,44 +304,7 @@ export function ProjectDetail({ project, onToggle, onProcess, onEdit, onUpdatePr
             )}
           </div>
         </div>
-      </div>
-    );
-  }
-
-  async function handleIgnoreChat(file: ChatFileInfo) {
-    await IgnoreChat(project.id, file.filePath, getFileDisplayName(file));
-    setFilesVersion((v) => v + 1);
-  }
-
-  async function handleUnignoreChat(file: ChatFileInfo) {
-    await UnignoreChat(project.id, file.filePath);
-    setFilesVersion((v) => v + 1);
-  }
-
-  function markFileProcessed(filePath: string) {
-    setChatFiles((prev) =>
-      prev.map((f) =>
-        f.filePath === filePath
-          ? { ...f, parsed: true, partiallyParsed: false, processedAt: Date.now() }
-          : f
-      )
-    );
-  }
-
-  const sortByCreated = (a: ChatFileInfo, b: ChatFileInfo) => (b.createdAt || 0) - (a.createdAt || 0);
-  const matchesSearch = (f: ChatFileInfo) => {
-    if (!searchQuery) return true;
-    const q = searchQuery.toLowerCase();
-    return (f.title || f.fileName || "").toLowerCase().includes(q);
-  };
-  const activeFiles = chatFiles.filter((f) => !f.ignored);
-  const ignoredFiles = chatFiles.filter((f) => f.ignored && matchesSearch(f)).sort(sortByCreated);
-  const parsedFiles = activeFiles.filter((f) => f.parsed && !f.partiallyParsed && matchesSearch(f)).sort(sortByCreated);
-  const partiallyParsedFiles = activeFiles.filter((f) => f.partiallyParsed && matchesSearch(f)).sort(sortByCreated);
-  const unparsedFiles = activeFiles.filter((f) => !f.parsed && !f.partiallyParsed && matchesSearch(f)).sort(sortByCreated);
-
-  return (
-    <div className="project-detail">
+      )}
       <div>
       <div className="detail-header">
         <h1>{project.name}</h1>
