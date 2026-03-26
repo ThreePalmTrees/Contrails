@@ -9,7 +9,7 @@ import { useProjects } from "./hooks/useProjects";
 import { useTheme, Theme } from "./hooks/useTheme";
 import { DirectoryOpenerDialog } from "./components/DirectoryOpenerDialog";
 import { Project } from "./types";
-import { BrowserOpenURL, EventsOn } from "../wailsjs/runtime/runtime";
+import { BrowserOpenURL, EventsOn, Environment } from "../wailsjs/runtime/runtime";
 import { GetAnalyticsEnabled, SetAnalyticsEnabled, ApplyAppUpdate, GetVersion } from "../wailsjs/go/main/App";
 import "./App.css";
 
@@ -47,10 +47,12 @@ function App() {
   const [updating, setUpdating] = useState(false);
   const [showOpenerSettings, setShowOpenerSettings] = useState(false);
   const [isDevBuild, setIsDevBuild] = useState(false);
+  const [isWindows, setIsWindows] = useState(false);
 
   useEffect(() => {
     GetAnalyticsEnabled().then(setAnalyticsEnabled).catch(() => {});
     GetVersion().then((v) => setIsDevBuild(v === "dev")).catch(() => {});
+    Environment().then((env) => setIsWindows(env.platform === "windows")).catch(() => {});
     const cancel = EventsOn("update:available", (info: any) => {
       if (info && info.latestVersion) {
         setUpdateInfo(info);
@@ -99,9 +101,9 @@ function App() {
   }
 
   return (
-    <div className="app">
-      <div className="titlebar">
-        {isDevBuild && 
+    <div className={`app${isWindows ? " platform-windows" : ""}`}>
+      {!isWindows && <div className="titlebar">
+        {isDevBuild &&
         <>
         <span style={{
           position: 'absolute',
@@ -118,7 +120,7 @@ function App() {
         }}>dev</span>
         </>
         }
-      </div>
+      </div>}
       <aside className="sidebar">
         <div className="sidebar-brand">
           <ContrailsIcon style={{ width: '34px' }} />

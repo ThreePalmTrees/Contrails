@@ -24,6 +24,14 @@
   background: linear-gradient(to right, transparent, #333, transparent);
 }
 
+/* ===== Windows overrides (native titlebar — no custom titlebar needed) ===== */
+.platform-windows .sidebar-brand {
+  padding-top: 16px;
+}
+.platform-windows .main-content {
+  padding-top: 20px;
+}
+
 /* Ensure interactive elements are clickable within the drag region */
 button, input, select, textarea, a, [role="button"] {
   --wails-draggable: no-drag;
@@ -63,7 +71,7 @@ button, input, select, textarea, a, [role="button"] {
   font-weight: 600;
   color: var(--text-primary);
   letter-spacing: -0.2px;
-  padding-top: 46px; /* macOS titlebar inset + spacing */
+  padding-top: 46px; /* macOS titlebar inset + spacing — overridden for Windows below */
 }
 .sidebar-brand > span {
   margin-right: -8px;
@@ -235,7 +243,7 @@ button, input, select, textarea, a, [role="button"] {
 .main-content {
   flex: 1;
   overflow-y: auto;
-  padding: 42px 40px 40px; /* top padding for macOS titlebar */
+  padding: 42px 40px 40px; /* top padding for macOS titlebar — overridden for Windows below */
   background: var(--bg-base);
   padding-bottom: 12px;
 }
