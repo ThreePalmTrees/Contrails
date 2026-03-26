@@ -89,7 +89,7 @@ func ApplyUpdate(downloadURL string) error {
 	return nil // unreachable
 }
 
-// CleanupOldUpdate removes any .exe.old left from a previous update.
+// CleanupOldUpdate removes leftover files from a previous update.
 // Call during startup.
 func CleanupOldUpdate() {
 	exePath, err := os.Executable()
@@ -97,7 +97,11 @@ func CleanupOldUpdate() {
 		return
 	}
 	exePath, _ = filepath.EvalSymlinks(exePath)
+	exeDir := filepath.Dir(exePath)
+
 	os.Remove(exePath + ".old")
+	os.Remove(filepath.Join(exeDir, ".contrails-update.zip"))
+	os.RemoveAll(filepath.Join(exeDir, ".contrails-update-tmp"))
 }
 
 // findExeInDir finds an executable file in the given directory, preferring
