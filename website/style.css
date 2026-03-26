@@ -148,6 +148,89 @@ img {
   background: rgba(255, 255, 255, 0.1);
 }
 
+/* ─── Download Split Button ─── */
+
+.download-split-btn {
+  position: relative;
+  display: inline-flex;
+}
+
+.download-split-btn .download-btn {
+  border-radius: 10px 0 0 10px;
+}
+
+.download-arrow {
+  background: #2dd4bf;
+  color: #042f2e;
+  border: none;
+  border-left: 1px solid;
+  border-radius: 0 10px 10px 0;
+  padding: 0 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s ease, box-shadow 0.2s ease;
+  font-size: 0;
+}
+
+.download-split-btn:hover .download-arrow,
+.download-arrow:hover {
+  background: #5eead4;
+}
+
+.download-split-btn:hover .download-arrow {
+  box-shadow: none;
+}
+
+.download-split-btn:has(.download-btn:hover) .download-btn,
+.download-split-btn:has(.download-arrow:hover) .download-arrow {
+  box-shadow: 0 8px 30px rgba(45, 212, 191, 0.3);
+}
+
+.download-arrow svg {
+  transition: transform 0.2s ease;
+}
+
+.download-arrow[aria-expanded="true"] svg {
+  transform: rotate(180deg);
+}
+
+.download-dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  min-width: 100%;
+  background: #18181b;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  overflow: hidden;
+  z-index: 200;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+
+.download-dropdown[hidden] {
+  display: none;
+}
+
+.download-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 16px;
+  font-size: 0.88rem;
+  font-weight: 500;
+  color: #e4e4e7;
+  transition: background 0.15s ease, color 0.15s ease;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.download-option:hover {
+  background: rgba(45, 212, 191, 0.1);
+  color: #5eead4;
+}
+
 /* ─── Nav ─── */
 
 .nav {
@@ -215,7 +298,7 @@ img {
   position: relative;
   padding: 160px 0 80px;
   text-align: center;
-  overflow: hidden;
+  overflow-x: clip;
 }
 
 .hero-glow {
@@ -694,7 +777,7 @@ img {
   padding: 64px 0;
   text-align: center;
   position: relative;
-  overflow: hidden;
+  overflow-x: clip;
 }
 
 .cta::before {

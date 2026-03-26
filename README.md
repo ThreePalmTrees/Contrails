@@ -4,7 +4,7 @@
 
 <i>Contrails, short for "condensation trails", are the trails left behind by aircrafts at high altitudes.</i>
 
-Contrails is a macOS app that watches your coding agent sessions (VS Code Copilot, Claude Code, and Cursor), parses them into readable Markdown, and saves them into your project repositories.
+Contrails is a macOS and Windows app that watches your coding agent sessions (VS Code Copilot, Claude Code, and Cursor), parses them into readable Markdown, and saves them into your project repositories.
 This way you keep the reasoning that led to fixing a bug or implementing a feature.
 
 Built with [Wails v2](https://wails.io/) (Go + React + TypeScript).
@@ -26,6 +26,14 @@ When working on a related feature in the future, you can reference relevant cont
 | **Cursor** | Scans `workspaceStorage/` for per-workspace `state.vscdb` files | `fsnotify` on per-workspace storage + global `globalStorage/` directory (debounced 2 s) | SQLite — per-workspace `ItemTable` for composer list + global `cursorDiskKV` for `composerData:*` + `bubbleId:*` keys |
 
 ## Installation
+
+### Windows
+
+1. Download `Contrails-windows.zip` from the [latest release](https://github.com/ThreePalmTrees/Contrails/releases/latest)
+2. Unzip the archive
+3. Run `contrails.exe`
+
+### macOS
 
 1. Download `Contrails-macos.zip` from the [latest release](https://github.com/ThreePalmTrees/Contrails/releases/latest)
 2. Unzip and drag `contrails.app` to your Applications folder
@@ -177,7 +185,6 @@ contrails/
 - **Go** ≥ 1.23
 - **Node.js** ≥ 18
 - **Wails CLI** - `go install github.com/wailsapp/wails/v2/cmd/wails@latest`
-- **macOS** (primary target)
 
 ## Development
 
