@@ -1,0 +1,15 @@
+pre-commit:
+  parallel: true
+  jobs:
+    - name: frontend-build
+      root: "frontend/"
+      glob: "*.{ts,tsx,js,jsx,css,html}"
+      run: yarn build
+
+    - name: go-vet
+      glob: "*.go"
+      run: go vet ./...
+
+    - name: go-test
+      glob: "*.go"
+      run: go test ./...

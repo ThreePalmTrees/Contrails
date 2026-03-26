@@ -185,12 +185,16 @@ contrails/
 - **Go** ≥ 1.23
 - **Node.js** ≥ 18
 - **Wails CLI** - `go install github.com/wailsapp/wails/v2/cmd/wails@latest`
+- **Lefthook** - `go install github.com/evilmartians/lefthook@latest`
 
 ## Development
 
 ```bash
 # Install frontend dependencies
 cd frontend && yarn --ignore-scripts && cd ..
+
+# Install git hooks
+lefthook install
 
 # Run in development mode (hot reload)
 wails dev
@@ -258,11 +262,13 @@ It's suggested to commit `contrails/`.
 Contributions are welcome! Here's how to get started:
 
 1. Fork the repository
-2. Create a feature branch from `main`
-3. Make your changes
-4. Run the tests: `go test ./... -v`
-5. Commit your changes — include a contrail of the agent session that produced the work (the `contrails/` directory in your project)
-6. Open a pull request against `main`
+2. Install prerequisites (see [Development Prerequisites](#development-prerequisites))
+3. Install git hooks: `lefthook install`
+4. Create a feature branch from `main`
+5. Make your changes
+6. Commit your changes — pre-commit hooks will automatically run `yarn build`, `go vet`, and `go test`
+7. Include a contrail of the agent session that produced the work (the `contrails/` directory in your project)
+8. Open a pull request against `main`
 
 ## Reporting Issues
 
