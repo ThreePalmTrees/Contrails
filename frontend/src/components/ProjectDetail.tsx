@@ -526,24 +526,26 @@ export function ProjectDetail({ project, onToggle, onProcess, onEdit, onUpdatePr
           )}
         </button>
 
-        <button
-          className="btn btn-primary"
-          onClick={() => onProcess(project)}
-          disabled={isProcessing}
-        >
-          {isProcessing ? (
-            <>
-              <Loader2 size={14} className="spin" />
-              {progress
-                ? `Processing ${progress.current}/${progress.total}…`
-                : "Processing…"}
-            </>
-          ) : (
-            <>
-              <Play size={14} /> Process All Now
-            </>
-          )}
-        </button>
+        {(chatFilesLoading || chatFiles.length > 0) && (
+          <button
+            className="btn btn-primary"
+            onClick={() => onProcess(project)}
+            disabled={isProcessing}
+          >
+            {isProcessing ? (
+              <>
+                <Loader2 size={14} className="spin" />
+                {progress
+                  ? `Processing ${progress.current}/${progress.total}…`
+                  : "Processing…"}
+              </>
+            ) : (
+              <>
+                <Play size={14} /> Process All Now
+              </>
+            )}
+          </button>
+        )}
       </div>
 </div>
 <div>

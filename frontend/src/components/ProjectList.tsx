@@ -6,12 +6,10 @@ import {
   EyeOff,
   Pencil,
   Trash2,
-  Play,
-  Loader2,
   AlertTriangle,
   Layers,
 } from "lucide-react";
-import { Project, ProcessingProgress } from "../types";
+import { Project } from "../types";
 import copilotLogo from "../assets/images/gh-copilot.png";
 import claudeLogo from "../assets/images/claude.png";
 import cursorLogo from "../assets/images/cursor.png";
@@ -24,9 +22,6 @@ interface Props {
   onRename: (project: Project, name: string) => void;
   onToggle: (project: Project) => void;
   onRemove: (id: string) => void;
-  onProcess: (project: Project) => void;
-  processing: string | null;
-  processingProgress: ProcessingProgress | null;
   badgeCounts: Record<string, number>;
 }
 
@@ -38,9 +33,6 @@ export function ProjectList({
   onRename,
   onToggle,
   onRemove,
-  onProcess,
-  processing,
-  processingProgress,
   badgeCounts,
 }: Props) {
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -100,8 +92,6 @@ export function ProjectList({
 
         {projects.map((project) => {
           const badge = badgeCounts[project.id];
-          const isItemProcessing = processing === project.id;
-          const progress = processingProgress?.projectId === project.id ? processingProgress : null;
           const hasVSCode = project.sources?.some((s) => s.type === "vscode") ?? (project.watchDir !== "");
           const hasClaude = project.sources?.some((s) => s.type === "claudecode") ?? false;
           const hasCursor = project.sources?.some((s) => s.type === "cursor") ?? false;
@@ -186,28 +176,6 @@ export function ProjectList({
                         ) : (
                           <>
                             <Eye size={13} /> Resume watching
-                          </>
-                        )}
-                      </button>
-                      <button
-                        className="context-menu-item"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onProcess(project);
-                          setMenuId(null);
-                        }}
-                        disabled={isItemProcessing}
-                      >
-                        {isItemProcessing ? (
-                          <>
-                            <Loader2 size={13} className="spin" />
-                            {progress
-                              ? `${progress.current}/${progress.total}…`
-                              : "Processing…"}
-                          </>
-                        ) : (
-                          <>
-                            <Play size={13} /> Process now
                           </>
                         )}
                       </button>

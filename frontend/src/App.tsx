@@ -134,9 +134,6 @@ function App() {
           onRename={handleRename}
           onToggle={handleToggle}
           onRemove={removeProject}
-          onProcess={handleProcess}
-          processing={processing}
-          processingProgress={processingProgress}
           badgeCounts={badgeCounts}
         />
         {updateInfo && (
