@@ -4,6 +4,7 @@ import (
 	"embed"
 	"log"
 	"net/http"
+	"runtime"
 
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/menu"
@@ -47,7 +48,13 @@ func main() {
 				})
 			},
 		},
-		Menu:             menu.NewMenuFromItems(menu.AppMenu(), menu.EditMenu(), menu.WindowMenu()),
+		// On Windows, Menu renders as a visible menu bar inside the window. macOS uses the system menu bar.
+		Menu: func() *menu.Menu {
+			if runtime.GOOS == "darwin" {
+				return menu.NewMenuFromItems(menu.AppMenu(), menu.EditMenu(), menu.WindowMenu())
+			}
+			return nil
+		}(),
 		BackgroundColour: &options.RGBA{R: 15, G: 15, B: 20, A: 1},
 		OnStartup:        app.startup,
 		OnShutdown:       app.shutdown,

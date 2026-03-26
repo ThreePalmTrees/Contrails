@@ -1,3 +1,6 @@
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+
 :root {
   --radius-sm: 6px;
   --radius-md: 8px;
