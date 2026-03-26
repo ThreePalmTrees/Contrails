@@ -246,6 +246,7 @@ button, input, select, textarea, a, [role="button"] {
   padding: 42px 40px 40px; /* top padding for macOS titlebar — overridden for Windows below */
   background: var(--bg-base);
   padding-bottom: 12px;
+  user-select: text;
 }
 
 .empty-main {
