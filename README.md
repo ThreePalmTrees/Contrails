@@ -1,5 +1,10 @@
 # Contrails ✈️
 
+[![macOS](https://img.shields.io/badge/macOS-supported-brightgreen)](https://github.com/ThreePalmTrees/Contrails/releases/latest)
+[![Windows](https://img.shields.io/badge/Windows-supported-brightgreen)](https://github.com/ThreePalmTrees/Contrails/releases/latest)
+[![License](https://img.shields.io/github/license/ThreePalmTrees/Contrails)](LICENSE)
+[![Latest Release](https://img.shields.io/github/v/release/ThreePalmTrees/Contrails)](https://github.com/ThreePalmTrees/Contrails/releases/latest)
+
 **Preserve your coding agent trails.**
 
 <i>Contrails, short for "condensation trails", are the trails left behind by aircrafts at high altitudes.</i>
