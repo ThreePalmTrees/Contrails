@@ -2,6 +2,7 @@
 
 [![macOS](https://img.shields.io/badge/macOS-supported-brightgreen)](https://github.com/ThreePalmTrees/Contrails/releases/latest)
 [![Windows](https://img.shields.io/badge/Windows-supported-brightgreen)](https://github.com/ThreePalmTrees/Contrails/releases/latest)
+[![Linux](https://img.shields.io/badge/Linux-supported-brightgreen)](https://github.com/ThreePalmTrees/Contrails/releases/latest)
 [![License](https://img.shields.io/github/license/ThreePalmTrees/Contrails)](LICENSE)
 [![Latest Release](https://img.shields.io/github/v/release/ThreePalmTrees/Contrails)](https://github.com/ThreePalmTrees/Contrails/releases/latest)
 
@@ -13,7 +14,7 @@
 
 <i>Contrails, short for "condensation trails", are the trails left behind by aircrafts at high altitudes.</i>
 
-Contrails is an opensource app (macOS and Windows) that:
+Contrails is an opensource app (macOS, Windows and Linux) that:
 1. Watches your coding agent sessions _(VS Code Copilot, Claude Code, and Cursor)_
 2. Parses them into readable Markdown
 3. Saves them into your project repositories.
@@ -59,6 +60,18 @@ When working on a related feature in the future, you can reference relevant cont
 4. Launch Contrails normally
 
 > **Why is step 3 needed?** macOS requires apps to be notarized. Notarization costs $99/year — Apple effectively charges indie developers a yearly toll just to let users open their software. Until we bite that bullet, `xattr -cr` is the workaround.
+
+### Linux
+
+1. Download `Contrails-linux.zip` from the [latest release](https://github.com/ThreePalmTrees/Contrails/releases/latest)
+2. Unzip the archive
+3. Make the binary executable and run it:
+   ```bash
+   chmod +x contrails
+   ./contrails
+   ```
+
+> **Dependencies:** Linux requires WebKit2GTK and GTK3 runtime libraries. On Ubuntu/Debian: `sudo apt install libgtk-3-0 libwebkit2gtk-4.1-0`. On Fedora: `sudo dnf install gtk3 webkit2gtk4.1`. Most desktop Linux distributions have these pre-installed.
 
 ## Features
 
@@ -128,7 +141,7 @@ contrails/
 
 | File | Responsibility |
 |------|---------------|
-| `app.go` | Composition root — project CRUD (persisted to `~/Library/Application Support/contrails/projects.json`), driver registry + dispatch, native directory pickers, workspace scanning, incremental processing, telemetry settings, update check. Implements `claudecode.SignalHandler` to receive signal events via dependency inversion. |
+| `app.go` | Composition root — project CRUD (persisted to platform config dir + `contrails/projects.json`), driver registry + dispatch, native directory pickers, workspace scanning, incremental processing, telemetry settings, update check. Implements `claudecode.SignalHandler` to receive signal events via dependency inversion. |
 | `analytics.go` | PostHog client wrapper — fail-safe design (all methods silently no-op on failure), device ID generation/persistence (`~/.config/contrails/device_id`), opt-out support, event tracking (app lifecycle, project/source/contrail events). Disabled entirely when API key is empty (dev builds). |
 | `updater.go` | GitHub Releases update checker — polls `ThreePalmTrees/Contrails` releases, semantic version comparison, downloads and atomically replaces the full `.app` bundle, relaunches via `open`. Skipped for `dev` builds. |
 | `runtime.go` | Testability interfaces (`Logger`, `EventEmitter`, `DialogOpener`) with production (Wails-backed) and test (Noop, Recording) implementations. `Logger` is a type alias for `agent.Logger`. |
@@ -156,7 +169,7 @@ contrails/
 
 ### VS Code Copilot
 
-1. **Add a project** — The app scans `~/Library/Application Support/Code/User/workspaceStorage/` for directories containing a `chatSessions/` subfolder. It reads `workspace.json` to resolve the project name.
+1. **Add a project** — The app scans the VS Code workspace storage directory for directories containing a `chatSessions/` subfolder (`~/Library/Application Support/Code/User/workspaceStorage/` on macOS, `%APPDATA%/Code/User/workspaceStorage/` on Windows, `~/.config/Code/User/workspaceStorage/` on Linux). It reads `workspace.json` to resolve the project name.
 
 2. **Watch** — `fsnotify` monitors the `chatSessions/` directory. Any `.jsonl` file create or modify triggers incremental processing — only files modified after the project's `lastProcessedAt` timestamp are processed. When a project is first added, `lastProcessedAt` is set to the current time so existing files aren't auto-processed; use "Process All Now" for the initial backlog. When a `.jsonl` file is deleted, the corresponding Markdown file is flagged with a deletion banner.
 
@@ -185,11 +198,11 @@ contrails/
 
 ### Cursor
 
-1. **Add a project** — The app scans `~/Library/Application Support/Cursor/User/workspaceStorage/` for per-workspace `state.vscdb` files and resolves the workspace path via `workspace.json`.
+1. **Add a project** — The app scans the Cursor workspace storage directory for per-workspace `state.vscdb` files (`~/Library/Application Support/Cursor/User/workspaceStorage/` on macOS, `%APPDATA%/Cursor/User/workspaceStorage/` on Windows, `~/.config/Cursor/User/workspaceStorage/` on Linux) and resolves the workspace path via `workspace.json`.
 
 2. **Watch** — `fsnotify` monitors both the per-workspace storage directory and the global `globalStorage/` directory for writes to `state.vscdb` or its WAL companion. The global database is always watched because bubble (message) content is written there on every Cursor interaction, regardless of workspace. Cursor writes in rapid bursts, so notifications are debounced by 2 seconds before processing.
 
-3. **Parse** — Cursor uses two SQLite databases. The per-workspace `state.vscdb` stores the composer list in an `ItemTable` under key `composer.composerData`. The global `state.vscdb` (`~/Library/Application Support/Cursor/User/globalStorage/state.vscdb`) stores conversation data in a `cursorDiskKV` table. Each composer session has a `composerData:<id>` key with metadata and a `fullConversationHeadersOnly` array that provides the authoritative message order. Individual messages are stored as `bubbleId:<composerId>:<bubbleId>` keys. The parser reads bubbles in header order: `type=1` → user message, `type=2` → AI message. Rich content (tool calls, thinking blocks, code) is decoded from typed capability fields (`capabilityType` 15 = tool call, 30 = thinking block).
+3. **Parse** — Cursor uses two SQLite databases. The per-workspace `state.vscdb` stores the composer list in an `ItemTable` under key `composer.composerData`. The global `state.vscdb` (in `globalStorage/` under the Cursor config directory) stores conversation data in a `cursorDiskKV` table. Each composer session has a `composerData:<id>` key with metadata and a `fullConversationHeadersOnly` array that provides the authoritative message order. Individual messages are stored as `bubbleId:<composerId>:<bubbleId>` keys. The parser reads bubbles in header order: `type=1` → user message, `type=2` → AI message. Rich content (tool calls, thinking blocks, code) is decoded from typed capability fields (`capabilityType` 15 = tool call, 30 = thinking block).
 
 4. **Output** — Same Markdown format and output directory as VS Code and Claude Code. Title is taken from the composer's `name` field when available.
 
@@ -228,13 +241,24 @@ Tests use `t.TempDir()` for filesystem isolation and interface injection (define
 # Build universal macOS app (dev — no telemetry, no update checks)
 ./buildMacOS.sh
 
+# Build Windows executable
+./buildWindows.sh
+
+# Build Linux binary (requires libgtk-3-dev and libwebkit2gtk-4.1-dev)
+./buildLinux.sh
+
 # Build with version + telemetry (used by CI/CD)
 ./buildMacOS.sh 1.2.3 phc_xxxx
+./buildWindows.sh 1.2.3 phc_xxxx
+./buildLinux.sh 1.2.3 phc_xxxx
 
-# Output: build/bin/contrails.app
+# Outputs:
+# macOS:   build/bin/contrails.app
+# Windows: build/bin/contrails.exe
+# Linux:   build/bin/contrails
 ```
 
-`buildMacOS.sh` wraps `wails build -platform darwin/universal`, injects `Version` and `PostHogAPIKey` via `-ldflags` when provided, and ad-hoc codesigns the output. Version is derived from git tags (`v1.2.3` → `1.2.3`). When `Version` is `"dev"` (no arguments), update checks and telemetry are disabled.
+Each build script wraps `wails build` with the appropriate platform flag, injects `Version` and `PostHogAPIKey` via `-ldflags` when provided. `buildLinux.sh` additionally passes `-tags webkit2_41` for Ubuntu 24.04+ compatibility. When `Version` is `"dev"` (no arguments), update checks and telemetry are disabled.
 
 ## Releasing
 
@@ -248,13 +272,15 @@ Tests use `t.TempDir()` for filesystem isolation and interface injection (define
 ./release.sh major   # v0.1.0 → v1.0.0
 ```
 
-`release.sh` reads the latest semver git tag, increments it, tags, and pushes to origin. The push triggers the GitHub Actions workflow (`.github/workflows/release.yml`) which builds the universal macOS app via `buildMacOS.sh`, zips the `.app` bundle, and creates a GitHub Release with the artifact attached. The PostHog API key is injected from a repository secret.
+`release.sh` reads the latest semver git tag, increments it, tags, and pushes to origin. The push triggers the GitHub Actions workflow (`.github/workflows/release.yml`) which builds for all three platforms (macOS, Windows, Linux) in parallel and creates a GitHub Release with all artifacts attached. The PostHog API key is injected from a repository secret.
 
 ## Configuration
 
-Projects are stored in:
+Projects are stored in the platform config directory:
 ```
-~/Library/Application Support/contrails/projects.json
+macOS:   ~/Library/Application Support/contrails/projects.json
+Windows: %APPDATA%/contrails/projects.json
+Linux:   ~/.config/contrails/projects.json
 ```
 
 Telemetry preference and device identity:

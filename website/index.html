@@ -71,6 +71,7 @@
           <div class="download-dropdown" id="hero-dl-dropdown" hidden>
             <a href="https://github.com/ThreePalmTrees/Contrails/releases/latest/download/Contrails-macos.zip" class="download-option" data-platform="macos">Download for macOS</a>
             <a href="https://github.com/ThreePalmTrees/Contrails/releases/latest/download/Contrails-windows.zip" class="download-option" data-platform="windows">Download for Windows</a>
+            <a href="https://github.com/ThreePalmTrees/Contrails/releases/latest/download/Contrails-linux.zip" class="download-option" data-platform="linux">Download for Linux</a>
           </div>
         </div>
         <a href="https://github.com/ThreePalmTrees/contrails" target="_blank" rel="noopener" class="btn btn-secondary">
@@ -352,6 +353,7 @@ deduplicates on their end.</code></pre>
           <div class="download-dropdown" id="cta-dl-dropdown" hidden>
             <a href="https://github.com/ThreePalmTrees/Contrails/releases/latest/download/Contrails-macos.zip" class="download-option" data-platform="macos">Download for macOS</a>
             <a href="https://github.com/ThreePalmTrees/Contrails/releases/latest/download/Contrails-windows.zip" class="download-option" data-platform="windows">Download for Windows</a>
+            <a href="https://github.com/ThreePalmTrees/Contrails/releases/latest/download/Contrails-linux.zip" class="download-option" data-platform="linux">Download for Linux</a>
           </div>
         </div>
         <a href="https://github.com/ThreePalmTrees/contrails" target="_blank" rel="noopener" class="btn btn-secondary">
@@ -390,11 +392,14 @@ deduplicates on their end.</code></pre>
     (function () {
       var MAC_URL = 'https://github.com/ThreePalmTrees/Contrails/releases/latest/download/Contrails-macos.zip';
       var WIN_URL = 'https://github.com/ThreePalmTrees/Contrails/releases/latest/download/Contrails-windows.zip';
+      var LINUX_URL = 'https://github.com/ThreePalmTrees/Contrails/releases/latest/download/Contrails-linux.zip';
 
-      var isMac = /Macintosh|Mac OS X/i.test(navigator.userAgent) && !/Windows/i.test(navigator.userAgent);
-      var defaultPlatform = isMac ? 'macos' : 'windows';
-      var defaultUrl = isMac ? MAC_URL : WIN_URL;
-      var defaultLabel = isMac ? 'Download for macOS' : 'Download for Windows';
+      var ua = navigator.userAgent;
+      var isMac = /Macintosh|Mac OS X/i.test(ua) && !/Windows/i.test(ua);
+      var isLinux = /Linux/i.test(ua) && !/Android/i.test(ua);
+      var defaultPlatform = isMac ? 'macos' : isLinux ? 'linux' : 'windows';
+      var defaultUrl = isMac ? MAC_URL : isLinux ? LINUX_URL : WIN_URL;
+      var defaultLabel = isMac ? 'Download for macOS' : isLinux ? 'Download for Linux' : 'Download for Windows';
 
       var openState = null;
 
