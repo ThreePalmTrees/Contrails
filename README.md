@@ -5,20 +5,30 @@
 [![License](https://img.shields.io/github/license/ThreePalmTrees/Contrails)](LICENSE)
 [![Latest Release](https://img.shields.io/github/v/release/ThreePalmTrees/Contrails)](https://github.com/ThreePalmTrees/Contrails/releases/latest)
 
+<p align="center">
+  <img width="150" src="logo_readme.png" alt="logo">
+</p>
+
 **Preserve your coding agent trails.**
 
 <i>Contrails, short for "condensation trails", are the trails left behind by aircrafts at high altitudes.</i>
 
-Contrails is a macOS and Windows app that watches your coding agent sessions (VS Code Copilot, Claude Code, and Cursor), parses them into readable Markdown, and saves them into your project repositories.
-This way you keep the reasoning that led to fixing a bug or implementing a feature.
+Contrails is a macOS and Windows app that:
+1. Watches your coding agent sessions _(VS Code Copilot, Claude Code, and Cursor)_
+2. Parses them into readable Markdown
+3. Saves them into your project repositories.
 
-Built with [Wails v2](https://wails.io/) (Go + React + TypeScript).
+This way you keep the reasoning that led to fixing a bug or implementing a feature.
 
 ![Contrails Screenshot](screenshot.png)
 
+Built with [Wails v2](https://wails.io/) (Go + React + TypeScript).
+
 ## Why
 
-Coding agents forget everything between sessions. The reasoning that led to a fix, the wrong approaches that were tried, the self-corrections — all of it vanishes. Contrails watches agent session files in real-time and outputs clean, human-readable Markdown into a `contrails/` directory in your project, making your agent conversations part of your repo history.
+Coding agents forget everything between sessions. The reasoning that led to a fix, the wrong approaches that were tried, the self-corrections — all of it vanishes.
+<br/>
+Contrails watches agent session files in real-time and outputs clean, human-readable Markdown into a `contrails/` directory in your project, making your agent conversations part of your repo history.
 
 When working on a related feature in the future, you can reference relevant contrails to help the agent remember its previous reasoning.
 
@@ -48,23 +58,21 @@ When working on a related feature in the future, you can reference relevant cont
    ```
 4. Launch Contrails normally
 
-> **Why is step 3 needed?** macOS blocks apps that aren't notarized by Apple. Notarization requires an Apple Developer Program membership ($99/year) — Apple effectively charges indie developers a yearly toll just to let users open their software. Until we bite that bullet, `xattr -cr` is the workaround.
+> **Why is step 3 needed?** macOS requires apps to be notarized. Notarization costs $99/year — Apple effectively charges indie developers a yearly toll just to let users open their software. Until we bite that bullet, `xattr -cr` is the workaround.
 
 ## Features
 
 - **Auto-discovery** - Finds projects with agent chat sessions automatically. VS Code and Cursor workspaces are resolved via `workspace.json`; Claude Code projects are discovered from `~/.claude/projects/`
 - **Filesystem watching** - Uses `fsnotify` to detect new or modified VS Code chat sessions instantly
 - **Signal-based capture** - Claude Code sessions are captured via a Stop hook that writes signal files when a session ends
-- **Hook auto-install and enforcement** - When adding a Claude Code project, Contrails automatically installs the Stop hook into `.claude/settings.local.json`. A periodic enforcer checks every 5 seconds that the hook remains installed, re-adding it if the file is deleted or the hook entry is removed
-- **Incremental processing** - Only processes files modified after the last processing timestamp; "Process All Now" button for full re-processing
 - **Deleted session handling** - When a chat session file is deleted, the corresponding Markdown is flagged with a deletion banner rather than removed
-- **Smart parsing** - Preserves the interleaved order of text, thinking blocks, tool calls, and file edits exactly as they occurred during the conversation
-- **Multi-agent projects** - A single project can have VS Code Copilot, Claude Code, and Cursor sources attached simultaneously
-- **Markdown output** - Generates clean `.md` files organized by session title, with tool calls rendered in-place between the assistant's narrative text
+- **Smart parsing** - Preserves the order of text, thinking blocks, tool calls, and file edits exactly as they occurred during the conversation
+- **Multi-agent projects** - A single project can have VS Code Copilot, Claude Code, and Cursor sources simultaneously
+- **Markdown output** - Generates clean `.md` files
 - **Project management** - Track multiple workspaces, rename them, pause/resume watching
 - **Persistent state** - Projects list persists across restarts; selected project stored in localStorage
 - **Anonymous telemetry** - Optional, anonymous usage telemetry via PostHog (Go SDK). Tracks aggregate metrics like app starts, project counts, and contrails created. No personal data is collected. A persistent device UUID is generated on first launch — no accounts or sign-in required. Telemetry can be toggled on/off from the sidebar footer; the preference is persisted across restarts. Disabled entirely in dev builds (no API key injected)
-- **Auto-update** - On launch, checks GitHub Releases for a newer version. If available, shows a banner with release notes and a one-click install button. Updates replace the full `.app` bundle atomically and relaunch
+- **Auto-update** - On launch, checks GitHub Releases for a newer version. If available, shows a one-click update button.
 
 ## Architecture
 

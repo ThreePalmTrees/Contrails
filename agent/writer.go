@@ -22,7 +22,7 @@ func RenderMarkdown(session *ParsedSession) string {
 	if session.Model != "" {
 		markdown.WriteString(fmt.Sprintf("- **Model:** %s\n", session.Model))
 	}
-	markdown.WriteString("\n---\n\n")
+	markdown.WriteString("\n")
 
 	for _, message := range session.Messages {
 		if message.Role == "user" {
@@ -57,7 +57,6 @@ func RenderMarkdown(session *ParsedSession) string {
 				markdown.WriteString("*⚠️ This response was canceled.*\n\n")
 			}
 		}
-		markdown.WriteString("---\n\n")
 	}
 
 	return markdown.String()

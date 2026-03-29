@@ -6,6 +6,7 @@ import { ProjectDetail } from "./components/ProjectDetail";
 import { AddProjectDialog } from "./components/AddProjectDialog";
 import { OnboardingTour } from "./components/OnboardingTour";
 import { useProjects } from "./hooks/useProjects";
+import { useChatFilesCache } from "./hooks/useChatFilesCache";
 import { useTheme, Theme } from "./hooks/useTheme";
 import { DirectoryOpenerDialog } from "./components/DirectoryOpenerDialog";
 import { Project } from "./types";
@@ -34,6 +35,7 @@ function App() {
     loadProjects,
   } = useProjects();
 
+  const chatFilesCache = useChatFilesCache();
   const { theme, setTheme } = useTheme();
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [editProject, setEditProject] = useState<Project | null>(null);
@@ -197,6 +199,7 @@ function App() {
             onProjectDataChanged={loadProjects}
             processing={processing}
             processingProgress={processingProgress}
+            chatFilesCache={chatFilesCache}
           />
         ) : (
           <div className="empty-main">

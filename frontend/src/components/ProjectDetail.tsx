@@ -7,8 +7,8 @@ import { Project, ProcessingProgress, ChatFileInfo, Category } from "../types";
 import copilotLogo from "../assets/images/gh-copilot.png";
 import claudeLogo from "../assets/images/claude.png";
 import cursorLogo from "../assets/images/cursor.png";
-import { ListChatFiles, PreviewChatFile, ProcessSingleFile, ReadExistingContrail, IgnoreChat, UnignoreChat, CreateCategory, RenameCategory, DeleteCategory, AssignCategory, UnassignCategory } from "../../wailsjs/go/main/App";
-import { EventsOn } from "../../wailsjs/runtime/runtime";
+import { PreviewChatFile, ProcessSingleFile, ReadExistingContrail, IgnoreChat, UnignoreChat, CreateCategory, RenameCategory, DeleteCategory, AssignCategory, UnassignCategory } from "../../wailsjs/go/main/App";
+import type { useChatFilesCache } from "../hooks/useChatFilesCache";
 import { diffLines, Change } from "diff";
 
 function renderTextSegment(text: string, key: number): React.ReactNode {
@@ -65,12 +65,12 @@ function renderTextSegment(text: string, key: number): React.ReactNode {
   return <React.Fragment key={key}>{parts}</React.Fragment>;
 }
 
-function renderMarkdownContent(markdown: string): React.ReactNode {
+function renderSectionContent(markdown: string, keyOffset: number): React.ReactNode[] {
   const blockPattern = /(<details>\n<summary>(.*?)<\/summary>\n\n([\s\S]*?)\n<\/details>|<thinking>\n([\s\S]*?)\n<\/thinking>)/g;
   const nodes: React.ReactNode[] = [];
   let lastIndex = 0;
   let match: RegExpExecArray | null;
-  let key = 0;
+  let key = keyOffset;
 
   while ((match = blockPattern.exec(markdown)) !== null) {
     if (match.index > lastIndex) {
@@ -93,8 +93,41 @@ function renderMarkdownContent(markdown: string): React.ReactNode {
     nodes.push(renderTextSegment(markdown.slice(lastIndex), key++));
   }
 
-  return nodes.length > 0 ? <>{nodes}</> : renderTextSegment(markdown, key++);
+  return nodes;
 }
+
+function renderMarkdownContent(markdown: string): React.ReactNode {
+  // Split into message sections at role headers (## 🧑 User / ## 🤖 Assistant)
+  const sectionPattern = /^(## (?:🧑 User|🤖 Assistant)[^\n]*)/m;
+  const parts = markdown.split(sectionPattern);
+  const sections: React.ReactNode[] = [];
+  let key = 0;
+
+  // parts alternates: [preamble, header1, body1, header2, body2, ...]
+  // First element is preamble (content before any role header)
+  if (parts[0].trim()) {
+    sections.push(
+      <div key={key++} className="chat-message-section">
+        {renderSectionContent(parts[0], key * 100)}
+      </div>
+    );
+  }
+
+  for (let i = 1; i < parts.length; i += 2) {
+    const header = parts[i].replace(/^## /, '');
+    const body = (parts[i + 1] || '').replace(/^\n+/, '');
+    sections.push(
+      <div key={key++} className="chat-message-section">
+        <div className="chat-preview-role-header">{header}</div>
+        {renderSectionContent(body, key * 100)}
+      </div>
+    );
+  }
+
+  return <>{sections}</>;
+}
+
+type ChatFilesCache = ReturnType<typeof useChatFilesCache>;
 
 interface Props {
   project: Project;
@@ -105,6 +138,7 @@ interface Props {
   onProjectDataChanged?: () => void;
   processing: string | null;
   processingProgress: ProcessingProgress | null;
+  chatFilesCache: ChatFilesCache;
 }
 
 function formatDateTime(ms: number): string {
@@ -130,12 +164,11 @@ interface PreviewState {
   processed: boolean;
 }
 
-export function ProjectDetail({ project, onToggle, onProcess, onEdit, onUpdateProject, onProjectDataChanged, processing, processingProgress }: Props) {
+export function ProjectDetail({ project, onToggle, onProcess, onEdit, onUpdateProject, onProjectDataChanged, processing, processingProgress, chatFilesCache }: Props) {
   const isProcessing = processing === project.id;
   const progress = processingProgress?.projectId === project.id ? processingProgress : null;
-  const [chatFiles, setChatFiles] = useState<ChatFileInfo[]>([]);
-  const [chatFilesLoading, setChatFilesLoading] = useState(true);
-  const [filesVersion, setFilesVersion] = useState(0);
+  const [chatFiles, setChatFiles] = useState<ChatFileInfo[]>(() => chatFilesCache.peekCache(project.id) ?? []);
+  const [chatFilesLoading, setChatFilesLoading] = useState(() => !chatFilesCache.peekCache(project.id));
   const [preview, setPreview] = useState<PreviewState | null>(null);
   const [openDirPath, setOpenDirPath] = useState<string | null>(null);
   const [showOpenerDialog, setShowOpenerDialog] = useState(false);
@@ -167,44 +200,41 @@ export function ProjectDetail({ project, onToggle, onProcess, onEdit, onUpdatePr
     onUpdateProject(updated);
   };
 
+  // Fetch from cache on mount (cache miss triggers IPC, hit returns instantly)
   useEffect(() => {
     let mounted = true;
-    setChatFilesLoading(true);
-    ListChatFiles(project.id).then((files) => {
-      if (mounted) setChatFiles(files ?? []);
+    if (!chatFilesCache.peekCache(project.id)) {
+      setChatFilesLoading(true);
+    }
+    chatFilesCache.getChatFiles(project.id).then((files) => {
+      if (mounted) {
+        setChatFiles(files);
+        setChatFilesLoading(false);
+      }
     }).catch(() => {
-      if (mounted) setChatFiles([]);
-    }).finally(() => {
       if (mounted) setChatFilesLoading(false);
     });
     return () => { mounted = false; };
-  }, [project.id, isProcessing, filesVersion]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [project.id, chatFilesCache]);
 
+  // Sync from cache when it updates (debounced watcher/processed events)
+  const cacheVersion = chatFilesCache.versions[project.id];
   useEffect(() => {
-    const unbindProcessed = EventsOn("file:processed", (event: { projectId: string }) => {
-      if (event.projectId === project.id) {
-        setFilesVersion((v) => v + 1);
-      }
-    });
+    const cached = chatFilesCache.peekCache(project.id);
+    if (cached) {
+      setChatFiles(cached);
+      setChatFilesLoading(false);
+    }
+  }, [cacheVersion, project.id, chatFilesCache]);
 
-    const unbindWatcher = EventsOn("watcher:event", (event: { projectId: string }) => {
-      if (event.projectId === project.id) {
-        setFilesVersion((v) => v + 1);
-      }
-    });
-
-    const unbindCursor = EventsOn("cursor:changed", (event: { projectId: string }) => {
-      if (event.projectId === project.id) {
-        setFilesVersion((v) => v + 1);
-      }
-    });
-
-    return () => {
-      unbindProcessed();
-      unbindWatcher();
-      unbindCursor();
-    };
-  }, [project.id]);
+  // Force invalidate cache after batch processing completes
+  const prevProcessing = useRef(isProcessing);
+  useEffect(() => {
+    if (prevProcessing.current && !isProcessing) {
+      chatFilesCache.invalidate(project.id);
+    }
+    prevProcessing.current = isProcessing;
+  }, [isProcessing, project.id, chatFilesCache]);
 
   async function handleShowDetails(file: ChatFileInfo) {
     setPreview({ file, markdown: "", loading: true, processing: false, processed: false });
@@ -230,7 +260,7 @@ export function ProjectDetail({ project, onToggle, onProcess, onEdit, onUpdatePr
     try {
       await ProcessSingleFile(file.filePath, file.sourceType, project.outputDir);
       setPreview((prev) => prev ? { ...prev, processing: false, processed: true } : null);
-      setFilesVersion((v) => v + 1);
+      chatFilesCache.invalidate(project.id);
     } catch {
       setPreview((prev) => prev ? { ...prev, processing: false } : null);
     }
@@ -238,22 +268,27 @@ export function ProjectDetail({ project, onToggle, onProcess, onEdit, onUpdatePr
 
   async function handleIgnoreChat(file: ChatFileInfo) {
     await IgnoreChat(project.id, file.filePath, getFileDisplayName(file));
-    setChatFiles((prev) => prev.map((f) => f.filePath === file.filePath ? { ...f, ignored: true } : f));
+    const updater = (prev: ChatFileInfo[]) => prev.map((f) => f.filePath === file.filePath ? { ...f, ignored: true } : f);
+    setChatFiles(updater);
+    chatFilesCache.updateCache(project.id, updater);
   }
 
   async function handleUnignoreChat(file: ChatFileInfo) {
     await UnignoreChat(project.id, file.filePath);
-    setChatFiles((prev) => prev.map((f) => f.filePath === file.filePath ? { ...f, ignored: false } : f));
+    const updater = (prev: ChatFileInfo[]) => prev.map((f) => f.filePath === file.filePath ? { ...f, ignored: false } : f);
+    setChatFiles(updater);
+    chatFilesCache.updateCache(project.id, updater);
   }
 
   function markFileProcessed(filePath: string) {
-    setChatFiles((prev) =>
+    const updater = (prev: ChatFileInfo[]) =>
       prev.map((f) =>
         f.filePath === filePath
           ? { ...f, parsed: true, partiallyParsed: false, processedAt: Date.now() }
           : f
-      )
-    );
+      );
+    setChatFiles(updater);
+    chatFilesCache.updateCache(project.id, updater);
   }
 
   const handleCreateCategory = useCallback(async (name: string): Promise<Category> => {
@@ -269,21 +304,27 @@ export function ProjectDetail({ project, onToggle, onProcess, onEdit, onUpdatePr
 
   const handleDeleteCategory = useCallback(async (categoryId: string) => {
     await DeleteCategory(project.id, categoryId);
-    setChatFiles((prev) => prev.map((f) => f.categoryId === categoryId ? { ...f, categoryId: undefined } : f));
+    const updater = (prev: ChatFileInfo[]) => prev.map((f) => f.categoryId === categoryId ? { ...f, categoryId: undefined } : f);
+    setChatFiles(updater);
+    chatFilesCache.updateCache(project.id, updater);
     onProjectDataChanged?.();
-  }, [project.id, onProjectDataChanged]);
+  }, [project.id, onProjectDataChanged, chatFilesCache]);
 
   const handleAssignCategory = useCallback(async (file: ChatFileInfo, categoryId: string) => {
     await AssignCategory(project.id, file.filePath, categoryId);
-    setChatFiles((prev) => prev.map((f) => f.filePath === file.filePath ? { ...f, categoryId } : f));
+    const updater = (prev: ChatFileInfo[]) => prev.map((f) => f.filePath === file.filePath ? { ...f, categoryId } : f);
+    setChatFiles(updater);
+    chatFilesCache.updateCache(project.id, updater);
     onProjectDataChanged?.();
-  }, [project.id, onProjectDataChanged]);
+  }, [project.id, onProjectDataChanged, chatFilesCache]);
 
   const handleUnassignCategory = useCallback(async (file: ChatFileInfo) => {
     await UnassignCategory(project.id, file.filePath);
-    setChatFiles((prev) => prev.map((f) => f.filePath === file.filePath ? { ...f, categoryId: undefined } : f));
+    const updater = (prev: ChatFileInfo[]) => prev.map((f) => f.filePath === file.filePath ? { ...f, categoryId: undefined } : f);
+    setChatFiles(updater);
+    chatFilesCache.updateCache(project.id, updater);
     onProjectDataChanged?.();
-  }, [project.id, onProjectDataChanged]);
+  }, [project.id, onProjectDataChanged, chatFilesCache]);
 
   const sortByCreated = (a: ChatFileInfo, b: ChatFileInfo) => (b.createdAt || 0) - (a.createdAt || 0);
   const matchesSearch = (f: ChatFileInfo) => {
@@ -574,37 +615,9 @@ export function ProjectDetail({ project, onToggle, onProcess, onEdit, onUpdatePr
             </div>
           </div>
           {parsedFiles.length > 0 && (
-            <div className="chat-files-group">
+            <div className="chat-files-group chat-files-group-processed">
               <div className="chat-files-group-label">Processed ({parsedFiles.length})</div>
               <div className="chat-files-group-hint">Click any item below to show its content</div>
-
-              {/* Category groups */}
-              {categoryGroups.map(({ category, files }) => (
-                <div key={category.id} className="chat-files-category-group">
-                  <CategoryGroupHeader
-                    category={category}
-                    onRename={(newName) => handleRenameCategory(category.id, newName)}
-                    onDelete={() => handleDeleteCategory(category.id)}
-                  />
-                  <div className="chat-files-scroll">
-                    {files.map((file) => (
-                      <ChatFileRow
-                        key={file.filePath}
-                        file={file}
-                        onShowDetails={() => handleShowDetails(file)}
-                        onProcessed={() => markFileProcessed(file.filePath)}
-                        outputDir={project.outputDir}
-                        onIgnore={() => handleIgnoreChat(file)}
-                        categories={categories}
-                        onAssignCategory={(catId) => handleAssignCategory(file, catId)}
-                        onUnassignCategory={() => handleUnassignCategory(file)}
-                        onCreateCategory={handleCreateCategory}
-                        onRenameCategory={handleRenameCategory}
-                      />
-                    ))}
-                  </div>
-                </div>
-              ))}
 
               {/* Uncategorized */}
               {uncategorizedParsed.length > 0 && (
@@ -633,10 +646,38 @@ export function ProjectDetail({ project, onToggle, onProcess, onEdit, onUpdatePr
                 </div>
                 </div>
               )}
+
+              {/* Category groups */}
+              {categoryGroups.map(({ category, files }) => (
+                <div key={category.id} className="chat-files-category-group">
+                  <CategoryGroupHeader
+                    category={category}
+                    onRename={(newName) => handleRenameCategory(category.id, newName)}
+                    onDelete={() => handleDeleteCategory(category.id)}
+                  />
+                  <div className="chat-files-scroll">
+                    {files.map((file) => (
+                      <ChatFileRow
+                        key={file.filePath}
+                        file={file}
+                        onShowDetails={() => handleShowDetails(file)}
+                        onProcessed={() => markFileProcessed(file.filePath)}
+                        outputDir={project.outputDir}
+                        onIgnore={() => handleIgnoreChat(file)}
+                        categories={categories}
+                        onAssignCategory={(catId) => handleAssignCategory(file, catId)}
+                        onUnassignCategory={() => handleUnassignCategory(file)}
+                        onCreateCategory={handleCreateCategory}
+                        onRenameCategory={handleRenameCategory}
+                      />
+                    ))}
+                  </div>
+                </div>
+              ))}
             </div>
           )}
           {partiallyParsedFiles.length > 0 && (
-            <div className="chat-files-group">
+            <div className="chat-files-group chat-files-group-partially-processed">
               <div className="chat-files-group-label">Partially processed ({partiallyParsedFiles.length})</div>
               <div className="chat-files-scroll">
                 {partiallyParsedFiles.map((file) => (
@@ -654,7 +695,7 @@ export function ProjectDetail({ project, onToggle, onProcess, onEdit, onUpdatePr
             </div>
           )}
           {unparsedFiles.length > 0 && (
-            <div className="chat-files-group">
+            <div className="chat-files-group chat-files-group-unprocessed">
               <div className="chat-files-group-label">Not yet processed ({unparsedFiles.length})</div>
               <div className="chat-files-group-hint">Click any item below to show its content</div>
               <div className="chat-files-scroll">
