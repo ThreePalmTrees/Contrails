@@ -43,6 +43,14 @@ func RenderMarkdown(session *ParsedSession) string {
 				}
 				markdown.WriteString("\n\n")
 			}
+			if len(message.Images) > 0 {
+				for i, img := range message.Images {
+					if len(message.Images) > 1 {
+						markdown.WriteString(fmt.Sprintf("**Image %d:**\n\n", i+1))
+					}
+					markdown.WriteString(fmt.Sprintf("{{CONTRAIL_IMAGE:%s;base64,%s}}\n\n", img.MediaType, img.Data))
+				}
+			}
 		} else {
 			markdown.WriteString(fmt.Sprintf("## 🤖 Assistant - %s\n\n", message.Timestamp))
 			if message.Model != "" {

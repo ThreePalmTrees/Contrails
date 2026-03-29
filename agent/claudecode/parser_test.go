@@ -874,3 +874,63 @@ func TestDecodeProjectPath(t *testing.T) {
 		})
 	}
 }
+
+func TestParser_UserImages(t *testing.T) {
+	parsed, err := (&Parser{}).ParseFile(filepath.Join("..", "..", "testdata", "fixtures", "claudecode", "user_images.jsonl"))
+	if err != nil {
+		t.Fatalf("ParseFile failed: %v", err)
+	}
+
+	if len(parsed.Messages) != 4 {
+		t.Fatalf("Expected 4 messages, got %d", len(parsed.Messages))
+	}
+
+	// First user message: one image
+	user1 := parsed.Messages[0]
+	if user1.Role != "user" {
+		t.Errorf("Expected user role, got %q", user1.Role)
+	}
+	if user1.Content != "Here is a screenshot of the error" {
+		t.Errorf("Expected user text content, got %q", user1.Content)
+	}
+	if len(user1.Images) != 1 {
+		t.Fatalf("Expected 1 image in first user message, got %d", len(user1.Images))
+	}
+	if user1.Images[0].MediaType != "image/png" {
+		t.Errorf("Expected media type image/png, got %q", user1.Images[0].MediaType)
+	}
+	if user1.Images[0].Data != "iVBORw0KGgoAAAANSUhEUg==" {
+		t.Errorf("Unexpected image data: %q", user1.Images[0].Data)
+	}
+
+	// Second user message: two images
+	user2 := parsed.Messages[2]
+	if user2.Role != "user" {
+		t.Errorf("Expected user role, got %q", user2.Role)
+	}
+	if len(user2.Images) != 2 {
+		t.Fatalf("Expected 2 images in second user message, got %d", len(user2.Images))
+	}
+	if user2.Images[0].MediaType != "image/png" {
+		t.Errorf("Expected first image media type image/png, got %q", user2.Images[0].MediaType)
+	}
+	if user2.Images[1].MediaType != "image/jpeg" {
+		t.Errorf("Expected second image media type image/jpeg, got %q", user2.Images[1].MediaType)
+	}
+
+	// Verify markdown rendering includes images
+	md := agent.RenderMarkdown(parsed)
+	if !strings.Contains(md, "{{CONTRAIL_IMAGE:image/png;base64,iVBORw0KGgoAAAANSUhEUg==}}") {
+		t.Error("Expected rendered markdown to contain embedded PNG image")
+	}
+	if !strings.Contains(md, "{{CONTRAIL_IMAGE:image/jpeg;base64,BBBB}}") {
+		t.Error("Expected rendered markdown to contain embedded JPEG image")
+	}
+	// Second user message has 2 images, so should have numbered labels
+	if !strings.Contains(md, "**Image 1:**") {
+		t.Error("Expected numbered image label for multi-image message")
+	}
+	if !strings.Contains(md, "**Image 2:**") {
+		t.Error("Expected numbered image label for multi-image message")
+	}
+}

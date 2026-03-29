@@ -96,16 +96,14 @@ func (parser *Parser) ParseFile(filePath string) (*agent.ParsedSession, error) {
 		}
 	}
 
-	// Walk lines and build messages, consolidating assistant turns that
-	// share the same API message ID into a single ParsedMessage.
-	var lastAssistantMsgID string
+	// Walk lines and build messages, consolidating all consecutive assistant
+	// turns into a single ParsedMessage until the next real user message.
 	var lastAssistantMsg *agent.ParsedMessage
 
 	flushAssistant := func() {
 		if lastAssistantMsg != nil {
 			session.Messages = append(session.Messages, *lastAssistantMsg)
 			lastAssistantMsg = nil
-			lastAssistantMsgID = ""
 		}
 	}
 
@@ -165,21 +163,17 @@ func (parser *Parser) ParseFile(filePath string) (*agent.ParsedSession, error) {
 			}
 
 		case "assistant":
-			msgID := line.Message.ID
-			if msgID != "" && msgID == lastAssistantMsgID && lastAssistantMsg != nil {
-				// Same API response — merge parts into the existing message
+			if lastAssistantMsg != nil {
+				// Merge into the current assistant turn
 				mergeAssistantParts(lastAssistantMsg, line, subagentProgress)
 			} else {
-				// New API response — flush the previous message and start fresh
-				flushAssistant()
+				// Start a new assistant turn
 				assistantMessage := buildAssistantMessage(line, subagentProgress)
 				if assistantMessage != nil {
-					// Capture model from first assistant message
 					if session.Model == "" && assistantMessage.Model != "" {
 						session.Model = assistantMessage.Model
 					}
 					lastAssistantMsg = assistantMessage
-					lastAssistantMsgID = msgID
 				}
 			}
 
@@ -211,14 +205,16 @@ func isLocalCommandContent(content interface{}) bool {
 		strings.HasPrefix(text, "<local-command-caveat>")
 }
 
-// buildUserMessage extracts text content from a user-role JSONL line.
+// buildUserMessage extracts text content and images from a user-role JSONL line.
 func buildUserMessage(line jsonlLine) *agent.ParsedMessage {
 	if isLocalCommandContent(line.Message.Content) {
 		return nil
 	}
 
 	content := extractTextContent(line.Message.Content)
-	if content == "" {
+	images := extractImageBlocks(line.Message.Content)
+
+	if content == "" && len(images) == 0 {
 		return nil
 	}
 
@@ -227,11 +223,30 @@ func buildUserMessage(line jsonlLine) *agent.ParsedMessage {
 		timestamp = agent.FormatISO8601Timestamp(line.Timestamp)
 	}
 
-	return &agent.ParsedMessage{
+	msg := &agent.ParsedMessage{
 		Timestamp: timestamp,
 		Role:      "user",
 		Content:   content,
 	}
+	if len(images) > 0 {
+		msg.Images = images
+	}
+	return msg
+}
+
+// extractImageBlocks finds all image content blocks and returns them as ImageBlock values.
+func extractImageBlocks(content interface{}) []agent.ImageBlock {
+	blocks := parseContentBlocks(content)
+	var images []agent.ImageBlock
+	for _, block := range blocks {
+		if block.Type == "image" && block.Source != nil && block.Source.Data != "" {
+			images = append(images, agent.ImageBlock{
+				MediaType: block.Source.MediaType,
+				Data:      block.Source.Data,
+			})
+		}
+	}
+	return images
 }
 
 // buildAssistantMessage extracts text and tool_use blocks from an assistant-role JSONL line.

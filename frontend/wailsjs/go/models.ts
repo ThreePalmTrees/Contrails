@@ -1,5 +1,19 @@
 export namespace agent {
 	
+	export class ImageBlock {
+	    mediaType: string;
+	    data: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ImageBlock(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.mediaType = source["mediaType"];
+	        this.data = source["data"];
+	    }
+	}
 	export class TodoItem {
 	    id: string;
 	    title: string;
@@ -106,6 +120,7 @@ export namespace agent {
 	    canceled?: boolean;
 	    confirmation?: string;
 	    attachments?: string[];
+	    images?: ImageBlock[];
 	    maxToolCallsExceeded?: boolean;
 	
 	    static createFrom(source: any = {}) {
@@ -123,6 +138,7 @@ export namespace agent {
 	        this.canceled = source["canceled"];
 	        this.confirmation = source["confirmation"];
 	        this.attachments = source["attachments"];
+	        this.images = this.convertValues(source["images"], ImageBlock);
 	        this.maxToolCallsExceeded = source["maxToolCallsExceeded"];
 	    }
 	

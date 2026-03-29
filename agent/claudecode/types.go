@@ -18,8 +18,16 @@ type toolUseResult struct {
 	Interrupted bool   `json:"interrupted,omitempty"`
 }
 
+// imageSource holds the source data for an image content block.
+type imageSource struct {
+	Type      string `json:"type"`       // "base64"
+	MediaType string `json:"media_type"` // e.g. "image/png"
+	Data      string `json:"data"`       // base64-encoded image data
+}
+
 // contentBlock is a single block within an assistant message's content array.
-// It can be a text block, a thinking block, a tool_use block, or a tool_result block.
+// It can be a text block, a thinking block, a tool_use block, a tool_result block,
+// or an image block.
 type contentBlock struct {
 	Type      string                 `json:"type"`
 	Text      string                 `json:"text,omitempty"`
@@ -31,6 +39,7 @@ type contentBlock struct {
 	ToolUseID string                 `json:"tool_use_id,omitempty"`
 	Content   interface{}            `json:"content,omitempty"` // string or nested blocks
 	IsError   bool                   `json:"is_error,omitempty"`
+	Source    *imageSource           `json:"source,omitempty"`  // image content blocks
 }
 
 // messageUsage tracks token consumption.

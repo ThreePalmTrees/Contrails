@@ -66,7 +66,7 @@ function renderTextSegment(text: string, key: number): React.ReactNode {
 }
 
 function renderSectionContent(markdown: string, keyOffset: number): React.ReactNode[] {
-  const blockPattern = /(<details>\n<summary>(.*?)<\/summary>\n\n([\s\S]*?)\n<\/details>|<thinking>\n([\s\S]*?)\n<\/thinking>)/g;
+  const blockPattern = /(<details>\n<summary>(.*?)<\/summary>\n\n([\s\S]*?)\n<\/details>|<thinking>\n([\s\S]*?)\n<\/thinking>|\{\{CONTRAIL_IMAGE:(image\/[a-z]+;base64,[^}]{100,})\}\})/g;
   const nodes: React.ReactNode[] = [];
   let lastIndex = 0;
   let match: RegExpExecArray | null;
@@ -82,6 +82,10 @@ function renderSectionContent(markdown: string, keyOffset: number): React.ReactN
           <summary>{match[2]}</summary>
           <span>{match[3]}</span>
         </details>
+      );
+    } else if (match[0].startsWith("{{CONTRAIL_IMAGE:")) {
+      nodes.push(
+        <img key={key++} src={`data:${match[5]}`} className="chat-preview-image" style={{ maxWidth: '100%', borderRadius: 6, margin: '8px 0' }} />
       );
     } else {
       nodes.push(<span key={key++} className="chat-preview-thinking">{match[0]}</span>);

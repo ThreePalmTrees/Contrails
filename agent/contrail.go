@@ -40,6 +40,12 @@ type ParsedSession struct {
 	Messages      []ParsedMessage `json:"messages"`
 }
 
+// ImageBlock holds a base64-encoded image attached to a user message.
+type ImageBlock struct {
+	MediaType string `json:"mediaType"` // e.g. "image/png"
+	Data      string `json:"data"`      // base64-encoded image data
+}
+
 // ParsedMessage represents a single message (user or assistant) in a parsed session.
 type ParsedMessage struct {
 	Timestamp            string        `json:"timestamp"`
@@ -51,6 +57,7 @@ type ParsedMessage struct {
 	Canceled             bool          `json:"canceled,omitempty"`
 	Confirmation         string        `json:"confirmation,omitempty"`
 	Attachments          []string      `json:"attachments,omitempty"`
+	Images               []ImageBlock  `json:"images,omitempty"`
 	MaxToolCallsExceeded bool          `json:"maxToolCallsExceeded,omitempty"`
 }
 

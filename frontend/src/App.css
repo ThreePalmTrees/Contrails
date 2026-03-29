@@ -1338,6 +1338,7 @@ button, input, select, textarea, a, [role="button"] {
   display: flex;
   flex-direction: column;
   height: 100%;
+  overflow: hidden;
 }
 .chat-preview-header {
   display: flex;
@@ -1357,6 +1358,8 @@ button, input, select, textarea, a, [role="button"] {
 }
 .chat-preview-body {
   flex: 1;
+  min-width: 0;
+  overflow-x: hidden;
   overflow-y: auto;
   padding: 20px 40px;
   background: linear-gradient(to top, var(--bg-elevated), var(--bg-base));
@@ -1374,6 +1377,7 @@ button, input, select, textarea, a, [role="button"] {
   line-height: 1.6;
   color: var(--text-primary);
   word-break: break-word;
+  overflow-wrap: anywhere;
   font-family: var(--font-mono, monospace);
   margin: 0;
 }
@@ -1406,6 +1410,10 @@ button, input, select, textarea, a, [role="button"] {
 .chat-preview-markdown > .chat-message-section:first-child > .chat-preview-role-header {
   border-top: none;
   margin-top: -20px;
+}
+.chat-preview-markdown img {
+  /* border: 1px solid var(--border); */
+  box-shadow: 0 0 4px 3px var(--shadow-color);
 }
 .chat-preview-role-header {
   position: sticky;
@@ -1446,7 +1454,6 @@ button, input, select, textarea, a, [role="button"] {
   white-space: pre-wrap;
   color: var(--text-secondary);
   background: var(--bg-elevated);
-
 }
 .chat-processed-badge {
   display: flex;
@@ -1468,6 +1475,10 @@ button, input, select, textarea, a, [role="button"] {
 }
 .diff-unchanged {
   color: var(--text-secondary);
+}
+.chat-preview-markdown.diff-view {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 .chat-preview-markdown.diff-view span {
   display: inline;
