@@ -9,7 +9,6 @@ import claudeLogo from "../assets/images/claude.png";
 import cursorLogo from "../assets/images/cursor.png";
 import { PreviewChatFile, ProcessSingleFile, ReadExistingContrail, IgnoreChat, UnignoreChat, CreateCategory, RenameCategory, DeleteCategory, AssignCategory, UnassignCategory } from "../../wailsjs/go/main/App";
 import type { useChatFilesCache } from "../hooks/useChatFilesCache";
-import { diffLines, Change } from "diff";
 
 function renderTextSegment(text: string, key: number): React.ReactNode {
   if (!text.includes('|')) {
@@ -100,35 +99,114 @@ function renderSectionContent(markdown: string, keyOffset: number): React.ReactN
   return nodes;
 }
 
-function renderMarkdownContent(markdown: string): React.ReactNode {
-  // Split into message sections at role headers (## 🧑 User / ## 🤖 Assistant)
+interface MarkdownSection {
+  header: string;  // raw header text (without "## "), empty for preamble
+  body: string;    // section body
+  raw: string;     // full raw text (header line + body) for diffing
+}
+
+function splitIntoSections(markdown: string): MarkdownSection[] {
   const sectionPattern = /^(## (?:🧑 User|🤖 Assistant)[^\n]*)/m;
   const parts = markdown.split(sectionPattern);
-  const sections: React.ReactNode[] = [];
-  let key = 0;
+  const sections: MarkdownSection[] = [];
 
   // parts alternates: [preamble, header1, body1, header2, body2, ...]
-  // First element is preamble (content before any role header)
   if (parts[0].trim()) {
-    sections.push(
-      <div key={key++} className="chat-message-section">
-        {renderSectionContent(parts[0], key * 100)}
-      </div>
-    );
+    sections.push({ header: '', body: parts[0], raw: parts[0] });
   }
 
   for (let i = 1; i < parts.length; i += 2) {
-    const header = parts[i].replace(/^## /, '');
+    const headerLine = parts[i];
+    const header = headerLine.replace(/^## /, '');
     const body = (parts[i + 1] || '').replace(/^\n+/, '');
-    sections.push(
+    sections.push({ header, body, raw: headerLine + '\n' + (parts[i + 1] || '') });
+  }
+
+  return sections;
+}
+
+function renderMarkdownContent(markdown: string): React.ReactNode {
+  const sections = splitIntoSections(markdown);
+  const nodes: React.ReactNode[] = [];
+  let key = 0;
+
+  for (const section of sections) {
+    nodes.push(
       <div key={key++} className="chat-message-section">
-        <div className="chat-preview-role-header">{header}</div>
-        {renderSectionContent(body, key * 100)}
+        {section.header && <div className="chat-preview-role-header">{section.header}</div>}
+        {renderSectionContent(section.body, key * 100)}
       </div>
     );
   }
 
-  return <>{sections}</>;
+  return <>{nodes}</>;
+}
+
+function renderDiffContent(oldMarkdown: string, newMarkdown: string): React.ReactNode {
+  const oldSections = splitIntoSections(oldMarkdown);
+  const newSections = splitIntoSections(newMarkdown);
+
+  // Build a map of old sections by raw content for matching
+  const oldSet = new Set(oldSections.map(s => s.raw));
+  const newSet = new Set(newSections.map(s => s.raw));
+
+  // Walk through both lists to produce a merged diff view.
+  // Sections present only in old = removed, only in new = added, in both = unchanged.
+  const result: React.ReactNode[] = [];
+  let key = 0;
+  let oldIdx = 0;
+  let newIdx = 0;
+
+  while (oldIdx < oldSections.length || newIdx < newSections.length) {
+    const oldSec = oldSections[oldIdx];
+    const newSec = newSections[newIdx];
+
+    if (oldSec && newSec && oldSec.raw === newSec.raw) {
+      // Unchanged section
+      result.push(
+        <div key={key++} className="chat-message-section diff-section-unchanged">
+          {newSec.header && <div className="chat-preview-role-header">{newSec.header}</div>}
+          {renderSectionContent(newSec.body, key * 100)}
+        </div>
+      );
+      oldIdx++;
+      newIdx++;
+    } else if (oldSec && !newSet.has(oldSec.raw)) {
+      // Removed section (in old but not in new)
+      result.push(
+        <div key={key++} className="chat-message-section diff-section-removed">
+          {oldSec.header && <div className="chat-preview-role-header">{oldSec.header}</div>}
+          {renderSectionContent(oldSec.body, key * 100)}
+        </div>
+      );
+      oldIdx++;
+    } else if (newSec && !oldSet.has(newSec.raw)) {
+      // Added section (in new but not in old)
+      result.push(
+        <div key={key++} className="chat-message-section diff-section-added">
+          {newSec.header && <div className="chat-preview-role-header">{newSec.header}</div>}
+          {renderSectionContent(newSec.body, key * 100)}
+        </div>
+      );
+      newIdx++;
+    } else {
+      // Sections exist in both but are out of order — advance whichever
+      // appears earlier in the other list (or just advance new)
+      if (newSec) {
+        result.push(
+          <div key={key++} className="chat-message-section diff-section-added">
+            {newSec.header && <div className="chat-preview-role-header">{newSec.header}</div>}
+            {renderSectionContent(newSec.body, key * 100)}
+          </div>
+        );
+        newIdx++;
+      } else {
+        oldIdx++;
+      }
+    }
+  }
+
+  return <>{result}</>;
 }
 
 type ChatFilesCache = ReturnType<typeof useChatFilesCache>;
@@ -162,7 +240,7 @@ function getFileDisplayName(file: ChatFileInfo): string {
 interface PreviewState {
   file: ChatFileInfo;
   markdown: string;
-  diffs?: Change[];
+  oldMarkdown?: string;
   loading: boolean;
   processing: boolean;
   processed: boolean;
@@ -245,15 +323,15 @@ export function ProjectDetail({ project, onToggle, onProcess, onEdit, onUpdatePr
     try {
       const md = await PreviewChatFile(file.filePath, file.sourceType);
 
-      let diffs: Change[] | undefined = undefined;
+      let oldMarkdown: string | undefined = undefined;
       if (file.partiallyParsed) {
         const oldMd = await ReadExistingContrail(file.fileName, project.outputDir);
         if (oldMd) {
-          diffs = diffLines(oldMd, md);
+          oldMarkdown = oldMd;
         }
       }
 
-      setPreview((prev) => prev ? { ...prev, markdown: md, diffs, loading: false } : null);
+      setPreview((prev) => prev ? { ...prev, markdown: md, oldMarkdown, loading: false } : null);
     } catch {
       setPreview((prev) => prev ? { ...prev, markdown: "Failed to parse file.", loading: false } : null);
     }
@@ -380,13 +458,8 @@ export function ProjectDetail({ project, onToggle, onProcess, onEdit, onUpdatePr
           <div className="chat-preview-body">
             {preview.loading ? (
               <div className="chat-preview-loading"><Loader2 size={18} className="spin" /> Parsing…</div>
-            ) : preview.diffs ? (
-              <pre className="chat-preview-markdown diff-view">
-                {preview.diffs.map((part, index) => {
-                  const className = part.added ? "diff-added" : part.removed ? "diff-removed" : "diff-unchanged";
-                  return <span key={index} className={className}>{part.value}</span>;
-                })}
-              </pre>
+            ) : preview.oldMarkdown ? (
+              <div className="chat-preview-markdown diff-view">{renderDiffContent(preview.oldMarkdown, preview.markdown)}</div>
             ) : (
               <div className="chat-preview-markdown">{renderMarkdownContent(preview.markdown)}</div>
             )}
