@@ -13,7 +13,7 @@
 
 <i>Contrails, short for "condensation trails", are the trails left behind by aircrafts at high altitudes.</i>
 
-Contrails is a macOS and Windows app that:
+Contrails is an opensource app (macOS and Windows) that:
 1. Watches your coding agent sessions _(VS Code Copilot, Claude Code, and Cursor)_
 2. Parses them into readable Markdown
 3. Saves them into your project repositories.
