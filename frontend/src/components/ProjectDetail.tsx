@@ -64,32 +64,106 @@ function renderTextSegment(text: string, key: number): React.ReactNode {
   return <React.Fragment key={key}>{parts}</React.Fragment>;
 }
 
+// extractDetailsBlocks finds top-level <details> blocks, correctly handling nesting.
+// Returns an array of { start, end, summary, innerContent } for each top-level block.
+function extractDetailsBlocks(markdown: string): { start: number; end: number; summary: string; inner: string }[] {
+  const blocks: { start: number; end: number; summary: string; inner: string }[] = [];
+  const openTag = '<details>';
+  const closeTag = '</details>';
+  let searchFrom = 0;
+
+  while (searchFrom < markdown.length) {
+    const openIdx = markdown.indexOf(openTag, searchFrom);
+    if (openIdx === -1) break;
+
+    // Find matching close tag by counting depth
+    let depth = 1;
+    let pos = openIdx + openTag.length;
+    while (depth > 0 && pos < markdown.length) {
+      const nextOpen = markdown.indexOf(openTag, pos);
+      const nextClose = markdown.indexOf(closeTag, pos);
+      if (nextClose === -1) break; // malformed, bail
+      if (nextOpen !== -1 && nextOpen < nextClose) {
+        depth++;
+        pos = nextOpen + openTag.length;
+      } else {
+        depth--;
+        if (depth === 0) {
+          const fullBlock = markdown.slice(openIdx, nextClose + closeTag.length);
+          // Extract summary
+          const summaryMatch = fullBlock.match(/<summary>(.*?)<\/summary>/);
+          const summary = summaryMatch ? summaryMatch[1] : '';
+          // Extract inner content (after summary closing + \n\n, before final \n</details>)
+          const summaryEnd = fullBlock.indexOf('</summary>');
+          const innerStart = summaryEnd + '</summary>'.length;
+          const innerEnd = fullBlock.length - closeTag.length;
+          let inner = fullBlock.slice(innerStart, innerEnd);
+          // Trim leading/trailing newlines
+          inner = inner.replace(/^\n+/, '').replace(/\n+$/, '');
+          blocks.push({ start: openIdx, end: nextClose + closeTag.length, summary, inner });
+        }
+        pos = nextClose + closeTag.length;
+      }
+    }
+    searchFrom = (depth === 0) ? pos : pos; // move past this block
+    if (depth !== 0) break; // malformed, stop
+  }
+
+  return blocks;
+}
+
 function renderSectionContent(markdown: string, keyOffset: number): React.ReactNode[] {
-  const blockPattern = /(<details>\n<summary>(.*?)<\/summary>\n\n([\s\S]*?)\n<\/details>|<thinking>\n([\s\S]*?)\n<\/thinking>|\{\{CONTRAIL_IMAGE:(image\/[a-z]+;base64,[^}]{100,})\}\})/g;
   const nodes: React.ReactNode[] = [];
-  let lastIndex = 0;
-  let match: RegExpExecArray | null;
   let key = keyOffset;
 
-  while ((match = blockPattern.exec(markdown)) !== null) {
-    if (match.index > lastIndex) {
-      nodes.push(renderTextSegment(markdown.slice(lastIndex, match.index), key++));
+  // Find all top-level <details> blocks (nesting-aware), <thinking> blocks, and images
+  type Block = { start: number; end: number; type: 'details' | 'thinking' | 'image'; summary?: string; inner?: string; src?: string };
+  const allBlocks: Block[] = [];
+
+  // Details blocks (nesting-aware)
+  for (const db of extractDetailsBlocks(markdown)) {
+    allBlocks.push({ start: db.start, end: db.end, type: 'details', summary: db.summary, inner: db.inner });
+  }
+
+  // Thinking blocks
+  const thinkingPattern = /<thinking>\n([\s\S]*?)\n<\/thinking>/g;
+  let m: RegExpExecArray | null;
+  while ((m = thinkingPattern.exec(markdown)) !== null) {
+    allBlocks.push({ start: m.index, end: m.index + m[0].length, type: 'thinking', inner: m[0] });
+  }
+
+  // Image blocks
+  const imagePattern = /\{\{CONTRAIL_IMAGE:(image\/[a-z]+;base64,[^}]{100,})\}\}/g;
+  while ((m = imagePattern.exec(markdown)) !== null) {
+    allBlocks.push({ start: m.index, end: m.index + m[0].length, type: 'image', src: m[1] });
+  }
+
+  // Sort by start position and remove overlapping blocks (details take priority)
+  allBlocks.sort((a, b) => a.start - b.start);
+
+  let lastIndex = 0;
+  for (const block of allBlocks) {
+    if (block.start < lastIndex) continue; // skip overlapping
+    if (block.start > lastIndex) {
+      nodes.push(renderTextSegment(markdown.slice(lastIndex, block.start), key++));
     }
-    if (match[0].startsWith("<details>")) {
+    if (block.type === 'details') {
+      // Recursively render inner content to support nested <details>
+      const innerNodes = renderSectionContent(block.inner || '', key + 1000);
       nodes.push(
         <details key={key++} className="chat-preview-details">
-          <summary>{match[2]}</summary>
-          <span>{match[3]}</span>
+          <summary>{block.summary}</summary>
+          <span>{innerNodes}</span>
         </details>
       );
-    } else if (match[0].startsWith("{{CONTRAIL_IMAGE:")) {
+    } else if (block.type === 'image') {
       nodes.push(
-        <img key={key++} src={`data:${match[5]}`} className="chat-preview-image" style={{ maxWidth: '100%', borderRadius: 6, margin: '8px 0' }} />
+        <img key={key++} src={`data:${block.src}`} className="chat-preview-image" style={{ maxWidth: '100%', borderRadius: 6, margin: '8px 0' }} />
       );
     } else {
-      nodes.push(<span key={key++} className="chat-preview-thinking">{match[0]}</span>);
+      nodes.push(<span key={key++} className="chat-preview-thinking">{block.inner}</span>);
     }
-    lastIndex = match.index + match[0].length;
+    lastIndex = block.end;
   }
 
   if (lastIndex < markdown.length) {

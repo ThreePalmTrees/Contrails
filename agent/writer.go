@@ -130,12 +130,31 @@ func WriteParsedSession(session *ParsedSession, outputDirectory string) (string,
 	return outputPath, nil
 }
 
+// countToolGroup counts the number of top-level tool calls in a consecutive
+// tool group starting at index start. It only counts PartToolCall and
+// PartFileEdit/PartCodeBlock (not sub-agent tool calls nested in SubParts).
+func countToolGroup(parts []MessagePart, start int) int {
+	count := 0
+	for i := start; i < len(parts); i++ {
+		switch parts[i].Type {
+		case PartToolCall, PartFileEdit, PartCodeBlock:
+			count++
+		case PartToolResult:
+			// results stay in the group but don't count
+		default:
+			return count
+		}
+	}
+	return count
+}
+
 // writeInterleavedParts renders message parts in order, grouping consecutive
-// tool calls under a single "### Tool Calls" heading.
+// tool calls under a single collapsible section with a count in the summary.
 func writeInterleavedParts(markdown *strings.Builder, parts []MessagePart) {
 	inToolGroup := false
 
-	for _, part := range parts {
+	for i := 0; i < len(parts); i++ {
+		part := parts[i]
 		switch part.Type {
 		case PartText:
 			if inToolGroup {
@@ -147,7 +166,12 @@ func writeInterleavedParts(markdown *strings.Builder, parts []MessagePart) {
 
 		case PartToolCall:
 			if !inToolGroup {
-				markdown.WriteString("<details>\n<summary>Tool Calls</summary>\n\n")
+				count := countToolGroup(parts, i)
+				summary := "Tool Calls"
+				if count > 0 {
+					summary = fmt.Sprintf("Tool Calls (%d)", count)
+				}
+				markdown.WriteString(fmt.Sprintf("<details>\n<summary>%s</summary>\n\n", summary))
 				inToolGroup = true
 			}
 			// Render based on tool-specific detail when available
@@ -169,7 +193,12 @@ func writeInterleavedParts(markdown *strings.Builder, parts []MessagePart) {
 		case PartFileEdit, PartCodeBlock:
 			// These are interleaved with tool calls, keep them in the flow
 			if !inToolGroup {
-				markdown.WriteString("<details>\n<summary>Tool Calls</summary>\n\n")
+				count := countToolGroup(parts, i)
+				summary := "Tool Calls"
+				if count > 0 {
+					summary = fmt.Sprintf("Tool Calls (%d)", count)
+				}
+				markdown.WriteString(fmt.Sprintf("<details>\n<summary>%s</summary>\n\n", summary))
 				inToolGroup = true
 			}
 			action := "Edited"
@@ -210,6 +239,7 @@ func writeInterleavedParts(markdown *strings.Builder, parts []MessagePart) {
 }
 
 // writeSubagentParts renders a subagent's conversation as a nested collapsed section.
+// Each tool call (with its result) is wrapped in its own nested <details> block.
 func writeSubagentParts(markdown *strings.Builder, subParts []MessagePart) {
 	// Count tool calls for the summary line
 	toolCount := 0
@@ -224,31 +254,55 @@ func writeSubagentParts(markdown *strings.Builder, subParts []MessagePart) {
 		summary = fmt.Sprintf("Subagent Activity (%d tool calls)", toolCount)
 	}
 
-	markdown.WriteString(fmt.Sprintf("\n  <details>\n  <summary>%s</summary>\n\n", summary))
+	markdown.WriteString(fmt.Sprintf("\n<details>\n<summary>%s</summary>\n\n", summary))
 
-	for _, sp := range subParts {
+	for i := 0; i < len(subParts); i++ {
+		sp := subParts[i]
 		switch sp.Type {
 		case PartText:
-			markdown.WriteString(fmt.Sprintf("  %s\n\n", sp.Content))
+			markdown.WriteString(fmt.Sprintf("%s\n\n", sp.Content))
 		case PartToolCall:
-			markdown.WriteString(fmt.Sprintf("  - **%s**", sp.Tool))
+			// Build the summary line for this tool call
+			toolSummary := sp.Tool
 			if sp.ToolArgs != "" {
-				markdown.WriteString(fmt.Sprintf(": `%s`", sp.ToolArgs))
+				toolSummary = fmt.Sprintf("%s: `%s`", sp.Tool, sp.ToolArgs)
 			}
-			markdown.WriteString("\n")
+			// Check if the next part is a tool result to nest inside
+			var resultContent string
+			if i+1 < len(subParts) && subParts[i+1].Type == PartToolResult {
+				resultContent = strings.TrimRight(subParts[i+1].Content, "\n\r\t ")
+				i++ // consume the result
+			}
+			// Read tool calls have no result content — render as plain list item
+			if sp.Tool == "Read" || resultContent == "" {
+				markdown.WriteString(fmt.Sprintf("- **%s**", sp.Tool))
+				if sp.ToolArgs != "" {
+					markdown.WriteString(fmt.Sprintf(": `%s`", sp.ToolArgs))
+				}
+				markdown.WriteString("\n")
+			} else {
+				markdown.WriteString(fmt.Sprintf("<details>\n<summary>%s</summary>\n\n", toolSummary))
+				markdown.WriteString("```\n")
+				for _, line := range strings.Split(resultContent, "\n") {
+					markdown.WriteString(fmt.Sprintf("%s\n", line))
+				}
+				markdown.WriteString("```\n")
+				markdown.WriteString("\n</details>\n")
+			}
 		case PartToolResult:
+			// Standalone result (not preceded by a tool call) — render inline
 			content := strings.TrimRight(sp.Content, "\n\r\t ")
 			if content != "" {
-				markdown.WriteString("    ```\n")
+				markdown.WriteString("```\n")
 				for _, line := range strings.Split(content, "\n") {
-					markdown.WriteString(fmt.Sprintf("    %s\n", line))
+					markdown.WriteString(fmt.Sprintf("%s\n", line))
 				}
-				markdown.WriteString("    ```\n")
+				markdown.WriteString("```\n")
 			}
 		}
 	}
 
-	markdown.WriteString("  </details>\n\n")
+	markdown.WriteString("\n</details>\n\n")
 }
 
 // writeToolDetailPart renders a tool call with rich detail from toolSpecificData.

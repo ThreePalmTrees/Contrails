@@ -1447,7 +1447,7 @@ button, input, select, textarea, a, [role="button"] {
   white-space: normal;
   padding: 2px 0;
   position: sticky;
-  top: 10px;
+  top: 14px;
   backdrop-filter: blur(6px);
 }
 .chat-preview-details > span {
@@ -1456,6 +1456,18 @@ button, input, select, textarea, a, [role="button"] {
   white-space: pre-wrap;
   color: var(--text-secondary);
   background: var(--bg-elevated);
+}
+.chat-preview-details .chat-preview-details {
+  margin: 0;
+  padding-left: 8px;
+  border-left: 2px solid var(--border);
+  background: transparent;
+}
+.chat-preview-details .chat-preview-details > summary {
+  font-weight: 500;
+  font-size: 0.95em;
+  position: static;
+  backdrop-filter: none;
 }
 .chat-processed-badge {
   display: flex;
