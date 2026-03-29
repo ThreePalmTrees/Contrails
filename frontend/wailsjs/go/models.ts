@@ -60,6 +60,7 @@ export namespace agent {
 	    toolDetail?: ToolDetail;
 	    filePath?: string;
 	    isEdit?: boolean;
+	    subParts?: MessagePart[];
 	
 	    static createFrom(source: any = {}) {
 	        return new MessagePart(source);
@@ -74,6 +75,7 @@ export namespace agent {
 	        this.toolDetail = this.convertValues(source["toolDetail"], ToolDetail);
 	        this.filePath = source["filePath"];
 	        this.isEdit = source["isEdit"];
+	        this.subParts = this.convertValues(source["subParts"], MessagePart);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

@@ -1436,6 +1436,9 @@ button, input, select, textarea, a, [role="button"] {
   user-select: none;
   white-space: normal;
   padding: 2px 0;
+  position: sticky;
+  top: 10px;
+  backdrop-filter: blur(6px);
 }
 .chat-preview-details > span {
   display: block;

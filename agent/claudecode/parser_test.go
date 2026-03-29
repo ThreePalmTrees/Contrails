@@ -519,40 +519,61 @@ func TestParser_SubagentWebSearch(t *testing.T) {
 		t.Fatalf("ParseFile failed: %v", err)
 	}
 
-	// First assistant message should contain the Agent tool call + WebSearch + WebFetch from progress lines
+	// First assistant message should contain the Agent tool call with SubParts
 	assistant := findNthAssistantMessage(parsed.Messages, 1)
 	if assistant == nil {
 		t.Fatal("Expected at least one assistant message")
 	}
 
-	// Count web tool calls
-	var webSearchCount, webFetchCount int
-	for _, part := range assistant.Parts {
-		if part.Type == agent.PartToolCall {
-			switch part.Tool {
+	// Find the Agent tool call and verify it has SubParts
+	var agentPart *agent.MessagePart
+	for i, part := range assistant.Parts {
+		if part.Type == agent.PartToolCall && part.Tool == "Agent" {
+			agentPart = &assistant.Parts[i]
+			break
+		}
+	}
+	if agentPart == nil {
+		t.Fatal("Expected Agent tool call in assistant message")
+	}
+	if len(agentPart.SubParts) == 0 {
+		t.Fatal("Expected SubParts on Agent tool call")
+	}
+
+	// Count tool calls within SubParts
+	var webSearchCount, webFetchCount, readCount int
+	for _, sp := range agentPart.SubParts {
+		if sp.Type == agent.PartToolCall {
+			switch sp.Tool {
 			case "WebSearch":
 				webSearchCount++
 			case "WebFetch":
 				webFetchCount++
+			case "Read":
+				readCount++
 			}
 		}
 	}
 
 	if webSearchCount != 1 {
-		t.Errorf("Expected 1 WebSearch tool call, got %d", webSearchCount)
+		t.Errorf("Expected 1 WebSearch in SubParts, got %d", webSearchCount)
 	}
 	if webFetchCount != 1 {
-		t.Errorf("Expected 1 WebFetch tool call, got %d", webFetchCount)
+		t.Errorf("Expected 1 WebFetch in SubParts, got %d", webFetchCount)
+	}
+	// Read should now be included in SubParts (all tool calls are shown)
+	if readCount != 1 {
+		t.Errorf("Expected 1 Read in SubParts, got %d", readCount)
 	}
 
-	// Non-web tools (Read) in progress lines should be ignored
+	// Subagent tools should NOT appear as top-level parts
 	for _, part := range assistant.Parts {
-		if part.Type == agent.PartToolCall && part.Tool == "Read" {
-			t.Error("Read tool calls from subagent progress should not be included")
+		if part.Type == agent.PartToolCall && (part.Tool == "WebSearch" || part.Tool == "WebFetch" || part.Tool == "Read") {
+			t.Errorf("Subagent tool %s should not appear as top-level part", part.Tool)
 		}
 	}
 
-	// Verify the tool call summaries
+	// Verify the markdown output includes subagent details
 	outputDirectory := t.TempDir()
 	outputPath, err := agent.WriteParsedSession(parsed, outputDirectory)
 	if err != nil {
@@ -564,11 +585,128 @@ func TestParser_SubagentWebSearch(t *testing.T) {
 	}
 	markdown := string(content)
 
+	if !strings.Contains(markdown, "Subagent Activity") {
+		t.Error("Output should contain Subagent Activity section")
+	}
 	if !strings.Contains(markdown, "Search `Sparkle macOS auto-update framework`") {
-		t.Error("Output should contain WebSearch summary")
+		t.Error("Output should contain WebSearch summary in subagent section")
 	}
 	if !strings.Contains(markdown, "Fetch `https://sparkle-project.org`") {
-		t.Error("Output should contain WebFetch summary")
+		t.Error("Output should contain WebFetch summary in subagent section")
+	}
+}
+
+func TestParser_SubagentFullConversation(t *testing.T) {
+	parsed, err := (&Parser{}).ParseFile(filepath.Join("..", "..", "testdata", "fixtures", "claudecode", "subagent_full.jsonl"))
+	if err != nil {
+		t.Fatalf("ParseFile failed: %v", err)
+	}
+
+	assistant := findNthAssistantMessage(parsed.Messages, 1)
+	if assistant == nil {
+		t.Fatal("Expected at least one assistant message")
+	}
+
+	// Find the Agent tool call
+	var agentPart *agent.MessagePart
+	for i, part := range assistant.Parts {
+		if part.Type == agent.PartToolCall && part.Tool == "Agent" {
+			agentPart = &assistant.Parts[i]
+			break
+		}
+	}
+	if agentPart == nil {
+		t.Fatal("Expected Agent tool call")
+	}
+
+	// Verify SubParts structure
+	if len(agentPart.SubParts) == 0 {
+		t.Fatal("Expected SubParts on Agent tool call")
+	}
+
+	// Check that the prompt is included as the first text part
+	if agentPart.SubParts[0].Type != agent.PartText {
+		t.Errorf("Expected first SubPart to be text (prompt), got %s", agentPart.SubParts[0].Type)
+	}
+	if !strings.Contains(agentPart.SubParts[0].Content, "Research how caching works") {
+		t.Error("First SubPart should contain the subagent prompt")
+	}
+
+	// Count parts by type
+	var toolCalls, toolResults, texts int
+	toolNames := make(map[string]int)
+	for _, sp := range agentPart.SubParts {
+		switch sp.Type {
+		case agent.PartToolCall:
+			toolCalls++
+			toolNames[sp.Tool]++
+		case agent.PartToolResult:
+			toolResults++
+		case agent.PartText:
+			texts++
+		}
+	}
+
+	// Should have: Read, Grep, Bash tool calls
+	if toolNames["Read"] != 1 {
+		t.Errorf("Expected 1 Read tool call, got %d", toolNames["Read"])
+	}
+	if toolNames["Grep"] != 1 {
+		t.Errorf("Expected 1 Grep tool call, got %d", toolNames["Grep"])
+	}
+	if toolNames["Bash"] != 1 {
+		t.Errorf("Expected 1 Bash tool call, got %d", toolNames["Bash"])
+	}
+
+	// Read tool result should be skipped (same as main agent)
+	// Grep and Bash results should be included
+	if toolResults != 2 {
+		t.Errorf("Expected 2 tool results (Grep + Bash, Read skipped), got %d", toolResults)
+	}
+
+	// Text parts: prompt + "The cache uses a simple map-based approach..."
+	if texts != 2 {
+		t.Errorf("Expected 2 text parts (prompt + reasoning), got %d", texts)
+	}
+
+	// Verify markdown output
+	outputDirectory := t.TempDir()
+	outputPath, err := agent.WriteParsedSession(parsed, outputDirectory)
+	if err != nil {
+		t.Fatalf("WriteParsedSession failed: %v", err)
+	}
+	content, err := os.ReadFile(outputPath)
+	if err != nil {
+		t.Fatalf("Reading output file: %v", err)
+	}
+	markdown := string(content)
+
+	// Should have subagent section
+	if !strings.Contains(markdown, "Subagent Activity (3 tool calls)") {
+		t.Error("Output should contain Subagent Activity with tool count")
+	}
+
+	// Should contain prompt
+	if !strings.Contains(markdown, "Research how caching works") {
+		t.Error("Output should contain subagent prompt")
+	}
+
+	// Should contain all tool call summaries
+	if !strings.Contains(markdown, "Grep") {
+		t.Error("Output should contain Grep tool call")
+	}
+	if !strings.Contains(markdown, "Bash") {
+		t.Error("Output should contain Bash tool call")
+	}
+
+	// Should contain Grep result content
+	if !strings.Contains(markdown, "CacheEntry") {
+		t.Error("Output should contain Grep result content")
+	}
+
+	// Should contain Bash result content
+	if !strings.Contains(markdown, "165 total") {
+		t.Error("Output should contain Bash result content")
 	}
 }
 

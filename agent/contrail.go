@@ -63,6 +63,7 @@ type MessagePart struct {
 	ToolDetail *ToolDetail     `json:"toolDetail,omitempty"`
 	FilePath   string          `json:"filePath,omitempty"`
 	IsEdit     bool            `json:"isEdit,omitempty"`
+	SubParts   []MessagePart   `json:"subParts,omitempty"` // Subagent conversation parts
 }
 
 // ToolDetail holds rich, tool-specific data extracted from toolSpecificData

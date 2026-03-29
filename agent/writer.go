@@ -153,6 +153,11 @@ func writeInterleavedParts(markdown *strings.Builder, parts []MessagePart) {
 				markdown.WriteString("\n")
 			}
 
+			// Render subagent conversation as a nested collapsed section
+			if len(part.SubParts) > 0 {
+				writeSubagentParts(markdown, part.SubParts)
+			}
+
 		case PartFileEdit, PartCodeBlock:
 			// These are interleaved with tool calls, keep them in the flow
 			if !inToolGroup {
@@ -194,6 +199,48 @@ func writeInterleavedParts(markdown *strings.Builder, parts []MessagePart) {
 	if inToolGroup {
 		markdown.WriteString("\n</details>\n\n")
 	}
+}
+
+// writeSubagentParts renders a subagent's conversation as a nested collapsed section.
+func writeSubagentParts(markdown *strings.Builder, subParts []MessagePart) {
+	// Count tool calls for the summary line
+	toolCount := 0
+	for _, sp := range subParts {
+		if sp.Type == PartToolCall {
+			toolCount++
+		}
+	}
+
+	summary := "Subagent Activity"
+	if toolCount > 0 {
+		summary = fmt.Sprintf("Subagent Activity (%d tool calls)", toolCount)
+	}
+
+	markdown.WriteString(fmt.Sprintf("\n  <details>\n  <summary>%s</summary>\n\n", summary))
+
+	for _, sp := range subParts {
+		switch sp.Type {
+		case PartText:
+			markdown.WriteString(fmt.Sprintf("  %s\n\n", sp.Content))
+		case PartToolCall:
+			markdown.WriteString(fmt.Sprintf("  - **%s**", sp.Tool))
+			if sp.ToolArgs != "" {
+				markdown.WriteString(fmt.Sprintf(": `%s`", sp.ToolArgs))
+			}
+			markdown.WriteString("\n")
+		case PartToolResult:
+			content := strings.TrimRight(sp.Content, "\n\r\t ")
+			if content != "" {
+				markdown.WriteString("    ```\n")
+				for _, line := range strings.Split(content, "\n") {
+					markdown.WriteString(fmt.Sprintf("    %s\n", line))
+				}
+				markdown.WriteString("    ```\n")
+			}
+		}
+	}
+
+	markdown.WriteString("  </details>\n\n")
 }
 
 // writeToolDetailPart renders a tool call with rich detail from toolSpecificData.

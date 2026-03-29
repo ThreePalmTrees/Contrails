@@ -109,12 +109,11 @@ func (parser *Parser) ParseFile(filePath string) (*agent.ParsedSession, error) {
 		}
 	}
 
+	// Collect agent_progress lines grouped by parentToolUseID for subagent parsing.
+	subagentProgress := groupSubagentProgress(lines)
+
 	for _, line := range lines {
-		// Extract WebSearch/WebFetch tool calls from subagent progress lines
 		if line.Type == "progress" {
-			if parts := extractSubagentWebParts(line); len(parts) > 0 && lastAssistantMsg != nil {
-				lastAssistantMsg.Parts = append(lastAssistantMsg.Parts, parts...)
-			}
 			continue
 		}
 
@@ -169,11 +168,11 @@ func (parser *Parser) ParseFile(filePath string) (*agent.ParsedSession, error) {
 			msgID := line.Message.ID
 			if msgID != "" && msgID == lastAssistantMsgID && lastAssistantMsg != nil {
 				// Same API response — merge parts into the existing message
-				mergeAssistantParts(lastAssistantMsg, line)
+				mergeAssistantParts(lastAssistantMsg, line, subagentProgress)
 			} else {
 				// New API response — flush the previous message and start fresh
 				flushAssistant()
-				assistantMessage := buildAssistantMessage(line)
+				assistantMessage := buildAssistantMessage(line, subagentProgress)
 				if assistantMessage != nil {
 					// Capture model from first assistant message
 					if session.Model == "" && assistantMessage.Model != "" {
@@ -236,7 +235,7 @@ func buildUserMessage(line jsonlLine) *agent.ParsedMessage {
 }
 
 // buildAssistantMessage extracts text and tool_use blocks from an assistant-role JSONL line.
-func buildAssistantMessage(line jsonlLine) *agent.ParsedMessage {
+func buildAssistantMessage(line jsonlLine, subagentProgress map[string][]jsonlLine) *agent.ParsedMessage {
 	timestamp := "unknown"
 	if line.Timestamp != "" {
 		timestamp = agent.FormatISO8601Timestamp(line.Timestamp)
@@ -275,6 +274,14 @@ func buildAssistantMessage(line jsonlLine) *agent.ParsedMessage {
 
 		case "tool_use":
 			toolCallPart := buildToolCallPart(block)
+
+			// Attach subagent conversation parts for Agent tool calls
+			if block.Name == "Agent" && block.ID != "" {
+				if progressLines, ok := subagentProgress[block.ID]; ok {
+					toolCallPart.SubParts = buildSubagentParts(progressLines)
+				}
+			}
+
 			message.Parts = append(message.Parts, toolCallPart)
 
 			// Track file edits from tool calls
@@ -309,33 +316,113 @@ func buildToolCallPart(block contentBlock) agent.MessagePart {
 	return part
 }
 
-// webToolNames lists tool names from subagent progress lines that should be
-// included in the contrail output (web research tools).
-var webToolNames = map[string]bool{
-	"WebSearch": true,
-	"WebFetch":  true,
+// groupSubagentProgress collects agent_progress lines from the JSONL,
+// grouped by parentToolUseID. Each group represents one subagent's full
+// conversation (prompt, tool calls, tool results, text).
+func groupSubagentProgress(lines []jsonlLine) map[string][]jsonlLine {
+	groups := make(map[string][]jsonlLine)
+	for _, line := range lines {
+		if line.Type != "progress" {
+			continue
+		}
+		if line.Data == nil || line.Data.Type != "agent_progress" {
+			continue
+		}
+		if line.ParentToolUseID == "" {
+			continue
+		}
+		groups[line.ParentToolUseID] = append(groups[line.ParentToolUseID], line)
+	}
+	return groups
 }
 
-// extractSubagentWebParts inspects a progress-type JSONL line and returns
-// MessagePart entries for any WebSearch or WebFetch tool calls found within
-// the subagent's assistant message.
-func extractSubagentWebParts(line jsonlLine) []agent.MessagePart {
-	if line.Data == nil || line.Data.Message == nil || line.Data.Message.Message == nil {
-		return nil
-	}
-	// Only look at assistant messages (tool_use calls)
-	if line.Data.Message.Type != "assistant" {
-		return nil
-	}
-
-	blocks := parseContentBlocks(line.Data.Message.Message.Content)
+// buildSubagentParts converts a sequence of agent_progress lines into
+// MessagePart entries, applying the same filtering as the main agent:
+// tool calls are summarized, Read/Edit results are skipped, other results
+// are included. The subagent prompt is included as the first text part.
+func buildSubagentParts(progressLines []jsonlLine) []agent.MessagePart {
 	var parts []agent.MessagePart
-	for _, block := range blocks {
-		if block.Type == "tool_use" && webToolNames[block.Name] {
-			parts = append(parts, buildToolCallPart(block))
+	var lastToolName string
+
+	for _, line := range progressLines {
+		if line.Data == nil || line.Data.Message == nil || line.Data.Message.Message == nil {
+			continue
+		}
+		msg := line.Data.Message
+		inner := msg.Message
+
+		blocks := parseContentBlocks(inner.Content)
+		for _, block := range blocks {
+			switch block.Type {
+			case "text":
+				text := strings.TrimSpace(block.Text)
+				if text == "" {
+					continue
+				}
+				// The first "user" text is the subagent prompt
+				if msg.Type == "user" && len(parts) == 0 {
+					// Check if data.prompt is available (more reliable)
+					prompt := line.Data.Prompt
+					if prompt == "" {
+						prompt = text
+					}
+					parts = append(parts, agent.MessagePart{
+						Type:    agent.PartText,
+						Content: prompt,
+					})
+					continue
+				}
+				// Assistant text (reasoning between tool calls)
+				if msg.Type == "assistant" {
+					parts = append(parts, agent.MessagePart{
+						Type:    agent.PartText,
+						Content: text,
+					})
+				}
+
+			case "thinking":
+				// Skip thinking blocks from subagents to keep output concise
+
+			case "tool_use":
+				lastToolName = block.Name
+				parts = append(parts, buildToolCallPart(block))
+
+			case "tool_result":
+				// Same filtering as main agent: skip Read/Edit results
+				if lastToolName == "Read" || lastToolName == "Edit" {
+					continue
+				}
+				resultContent := extractToolResultContent(block)
+				if resultContent == "" {
+					continue
+				}
+				resultContent = stripSystemReminders(resultContent)
+				resultContent = stripAgentMetadata(resultContent)
+
+				// Cap at 20 lines
+				resultLines := strings.Split(resultContent, "\n")
+				if len(resultLines) > 20 {
+					resultLines = resultLines[:20]
+					resultLines = append(resultLines, "...")
+				}
+				resultContent = strings.Join(resultLines, "\n")
+
+				parts = append(parts, agent.MessagePart{
+					Type:    agent.PartToolResult,
+					Content: resultContent,
+				})
+			}
 		}
 	}
 	return parts
+}
+
+// extractToolResultContent extracts the text content from a tool_result block.
+func extractToolResultContent(block contentBlock) string {
+	if content, ok := block.Content.(string); ok {
+		return content
+	}
+	return extractTextContent(block.Content)
 }
 
 // summarizeToolCall produces a human-readable summary for a Claude Code tool call.
@@ -733,7 +820,7 @@ func parseTimeFormat(value, layout string) (int64, error) {
 // mergeAssistantParts appends content blocks from a new assistant JSONL line
 // into an existing ParsedMessage. Used when multiple JSONL lines share the
 // same API message ID and should be consolidated into one message.
-func mergeAssistantParts(message *agent.ParsedMessage, line jsonlLine) {
+func mergeAssistantParts(message *agent.ParsedMessage, line jsonlLine, subagentProgress map[string][]jsonlLine) {
 	blocks := parseContentBlocks(line.Message.Content)
 	for _, block := range blocks {
 		switch block.Type {
@@ -759,6 +846,13 @@ func mergeAssistantParts(message *agent.ParsedMessage, line jsonlLine) {
 
 		case "tool_use":
 			toolCallPart := buildToolCallPart(block)
+
+			if block.Name == "Agent" && block.ID != "" {
+				if progressLines, ok := subagentProgress[block.ID]; ok {
+					toolCallPart.SubParts = buildSubagentParts(progressLines)
+				}
+			}
+
 			message.Parts = append(message.Parts, toolCallPart)
 
 			filePath := extractFilePathFromToolInput(block.Name, block.Input)

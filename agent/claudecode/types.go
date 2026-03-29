@@ -64,6 +64,7 @@ type progressMessage struct {
 type progressData struct {
 	Type    string           `json:"type"` // "agent_progress"
 	AgentID string           `json:"agentId,omitempty"`
+	Prompt  string           `json:"prompt,omitempty"`
 	Message *progressMessage `json:"message,omitempty"`
 }
 
@@ -82,7 +83,8 @@ type jsonlLine struct {
 	RequestID string       `json:"requestId,omitempty"`
 
 	// Progress line data (subagent messages)
-	Data *progressData `json:"data,omitempty"`
+	Data            *progressData `json:"data,omitempty"`
+	ParentToolUseID string        `json:"parentToolUseID,omitempty"`
 
 	// Tool result fields
 	ToolUseResult          *toolUseResult `json:"toolUseResult,omitempty"`
