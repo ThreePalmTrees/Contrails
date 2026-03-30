@@ -1026,9 +1026,9 @@ button, input, select, textarea, a, [role="button"] {
   margin-bottom: 0;
 }
 .chat-files-heading {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
-  color: var(--text-secondary);
+  color: var(--text-primary);
   margin-bottom: 10px;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -1054,17 +1054,24 @@ button, input, select, textarea, a, [role="button"] {
 }
 .chat-files-group {
   margin-bottom: 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border-subtle);
+  border-width: 3px 0px;
+  padding: 8px;
+  box-shadow: 0 5px 4px -6px, 0 -5px 4px -6px;
 }
 .chat-files-scroll {
   max-height: 185px;
   overflow-y: auto;
 }
 .chat-files-group-label {
-  font-size: 11px;
-  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
   margin-bottom: 4px;
   text-transform: uppercase;
   letter-spacing: 0.04em;
+  font-style: italic;
 }
 .chat-file-row {
   display: flex;
@@ -1077,7 +1084,7 @@ button, input, select, textarea, a, [role="button"] {
   background: var(--bg-surface);
 }
 .chat-file-row-parsed {
-  opacity: 0.7;
+  opacity: 1;
 }
 .chat-file-icon {
   flex-shrink: 0;
@@ -1156,7 +1163,7 @@ button, input, select, textarea, a, [role="button"] {
   margin-bottom: 4px;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  padding-left: 2px;
+  padding-left: 16px;
 }
 .chat-files-category-header-actions {
   display: flex;
@@ -1417,13 +1424,13 @@ button, input, select, textarea, a, [role="button"] {
 }
 .chat-preview-role-header {
   position: sticky;
-  top: -30px;
+  top: -20px;
   background: var(--bg-base);
   margin: 0 -40px;
   margin-bottom: 12px;
   padding-left: 40px;
   padding-right: 40px;
-  padding-top: 18px;
+  padding-top: 6px;
   padding-bottom: 6px;
   font-weight: 700;
   font-size: 13px;
@@ -1447,7 +1454,7 @@ button, input, select, textarea, a, [role="button"] {
   white-space: normal;
   padding: 2px 0;
   position: sticky;
-  top: 14px;
+  top: 12px;
   backdrop-filter: blur(6px);
 }
 .chat-preview-details > span {

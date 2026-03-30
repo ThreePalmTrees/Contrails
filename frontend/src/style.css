@@ -22,7 +22,7 @@ html, body { margin: 0; padding: 0; }
 :root,
 [data-theme="dark"] {
   --bg-base: #101012;
-  --bg-surface: #18181b;
+  --bg-surface: #222227;
   --bg-elevated: #222225;
   --bg-hover: #2c2c30;
   --bg-active: #333338;
@@ -30,9 +30,9 @@ html, body { margin: 0; padding: 0; }
   --border: #2e2e33;
   --border-subtle: #222225;
 
-  --text-primary: #e4e4e7;
-  --text-secondary: #a1a1a9;
-  --text-muted: #71717a;
+  --text-primary: #f7f7f7;
+  --text-secondary: #cacad4;
+  --text-muted: #7c7c87;
 
   --accent: #2dd4bf;
   --accent-hover: #5eead4;
@@ -58,10 +58,10 @@ html, body { margin: 0; padding: 0; }
 
 /* Light theme */
 [data-theme="light"] {
-  --bg-base: #f4f4f5;
-  --bg-surface: #ffffff;
-  --bg-elevated: #e4e4e7;
-  --bg-hover: #d4d4d8;
+  --bg-base: #ffffff;
+  --bg-surface: #f9f9f9;
+  --bg-elevated: #f5f5f5;
+  --bg-hover: #e9e9ed;
   --bg-active: #c4c4ca;
 
   --border: #d4d4d8;
@@ -87,7 +87,7 @@ html, body { margin: 0; padding: 0; }
   --shadow-color: rgba(0, 0, 0, 0.1);
   --overlay-color: rgba(0, 0, 0, 0.3);
   --titlebar-shadow: 0 -2px 12px rgba(0, 0, 0, 0.05);
-  --titlebar-tint: rgba(13, 148, 136, 0.05);
+  --titlebar-tint: rgba(13, 148, 137, 0.183);
   --btn-primary-text: #ffffff;
   --btn-secondary-bg: #333;
   --btn-secondary-text: #eee;
