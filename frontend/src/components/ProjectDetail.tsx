@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useLayoutEffect, useMemo, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
-import { FolderOpen, FolderUp, Eye, EyeOff, MapPin, Play, Loader2, Layers, CheckCircle2, ChevronLeft, Pencil, Trash2, ExternalLink, ChevronDown, ChevronRight, Search, MoreHorizontal, Tag, X, Plus, Check } from "lucide-react";
+import { FolderOpen, FolderUp, Eye, EyeOff, MapPin, Play, Loader2, Layers, CheckCircle2, ChevronLeft, Pencil, Trash2, ExternalLink, ChevronDown, ChevronRight, Search, MoreHorizontal, Tag, X, Plus, Check, ArrowDownCircle } from "lucide-react";
 import { OpenDirectoryWith, GetDirectoryOpener } from "../../wailsjs/go/main/App";
 import { DirectoryOpenerDialog } from "./DirectoryOpenerDialog";
 import { Project, ProcessingProgress, ChatFileInfo, Category } from "../types";
@@ -8,6 +8,7 @@ import copilotLogo from "../assets/images/gh-copilot.png";
 import claudeLogo from "../assets/images/claude.png";
 import cursorLogo from "../assets/images/cursor.png";
 import { PreviewChatFile, ProcessSingleFile, ReadExistingContrail, IgnoreChat, UnignoreChat, CreateCategory, RenameCategory, DeleteCategory, AssignCategory, UnassignCategory } from "../../wailsjs/go/main/App";
+import { EventsOn } from "../../wailsjs/runtime/runtime";
 import type { useChatFilesCache } from "../hooks/useChatFilesCache";
 
 function renderTextSegment(text: string, key: number): React.ReactNode {
@@ -330,6 +331,8 @@ export function ProjectDetail({ project, onToggle, onProcess, onEdit, onUpdatePr
   const [showOpenerDialog, setShowOpenerDialog] = useState(false);
   const [ignoredExpanded, setIgnoredExpanded] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [showScrollBottom, setShowScrollBottom] = useState(false);
+  const previewBodyRef = useRef<HTMLDivElement>(null);
   const categories = project.categories ?? [];
 
   async function handleOpenDir(dirPath: string) {
@@ -422,6 +425,55 @@ export function ProjectDetail({ project, onToggle, onProcess, onEdit, onUpdatePr
     }
   }
 
+  // Auto-refresh preview when the underlying file changes (agent still working)
+  useEffect(() => {
+    if (!preview || preview.loading) return;
+
+    const refreshPreview = async () => {
+      try {
+        const md = await PreviewChatFile(preview.file.filePath, preview.file.sourceType);
+        setPreview((prev) => prev ? { ...prev, markdown: md } : null);
+      } catch {
+        // Keep existing content on error
+      }
+    };
+
+    const unbindProcessed = EventsOn("file:processed", (event: { projectId: string }) => {
+      if (event.projectId === project.id) refreshPreview();
+    });
+    const unbindWatcher = EventsOn("watcher:event", (event: { projectId: string }) => {
+      if (event.projectId === project.id) refreshPreview();
+    });
+    const unbindCursor = EventsOn("cursor:changed", (event: { projectId: string }) => {
+      if (event.projectId === project.id) refreshPreview();
+    });
+
+    return () => {
+      unbindProcessed();
+      unbindWatcher();
+      unbindCursor();
+    };
+  }, [preview?.file.filePath, preview?.loading, project.id]);
+
+  // When the currently previewed (processed) file becomes partiallyParsed, reopen with diff view
+  useEffect(() => {
+    if (!preview || preview.loading) return;
+    const updatedFile = chatFiles.find((f) => f.fileName === preview.file.fileName);
+    if (!updatedFile) return;
+    // Detect: was viewing a processed (non-partial) file, now it's partiallyParsed
+    if (updatedFile.partiallyParsed && !preview.file.partiallyParsed && preview.file.parsed) {
+      handleShowDetails(updatedFile);
+    }
+  }, [chatFiles]);
+
+  // Re-evaluate scroll-to-bottom button visibility when content changes
+  useEffect(() => {
+    const el = previewBodyRef.current;
+    if (!el) return;
+    const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 40;
+    setShowScrollBottom(!atBottom);
+  }, [preview?.markdown]);
+
   async function handleIgnoreChat(file: ChatFileInfo) {
     await IgnoreChat(project.id, file.filePath, getFileDisplayName(file));
     const updater = (prev: ChatFileInfo[]) => prev.map((f) => f.filePath === file.filePath ? { ...f, ignored: true } : f);
@@ -512,7 +564,7 @@ export function ProjectDetail({ project, onToggle, onProcess, onEdit, onUpdatePr
       {preview && (
         <div className="chat-preview" style={{ position: 'fixed', top: 36, left: 'var(--sidebar-width)', right: 0, bottom: 0, zIndex: 10, background: 'var(--bg-base)' }}>
           <div className="chat-preview-header">
-            <button className="btn btn-ghost btn-sm" onClick={() => setPreview(null)}>
+            <button className="btn btn-ghost btn-sm" style={{height: '100%'}} onClick={() => setPreview(null)}>
               <ChevronLeft size={14} /> Back
             </button>
             <span className="chat-preview-title mono">{getFileDisplayName(preview.file)}</span>
@@ -529,7 +581,15 @@ export function ProjectDetail({ project, onToggle, onProcess, onEdit, onUpdatePr
               <span className="chat-processed-badge"><CheckCircle2 size={12} /> Processed</span>
             )}
           </div>
-          <div className="chat-preview-body">
+          <div
+            className="chat-preview-body"
+            ref={previewBodyRef}
+            onScroll={(e) => {
+              const el = e.currentTarget;
+              const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 40;
+              setShowScrollBottom(!atBottom);
+            }}
+          >
             {preview.loading ? (
               <div className="chat-preview-loading"><Loader2 size={18} className="spin" /> Parsing…</div>
             ) : preview.oldMarkdown ? (
@@ -538,6 +598,14 @@ export function ProjectDetail({ project, onToggle, onProcess, onEdit, onUpdatePr
               <div className="chat-preview-markdown">{renderMarkdownContent(preview.markdown)}</div>
             )}
           </div>
+          {showScrollBottom && (
+            <button
+              className="scroll-to-bottom-btn"
+              onClick={() => previewBodyRef.current?.scrollTo({ top: previewBodyRef.current.scrollHeight, behavior: "smooth" })}
+            >
+              <ArrowDownCircle size={24} />
+            </button>
+          )}
         </div>
       )}
       <div>
