@@ -213,6 +213,69 @@ img {
   display: none;
 }
 
+.download-dropdown--up {
+  top: auto;
+  bottom: calc(100% + 6px);
+}
+
+/* ─── Sticky Download Banner ─── */
+
+.sticky-banner {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 150;
+  padding: 14px 20px calc(14px + env(safe-area-inset-bottom));
+  background: rgb(24 24 27 / 80%);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.4);
+  opacity: 0;
+  transform: translateY(100%);
+  transition: opacity 0.35s ease, transform 0.35s ease, visibility 0.35s;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.sticky-banner.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+  visibility: visible;
+  pointer-events: auto;
+}
+
+.sticky-banner-inner {
+  max-width: 1080px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+
+.sticky-banner-text {
+  color: #e4e4e7;
+  font-size: 0.98rem;
+  font-weight: 500;
+}
+
+@media (max-width: 560px) {
+  .sticky-banner {
+    padding: 10px 14px calc(10px + env(safe-area-inset-bottom));
+  }
+  .sticky-banner-inner {
+    gap: 10px;
+  }
+  .sticky-banner-text {
+    font-size: 0.85rem;
+    flex-basis: 100%;
+    text-align: center;
+  }
+}
+
 .download-option {
   display: flex;
   align-items: center;

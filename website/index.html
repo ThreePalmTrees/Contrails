@@ -366,6 +366,27 @@ deduplicates on their end.</code></pre>
     </div>
   </section>
 
+  <!-- ─── Sticky Download Banner ─── -->
+  <div id="sticky-banner" class="sticky-banner" aria-hidden="true">
+    <div class="sticky-banner-inner">
+      <span class="sticky-banner-text">Stop losing your agent trails, get Contrails</span>
+      <div class="download-split-btn">
+        <a href="https://github.com/ThreePalmTrees/Contrails/releases/latest/download/Contrails-macos.zip" class="btn btn-primary download-btn" id="banner-dl-main" data-platform="macos">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          <span id="banner-dl-label">Download for macOS</span>
+        </a>
+        <button class="download-arrow" id="banner-dl-arrow" aria-expanded="false" aria-label="More download options">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
+        </button>
+        <div class="download-dropdown download-dropdown--up" id="banner-dl-dropdown" hidden>
+          <a href="https://github.com/ThreePalmTrees/Contrails/releases/latest/download/Contrails-macos.zip" class="download-option" data-platform="macos">Download for macOS</a>
+          <a href="https://github.com/ThreePalmTrees/Contrails/releases/latest/download/Contrails-windows.zip" class="download-option" data-platform="windows">Download for Windows</a>
+          <a href="https://github.com/ThreePalmTrees/Contrails/releases/latest/download/Contrails-linux.zip" class="download-option" data-platform="linux">Download for Linux</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- ─── Footer ─── -->
   <footer class="footer">
     <div class="container footer-disclaimer">
@@ -413,7 +434,7 @@ deduplicates on their end.</code></pre>
         }
       }
 
-      ['hero', 'cta'].forEach(function (loc) {
+      ['hero', 'cta', 'banner'].forEach(function (loc) {
         var mainBtn  = document.getElementById(loc + '-dl-main');
         var label    = document.getElementById(loc + '-dl-label');
         var arrow    = document.getElementById(loc + '-dl-arrow');
@@ -443,12 +464,36 @@ deduplicates on their end.</code></pre>
       document.querySelectorAll('.download-btn, .download-option').forEach(function (el) {
         el.addEventListener('click', function () {
           if (window.posthog) {
-            var loc = el.closest('.hero') ? 'hero' : 'cta';
+            var loc = el.closest('.sticky-banner') ? 'banner'
+                    : el.closest('.hero') ? 'hero' : 'cta';
             var platform = el.dataset.platform || (el.href && el.href.indexOf('windows') !== -1 ? 'windows' : 'macos');
             posthog.capture('download_clicked', { source: 'website', location: loc, platform: platform });
           }
         });
       });
+
+      // Sticky banner: show once hero download btn scrolled out, hide when CTA reached.
+      var banner = document.getElementById('sticky-banner');
+      var heroBtn = document.getElementById('hero-dl-main');
+      var ctaSection = document.getElementById('download');
+      if (banner && heroBtn && ctaSection && 'IntersectionObserver' in window) {
+        var heroVisible = true;
+        var ctaVisible = false;
+        function update() {
+          var show = !heroVisible && !ctaVisible;
+          banner.classList.toggle('is-visible', show);
+          banner.setAttribute('aria-hidden', show ? 'false' : 'true');
+          if (!show) closeOpen();
+        }
+        new IntersectionObserver(function (entries) {
+          heroVisible = entries[0].isIntersecting;
+          update();
+        }, { threshold: 1, rootMargin: '-10px 0px 0px 0px' }).observe(heroBtn);
+        new IntersectionObserver(function (entries) {
+          ctaVisible = entries[0].isIntersecting;
+          update();
+        }, { threshold: 0 }).observe(ctaSection);
+      }
     })();
   </script>
 </body>
