@@ -207,7 +207,7 @@ function App() {
               <ContrailsIcon style={{ width: '88px' }} />
               <h2>Contrails</h2>
             </div>
-            <p>Select a project or add a new one to get started.</p>
+            <p>Add a new project to get started.</p>
             <button
               className="btn btn-primary"
               onClick={() => setShowAddDialog(true)}
