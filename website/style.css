@@ -825,7 +825,7 @@ img {
 
 /* ─── Responsive ─── */
 
-@media (max-width: 900px) {
+@media (max-width: 930px) {
   .hero-title {
     font-size: 2.6rem;
   }
@@ -849,7 +849,7 @@ img {
   }
 }
 
-@media (max-width: 640px) {
+@media (max-width: 690px) {
   .filetree-body {
     display: none;
   }
