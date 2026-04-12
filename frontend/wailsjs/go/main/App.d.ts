@@ -41,6 +41,8 @@ export function GetFileManagerInfo():Promise<main.IDEOption>;
 
 export function GetProjects():Promise<Array<main.Project>>;
 
+export function GetSaveClaudeDebugFiles():Promise<boolean>;
+
 export function GetVersion():Promise<string>;
 
 export function GetWorkspaceStoragePath():Promise<string>;
@@ -79,6 +81,8 @@ export function RemoveProject(arg1:string):Promise<void>;
 
 export function RenameCategory(arg1:string,arg2:string,arg3:string):Promise<void>;
 
+export function SaveClaudeDebugFiles():Promise<boolean>;
+
 export function SaveProjects(arg1:Array<main.Project>):Promise<void>;
 
 export function SelectChatSessionsDir():Promise<string>;
@@ -88,6 +92,8 @@ export function SelectOutputDir():Promise<string>;
 export function SetAnalyticsEnabled(arg1:boolean):Promise<void>;
 
 export function SetDirectoryOpener(arg1:string):Promise<void>;
+
+export function SetSaveClaudeDebugFiles(arg1:boolean):Promise<void>;
 
 export function UnassignCategory(arg1:string,arg2:string):Promise<void>;
 

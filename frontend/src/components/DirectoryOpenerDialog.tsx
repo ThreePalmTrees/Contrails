@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { X, FolderOpen, Download, Sun, Moon } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { X, FolderOpen, Download, Sun, Moon, ChevronDown } from "lucide-react";
 import type { Theme } from "../hooks/useTheme";
 import { DetectIDEs, GetFileManagerInfo, GetDirectoryOpener, SetDirectoryOpener, OpenDirectoryWith, GetVersion, ApplyAppUpdate, CheckForAppUpdate } from "../../wailsjs/go/main/App";
 import { BrowserOpenURL } from "../../wailsjs/runtime/runtime";
@@ -28,13 +28,17 @@ interface DirectoryOpenerDialogProps {
   analyticsEnabled?: boolean;
   /** Callback to toggle analytics */
   onAnalyticsToggle?: (enabled: boolean) => void;
+  /** Whether debug file saving is enabled */
+  saveDebugFiles?: boolean;
+  /** Callback to toggle debug file saving */
+  onSaveDebugFilesToggle?: (enabled: boolean) => void;
   /** Current theme */
   theme?: Theme;
   /** Callback to change theme */
   onThemeChange?: (theme: Theme) => void;
 }
 
-export function DirectoryOpenerDialog({ dirPath, onClose, updateInfo, analyticsEnabled, onAnalyticsToggle, theme, onThemeChange }: DirectoryOpenerDialogProps) {
+export function DirectoryOpenerDialog({ dirPath, onClose, updateInfo, analyticsEnabled, onAnalyticsToggle, saveDebugFiles, onSaveDebugFilesToggle, theme, onThemeChange }: DirectoryOpenerDialogProps) {
   const [ides, setIdes] = useState<IDEChoice[]>([]);
   const [selected, setSelected] = useState("open");
   const [customCommand, setCustomCommand] = useState("");
@@ -49,10 +53,27 @@ export function DirectoryOpenerDialog({ dirPath, onClose, updateInfo, analyticsE
   // Local draft state for settings that should only apply on Save
   const [draftTheme, setDraftTheme] = useState(theme);
   const [draftAnalytics, setDraftAnalytics] = useState(analyticsEnabled ?? true);
+  const [draftSaveDebugFiles, setDraftSaveDebugFiles] = useState(saveDebugFiles ?? false);
+
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   const isSettingsMode = dirPath === null;
   const isCustom = selected === CUSTOM_SENTINEL;
   const effectiveCommand = isCustom ? customCommand.trim() : selected;
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setDropdownOpen(false);
+      }
+    }
+    if (dropdownOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => document.removeEventListener("mousedown", handleClickOutside);
+    }
+  }, [dropdownOpen]);
 
   useEffect(() => {
     GetVersion().then(setVersion).catch(() => {});
@@ -112,13 +133,16 @@ export function DirectoryOpenerDialog({ dirPath, onClose, updateInfo, analyticsE
       if (onAnalyticsToggle && draftAnalytics !== (analyticsEnabled ?? true)) {
         onAnalyticsToggle(draftAnalytics);
       }
+      if (onSaveDebugFilesToggle && draftSaveDebugFiles !== (saveDebugFiles ?? false)) {
+        onSaveDebugFilesToggle(draftSaveDebugFiles);
+      }
     }
     onClose();
   }
 
   return (
     <div className="error-modal-overlay" onClick={handleCancel}>
-      <div className="error-modal" style={{ width: 340, border: "1px solid var(--border-subtle)", overflow: "hidden" }} onClick={(e) => e.stopPropagation()}>
+      <div className="error-modal" style={{ width: 340, border: "1px solid var(--border-subtle)" }} onClick={(e) => e.stopPropagation()}>
         <div className="error-modal-header">
           <FolderOpen size={16} />
           <h3>Settings</h3>
@@ -126,7 +150,7 @@ export function DirectoryOpenerDialog({ dirPath, onClose, updateInfo, analyticsE
             <X size={14} />
           </button>
         </div>
-        <div className="error-modal-body" style={{ overflow: "hidden" }}>
+        <div className="error-modal-body" style={{ overflow: "visible" }}>
           {isSettingsMode && onThemeChange && (
             <div className="settings-theme-section">
               <div className="settings-telemetry-row">
@@ -168,66 +192,52 @@ export function DirectoryOpenerDialog({ dirPath, onClose, updateInfo, analyticsE
           {loading ? (
             <p style={{ color: "var(--text-muted)" }}>Detecting installed editors...</p>
           ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-              {allOptions.map((opt) => (
-                <label
-                  key={opt.command}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 8,
-                    padding: "5px 8px",
-                    borderRadius: "var(--radius-sm)",
-                    cursor: "pointer",
-                    background: selected === opt.command ? "var(--bg-hover)" : "transparent",
-                    minWidth: 0,
-                  }}
+            <div className="settings-opener-group">
+              <div className="settings-opener-trigger-wrap" ref={dropdownRef}>
+                <button
+                  type="button"
+                  className={`settings-opener-trigger${isCustom ? " has-custom" : ""}`}
+                  onClick={() => setDropdownOpen(!dropdownOpen)}
                 >
-                  <input
-                    type="radio"
-                    name="ide"
-                    value={opt.command}
-                    checked={selected === opt.command}
-                    onChange={() => setSelected(opt.command)}
-                    style={{ flexShrink: 0 }}
-                  />
-                  <span style={{ fontSize: 13, whiteSpace: "nowrap" }}>{opt.name}</span>
-                  <span style={{ fontSize: 11, color: "var(--text-muted)", marginLeft: "auto", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {opt.command}
+                  <span className="settings-opener-trigger-label">
+                    {isCustom
+                      ? "Custom command"
+                      : (() => { const match = allOptions.find(o => o.command === selected); return match ? match.name : selected; })()
+                    }
                   </span>
-                </label>
-              ))}
-
-              {/* Custom command option */}
-              <label
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 8,
-                  padding: "5px 8px",
-                  borderRadius: "var(--radius-sm)",
-                  cursor: "pointer",
-                  background: isCustom ? "var(--bg-hover)" : "transparent",
-                }}
-              >
-                <input
-                  type="radio"
-                  name="ide"
-                  value={CUSTOM_SENTINEL}
-                  checked={isCustom}
-                  onChange={() => setSelected(CUSTOM_SENTINEL)}
-                  style={{ flexShrink: 0 }}
-                />
-                <span style={{ fontSize: 13 }}>Custom</span>
-              </label>
+                  <ChevronDown size={14} className={`settings-opener-chevron${dropdownOpen ? " open" : ""}`} />
+                </button>
+                {dropdownOpen && (
+                  <div className="settings-opener-dropdown">
+                    {allOptions.map((opt) => (
+                      <button
+                        type="button"
+                        key={opt.command}
+                        className={`settings-opener-option${selected === opt.command ? " active" : ""}`}
+                        onClick={() => { setSelected(opt.command); setDropdownOpen(false); }}
+                      >
+                        <span>{opt.name}</span>
+                        <span className="settings-opener-option-cmd">{opt.command}</span>
+                      </button>
+                    ))}
+                    <button
+                      type="button"
+                      className={`settings-opener-option${isCustom ? " active" : ""}`}
+                      onClick={() => { setSelected(CUSTOM_SENTINEL); setDropdownOpen(false); }}
+                    >
+                      Custom command
+                    </button>
+                  </div>
+                )}
+              </div>
               {isCustom && (
                 <input
                   type="text"
+                  className="settings-opener-input"
                   value={customCommand}
                   onChange={(e) => setCustomCommand(e.target.value)}
                   placeholder="e.g. ide, nano, open -a MyEditor"
                   autoFocus
-                  style={{ marginLeft: 30, marginTop: 2, fontSize: 12, width: "calc(100% - 38px)" }}
                   onKeyDown={(e) => { if (e.key === "Enter") handleConfirm(); }}
                 />
               )}
@@ -238,21 +248,40 @@ export function DirectoryOpenerDialog({ dirPath, onClose, updateInfo, analyticsE
           <div className="settings-telemetry-section">
             <div className="settings-telemetry-row">
               <div className="settings-telemetry-info">
-                <label className="settings-telemetry-label">
-                  <input
-                    type="checkbox"
-                    checked={draftAnalytics}
-                    onChange={(e) => setDraftAnalytics(e.target.checked)}
-                  />
-                  Anonymous telemetry
-                </label>
+                <span className="settings-telemetry-label">Anonymous telemetry</span>
                 <span className="settings-telemetry-hint">
                   {draftAnalytics
                     ? "Usage data is collected anonymously to help improve Contrails."
                     : "Telemetry is off. Only basic, non-identifiable signals (app version, OS) are sent to help track adoption."}
                 </span>
               </div>
+              <label className="settings-toggle">
+                <input
+                  type="checkbox"
+                  checked={draftAnalytics}
+                  onChange={(e) => setDraftAnalytics(e.target.checked)}
+                />
+                <span className="settings-toggle-slider" />
+              </label>
             </div>
+            {onSaveDebugFilesToggle && (
+              <div className="settings-telemetry-row" style={{ marginTop: 8 }}>
+                <div className="settings-telemetry-info">
+                  <span className="settings-telemetry-label">Save Claude debug files</span>
+                  <span className="settings-telemetry-hint">
+                    Save raw transcript and signal files alongside contrails for debugging.
+                  </span>
+                </div>
+                <label className="settings-toggle">
+                  <input
+                    type="checkbox"
+                    checked={draftSaveDebugFiles}
+                    onChange={(e) => setDraftSaveDebugFiles(e.target.checked)}
+                  />
+                  <span className="settings-toggle-slider" />
+                </label>
+              </div>
+            )}
           </div>
         )}
         {isSettingsMode && (

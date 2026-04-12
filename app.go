@@ -264,6 +264,15 @@ func (app *App) EmitFileProcessed(projectID, fileName string) {
 	})
 }
 
+// SaveClaudeDebugFiles returns whether debug file saving is enabled in settings.
+func (app *App) SaveClaudeDebugFiles() bool {
+	settings, err := app.loadSettings()
+	if err != nil {
+		return false
+	}
+	return settings.SaveClaudeDebugFiles
+}
+
 // --- Project Management ---
 
 // Errors: Handle Errors Once — propagate instead of silently discarding (go-style-guide.md)
@@ -583,8 +592,9 @@ func (app *App) makeProcessCallbacks(projectID string) agent.ProcessCallbacks {
 
 // AppSettings holds app-level preferences, persisted alongside projects.json.
 type AppSettings struct {
-	AnalyticsEnabled bool   `json:"analyticsEnabled"`
-	DirectoryOpener  string `json:"directoryOpener,omitempty"` // CLI command to open directories (e.g. "code", "cursor", "open")
+	AnalyticsEnabled     bool   `json:"analyticsEnabled"`
+	DirectoryOpener      string `json:"directoryOpener,omitempty"`      // CLI command to open directories (e.g. "code", "cursor", "open")
+	SaveClaudeDebugFiles bool   `json:"saveClaudeDebugFiles,omitempty"` // Save raw transcript & signal files alongside contrails
 }
 
 
@@ -651,6 +661,22 @@ func (app *App) SetAnalyticsEnabled(enabled bool) error {
 	}
 	app.analytics.SetEnabled(enabled)
 	return nil
+}
+
+// GetSaveClaudeDebugFiles returns whether debug file saving is enabled.
+func (app *App) GetSaveClaudeDebugFiles() bool {
+	settings, err := app.loadSettings()
+	if err != nil {
+		return false // default disabled
+	}
+	return settings.SaveClaudeDebugFiles
+}
+
+// SetSaveClaudeDebugFiles toggles saving of raw Claude Code debug files.
+func (app *App) SetSaveClaudeDebugFiles(enabled bool) error {
+	settings, _ := app.loadSettings()
+	settings.SaveClaudeDebugFiles = enabled
+	return app.saveSettings(settings)
 }
 
 // IDEOption represents a detected IDE that can open directories.

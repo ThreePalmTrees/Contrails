@@ -11,7 +11,7 @@ import { useTheme, Theme } from "./hooks/useTheme";
 import { DirectoryOpenerDialog } from "./components/DirectoryOpenerDialog";
 import { Project } from "./types";
 import { BrowserOpenURL, EventsOn, Environment } from "../wailsjs/runtime/runtime";
-import { GetAnalyticsEnabled, SetAnalyticsEnabled, ApplyAppUpdate, GetVersion } from "../wailsjs/go/main/App";
+import { GetAnalyticsEnabled, SetAnalyticsEnabled, GetSaveClaudeDebugFiles, SetSaveClaudeDebugFiles, ApplyAppUpdate, GetVersion } from "../wailsjs/go/main/App";
 import "./App.css";
 
 function App() {
@@ -41,6 +41,7 @@ function App() {
   const [editProject, setEditProject] = useState<Project | null>(null);
   const [editTab, setEditTab] = useState<"vscode" | "claudecode" | "cursor" | "output" | undefined>();
   const [analyticsEnabled, setAnalyticsEnabled] = useState(true);
+  const [saveDebugFiles, setSaveDebugFiles] = useState(false);
   const [updateInfo, setUpdateInfo] = useState<{
     latestVersion: string;
     downloadURL: string;
@@ -53,6 +54,7 @@ function App() {
 
   useEffect(() => {
     GetAnalyticsEnabled().then(setAnalyticsEnabled).catch(() => {});
+    GetSaveClaudeDebugFiles().then(setSaveDebugFiles).catch(() => {});
     GetVersion().then((v) => setIsDevBuild(v === "dev")).catch(() => {});
     Environment().then((env) => setIsWindows(env.platform === "windows")).catch(() => {});
     const cancel = EventsOn("update:available", (info: any) => {
@@ -285,6 +287,10 @@ function App() {
           analyticsEnabled={analyticsEnabled}
           onAnalyticsToggle={(next) => {
             SetAnalyticsEnabled(next).then(() => setAnalyticsEnabled(next)).catch(() => {});
+          }}
+          saveDebugFiles={saveDebugFiles}
+          onSaveDebugFilesToggle={(next) => {
+            SetSaveClaudeDebugFiles(next).then(() => setSaveDebugFiles(next)).catch(() => {});
           }}
           theme={theme}
           onThemeChange={setTheme}

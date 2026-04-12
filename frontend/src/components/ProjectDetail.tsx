@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useLayoutEffect, useMemo, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
-import { FolderOpen, FolderUp, Eye, EyeOff, MapPin, Play, Loader2, Layers, CheckCircle2, ChevronLeft, Pencil, Trash2, ExternalLink, ChevronDown, ChevronRight, Search, MoreHorizontal, Tag, X, Plus, Check, ArrowDownCircle } from "lucide-react";
+import { FolderOpen, Eye, EyeOff, MapPin, Play, Loader2, Layers, CheckCircle2, ChevronLeft, Pencil, Trash2, ExternalLink, ChevronDown, ChevronRight, Search, MoreHorizontal, Tag, X, Plus, Check, ArrowDownCircle } from "lucide-react";
 import { OpenDirectoryWith, GetDirectoryOpener } from "../../wailsjs/go/main/App";
 import { DirectoryOpenerDialog } from "./DirectoryOpenerDialog";
 import { Project, ProcessingProgress, ChatFileInfo, Category } from "../types";
@@ -732,12 +732,9 @@ export function ProjectDetail({ project, onToggle, onProcess, onEdit, onUpdatePr
           <div className="detail-card-content" style={{ flex: 1 }}>
             <span className="detail-card-label">
               Output Directory
-              <span style={{ display: 'inline-flex', gap: '2px', marginLeft: '6px', verticalAlign: 'middle' }}>
-                <button className="btn btn-ghost btn-sm" style={{ padding: '0 4px', height: '20px', minHeight: 'unset' }} onClick={() => handleOpenDir(project.outputDir)} title="Open output directory">
+              <span style={{ display: 'inline-flex', marginLeft: '6px', verticalAlign: 'middle' }}>
+                <button className="btn btn-ghost btn-sm" style={{ padding: '0 4px', height: '20px', minHeight: 'unset' }} onClick={() => handleOpenDir(project.outputDir.replace(/\/[^/]*\/?$/, ''))} title="Open directory">
                   <ExternalLink size={12} />
-                </button>
-                <button className="btn btn-ghost btn-sm" style={{ padding: '0 4px', height: '20px', minHeight: 'unset' }} onClick={() => handleOpenDir(project.outputDir.replace(/\/[^/]*\/?$/, ''))} title="Open parent directory">
-                  <FolderUp size={12} />
                 </button>
               </span>
             </span>

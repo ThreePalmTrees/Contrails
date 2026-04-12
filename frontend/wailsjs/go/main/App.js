@@ -74,6 +74,10 @@ export function GetProjects() {
   return window['go']['main']['App']['GetProjects']();
 }
 
+export function GetSaveClaudeDebugFiles() {
+  return window['go']['main']['App']['GetSaveClaudeDebugFiles']();
+}
+
 export function GetVersion() {
   return window['go']['main']['App']['GetVersion']();
 }
@@ -150,6 +154,10 @@ export function RenameCategory(arg1, arg2, arg3) {
   return window['go']['main']['App']['RenameCategory'](arg1, arg2, arg3);
 }
 
+export function SaveClaudeDebugFiles() {
+  return window['go']['main']['App']['SaveClaudeDebugFiles']();
+}
+
 export function SaveProjects(arg1) {
   return window['go']['main']['App']['SaveProjects'](arg1);
 }
@@ -168,6 +176,10 @@ export function SetAnalyticsEnabled(arg1) {
 
 export function SetDirectoryOpener(arg1) {
   return window['go']['main']['App']['SetDirectoryOpener'](arg1);
+}
+
+export function SetSaveClaudeDebugFiles(arg1) {
+  return window['go']['main']['App']['SetSaveClaudeDebugFiles'](arg1);
 }
 
 export function UnassignCategory(arg1, arg2) {
