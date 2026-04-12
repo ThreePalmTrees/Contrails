@@ -249,10 +249,21 @@ func (watcher *SignalWatcher) processSignalFile(signalPath string) {
 
 	// Save debug copies when the setting is enabled.
 	if watcher.handler.SaveClaudeDebugFiles() {
+		// Extract the timestamp prefix from the contrail filename (e.g. "1775027341" from
+		// "1775027341 - Some title.md") so debug files sort next to their contrail.
+		contrailBase := filepath.Base(outputPath)
+		timestampPrefix := ""
+		if idx := strings.Index(contrailBase, " - "); idx > 0 {
+			timestampPrefix = contrailBase[:idx]
+		}
+
 		// 1. The transcript .jsonl file
 		transcriptData, readErr := os.ReadFile(signal.TranscriptPath)
 		if readErr == nil {
-			debugFileName := "debug_" + filepath.Base(signal.TranscriptPath)
+			origBase := filepath.Base(signal.TranscriptPath)              // e.g. "2439d492-...-.jsonl"
+			ext := filepath.Ext(origBase)                                 // ".jsonl"
+			nameWithoutExt := strings.TrimSuffix(origBase, ext)           // "2439d492-..."
+			debugFileName := timestampPrefix + "_debug_" + nameWithoutExt + ext
 			debugPath := filepath.Join(filepath.Dir(outputPath), debugFileName)
 			if writeErr := os.WriteFile(debugPath, transcriptData, 0644); writeErr != nil {
 				agent.LogWarningf(watcher.logger, "Failed to write debug transcript file %s: %v", debugFileName, writeErr)
@@ -263,7 +274,10 @@ func (watcher *SignalWatcher) processSignalFile(signalPath string) {
 
 		// 2. The parsed signal .json file
 		if readSignalErr == nil {
-			debugSignalFileName := "debug_" + filepath.Base(signalPath)
+			origBase := filepath.Base(signalPath)                         // e.g. "1775987676_35042.json"
+			ext := filepath.Ext(origBase)                                 // ".json"
+			nameWithoutExt := strings.TrimSuffix(origBase, ext)           // "1775987676_35042"
+			debugSignalFileName := timestampPrefix + "_debug_" + nameWithoutExt + ext
 			debugSignalPath := filepath.Join(filepath.Dir(outputPath), debugSignalFileName)
 			if writeErr := os.WriteFile(debugSignalPath, rawSignalBytes, 0644); writeErr != nil {
 				agent.LogWarningf(watcher.logger, "Failed to write debug signal file %s: %v", debugSignalFileName, writeErr)

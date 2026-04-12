@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // RenderMarkdown renders a parsed session to a markdown string without any
@@ -84,10 +85,14 @@ func WriteParsedSession(session *ParsedSession, outputDirectory string) (string,
 	// Clean up the other variant to prevent duplicates when the title
 	// is added or changed after the session was first processed.
 	// Performance: Prefer strconv over fmt (go-style-guide.md)
-	timestampPrefix := ""
-	if session.CreatedAtMs > 0 {
-		timestampPrefix = strconv.FormatInt(session.CreatedAtMs/1000, 10) + " - "
+	//
+	// If no timestamp was parsed from the session data, fall back to the current
+	// time so every contrail file is consistently prefixed for sorting.
+	createdMs := session.CreatedAtMs
+	if createdMs == 0 {
+		createdMs = time.Now().UnixMilli()
 	}
+	timestampPrefix := strconv.FormatInt(createdMs/1000, 10) + " - "
 
 	var baseName string
 	if session.Title != "" {

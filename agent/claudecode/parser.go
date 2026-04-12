@@ -73,19 +73,24 @@ func (parser *Parser) ParseFile(filePath string) (*agent.ParsedSession, error) {
 		Agent: "Claude Code",
 	}
 
-	// Extract session-level metadata from the first non-noise line.
-	// Noise lines (e.g., file-history-snapshot) can appear before the
-	// first real line and lack sessionId / timestamp fields.
+	// Extract session-level metadata from the first non-noise lines.
+	// Some early lines (e.g., permission-mode) carry a sessionId but
+	// no timestamp, so we keep scanning until we find both.
 	for _, line := range lines {
 		if noisyLineTypes[line.Type] || line.Type == "progress" {
 			continue
 		}
-		session.SessionID = line.SessionID
+		if session.SessionID == "" && line.SessionID != "" {
+			session.SessionID = line.SessionID
+		}
 		if line.Timestamp != "" {
 			session.CreatedAt = agent.FormatISO8601Timestamp(line.Timestamp)
 			session.CreatedAtMs = parseISO8601ToMilliseconds(line.Timestamp)
+			if session.SessionID == "" && line.SessionID != "" {
+				session.SessionID = line.SessionID
+			}
+			break
 		}
-		break
 	}
 
 	// Find the last timestamp for LastMessageAt
