@@ -135,9 +135,6 @@ jobs:
     if: ${{ !contains(github.ref_name, '-rc') }}
     needs: [build-macos, build-windows, build-linux]
     runs-on: ubuntu-latest
-    env:
-      # Needed until softprops/action-gh-release ships v3 with Node 24 support
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     steps:
       - name: Download macOS artifact
         uses: actions/download-artifact@v8
@@ -155,7 +152,7 @@ jobs:
           name: linux-build
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           name: Contrails v${{ github.ref_name }}
           generate_release_notes: true
