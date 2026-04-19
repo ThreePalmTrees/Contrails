@@ -1147,3 +1147,126 @@ func TestSelectOutputDir_ReturnsDialogResult(t *testing.T) {
 		t.Errorf("expected dialog result, got %q", result)
 	}
 }
+
+// --- ContrailFilters cascade (AppSettings.contrailFilters) ---
+
+func boolPtr(b bool) *bool { return &b }
+
+func TestContrailFilters_Defaults_AllTrue(t *testing.T) {
+	// Nil pointer fields (missing from settings.json) must default to enabled.
+	s := AppSettings{}
+	f := s.contrailFilters()
+	if !f.Thinking || !f.ToolCalls || !f.SubagentContent {
+		t.Errorf("expected all defaults true, got %+v", f)
+	}
+}
+
+func TestContrailFilters_ExplicitTrue_AllTrue(t *testing.T) {
+	s := AppSettings{
+		SaveThinking:        boolPtr(true),
+		SaveToolCalls:       boolPtr(true),
+		SaveSubagentContent: boolPtr(true),
+	}
+	f := s.contrailFilters()
+	if !f.Thinking || !f.ToolCalls || !f.SubagentContent {
+		t.Errorf("expected all true, got %+v", f)
+	}
+}
+
+func TestContrailFilters_ThinkingFalse(t *testing.T) {
+	s := AppSettings{SaveThinking: boolPtr(false)}
+	f := s.contrailFilters()
+	if f.Thinking {
+		t.Error("expected Thinking false")
+	}
+	if !f.ToolCalls || !f.SubagentContent {
+		t.Error("expected ToolCalls and SubagentContent unaffected")
+	}
+}
+
+func TestContrailFilters_ToolCallsFalse_CascadesToSubagent(t *testing.T) {
+	// When ToolCalls is off, SubagentContent must be forced off regardless
+	// of its own stored value.
+	s := AppSettings{
+		SaveToolCalls:       boolPtr(false),
+		SaveSubagentContent: boolPtr(true), // explicitly on, but must be overridden
+	}
+	f := s.contrailFilters()
+	if f.ToolCalls {
+		t.Error("expected ToolCalls false")
+	}
+	if f.SubagentContent {
+		t.Error("expected SubagentContent cascaded to false when ToolCalls is off")
+	}
+}
+
+func TestContrailFilters_ToolCallsTrue_SubagentRespected(t *testing.T) {
+	s := AppSettings{
+		SaveToolCalls:       boolPtr(true),
+		SaveSubagentContent: boolPtr(false),
+	}
+	f := s.contrailFilters()
+	if !f.ToolCalls {
+		t.Error("expected ToolCalls true")
+	}
+	if f.SubagentContent {
+		t.Error("expected SubagentContent false when explicitly set")
+	}
+}
+
+// --- GetContrailFilterSettings / SetContrailFilterSettings round-trip ---
+
+func TestContrailFilterSettings_RoundTrip(t *testing.T) {
+	app := newTestApp(t)
+
+	want := ContrailFilterSettings{
+		SaveThinking:        false,
+		SaveToolCalls:       true,
+		SaveSubagentContent: false,
+	}
+	if err := app.SetContrailFilterSettings(want); err != nil {
+		t.Fatalf("SetContrailFilterSettings: %v", err)
+	}
+
+	got := app.GetContrailFilterSettings()
+	if got != want {
+		t.Errorf("round-trip mismatch: got %+v, want %+v", got, want)
+	}
+}
+
+func TestContrailFilterSettings_DefaultsOnMissingFields(t *testing.T) {
+	// Simulate a settings file written by an older version of the app
+	// that has no contrail filter fields at all.
+	app := newTestApp(t)
+
+	// Save settings without filter fields (only analytics)
+	s := AppSettings{AnalyticsEnabled: true}
+	if err := app.saveSettings(s); err != nil {
+		t.Fatalf("saveSettings: %v", err)
+	}
+
+	got := app.GetContrailFilterSettings()
+	if !got.SaveThinking || !got.SaveToolCalls || !got.SaveSubagentContent {
+		t.Errorf("expected all defaults true for missing fields, got %+v", got)
+	}
+}
+
+func TestContrailFilterSettings_ToolCallsOff_SubagentReportsStoredValue(t *testing.T) {
+	// GetContrailFilterSettings returns the stored sub-agent toggle value
+	// (not the cascaded effective value) so the UI can show its real state.
+	app := newTestApp(t)
+
+	want := ContrailFilterSettings{
+		SaveThinking:        true,
+		SaveToolCalls:       false,
+		SaveSubagentContent: true, // stored as true even though cascaded value is false
+	}
+	if err := app.SetContrailFilterSettings(want); err != nil {
+		t.Fatalf("SetContrailFilterSettings: %v", err)
+	}
+
+	got := app.GetContrailFilterSettings()
+	if got != want {
+		t.Errorf("expected stored sub-agent value preserved, got %+v", got)
+	}
+}
