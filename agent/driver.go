@@ -17,6 +17,11 @@ type ProcessCallbacks struct {
 	// skipped during processing (e.g. because the chat is ignored).
 	// May be nil (no files skipped).
 	ShouldSkip func(filePath string) bool
+
+	// Filters controls which kinds of parsed content (thinking blocks,
+	// tool calls, sub-agent content) are written to the contrail file.
+	// Drivers apply these filters between parse and write.
+	Filters ContrailFilters
 }
 
 // AgentDriver encapsulates agent-specific lifecycle behavior.

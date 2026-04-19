@@ -320,6 +320,22 @@ export namespace main {
 	        this.categoryId = source["categoryId"];
 	    }
 	}
+	export class ContrailFilterSettings {
+	    saveThinking: boolean;
+	    saveToolCalls: boolean;
+	    saveSubagentContent: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new ContrailFilterSettings(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.saveThinking = source["saveThinking"];
+	        this.saveToolCalls = source["saveToolCalls"];
+	        this.saveSubagentContent = source["saveSubagentContent"];
+	    }
+	}
 	export class IDEOption {
 	    name: string;
 	    command: string;

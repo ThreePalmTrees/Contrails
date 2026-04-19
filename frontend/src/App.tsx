@@ -11,7 +11,7 @@ import { useTheme, Theme } from "./hooks/useTheme";
 import { DirectoryOpenerDialog } from "./components/DirectoryOpenerDialog";
 import { Project } from "./types";
 import { BrowserOpenURL, EventsOn, Environment } from "../wailsjs/runtime/runtime";
-import { GetAnalyticsEnabled, SetAnalyticsEnabled, GetSaveClaudeDebugFiles, SetSaveClaudeDebugFiles, ApplyAppUpdate, GetVersion } from "../wailsjs/go/main/App";
+import { GetAnalyticsEnabled, SetAnalyticsEnabled, GetSaveClaudeDebugFiles, SetSaveClaudeDebugFiles, GetContrailFilterSettings, SetContrailFilterSettings, ApplyAppUpdate, GetVersion } from "../wailsjs/go/main/App";
 import "./App.css";
 
 function App() {
@@ -42,6 +42,9 @@ function App() {
   const [editTab, setEditTab] = useState<"vscode" | "claudecode" | "cursor" | "output" | undefined>();
   const [analyticsEnabled, setAnalyticsEnabled] = useState(true);
   const [saveDebugFiles, setSaveDebugFiles] = useState(false);
+  const [saveThinking, setSaveThinking] = useState(true);
+  const [saveToolCalls, setSaveToolCalls] = useState(true);
+  const [saveSubagentContent, setSaveSubagentContent] = useState(true);
   const [updateInfo, setUpdateInfo] = useState<{
     latestVersion: string;
     downloadURL: string;
@@ -55,6 +58,11 @@ function App() {
   useEffect(() => {
     GetAnalyticsEnabled().then(setAnalyticsEnabled).catch(() => {});
     GetSaveClaudeDebugFiles().then(setSaveDebugFiles).catch(() => {});
+    GetContrailFilterSettings().then((f) => {
+      setSaveThinking(f.saveThinking);
+      setSaveToolCalls(f.saveToolCalls);
+      setSaveSubagentContent(f.saveSubagentContent);
+    }).catch(() => {});
     GetVersion().then((v) => setIsDevBuild(v === "dev")).catch(() => {});
     Environment().then((env) => setIsWindows(env.platform === "windows")).catch(() => {});
     const cancel = EventsOn("update:available", (info: any) => {
@@ -291,6 +299,16 @@ function App() {
           saveDebugFiles={saveDebugFiles}
           onSaveDebugFilesToggle={(next) => {
             SetSaveClaudeDebugFiles(next).then(() => setSaveDebugFiles(next)).catch(() => {});
+          }}
+          saveThinking={saveThinking}
+          saveToolCalls={saveToolCalls}
+          saveSubagentContent={saveSubagentContent}
+          onContrailFiltersChange={(next) => {
+            SetContrailFilterSettings(next).then(() => {
+              setSaveThinking(next.saveThinking);
+              setSaveToolCalls(next.saveToolCalls);
+              setSaveSubagentContent(next.saveSubagentContent);
+            }).catch(() => {});
           }}
           theme={theme}
           onThemeChange={setTheme}

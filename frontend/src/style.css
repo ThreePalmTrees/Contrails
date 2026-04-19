@@ -29,6 +29,7 @@ html, body { margin: 0; padding: 0; }
 
   --border: #2e2e33;
   --border-subtle: #222225;
+  --border-strong: #727272;
 
   --text-primary: #f7f7f7;
   --text-secondary: #cacad4;
@@ -66,6 +67,7 @@ html, body { margin: 0; padding: 0; }
 
   --border: #d4d4d8;
   --border-subtle: #e4e4e7;
+  --border-strong: #a1a1aa;
 
   --text-primary: #18181b;
   --text-secondary: #52525b;

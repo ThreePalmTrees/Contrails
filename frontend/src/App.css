@@ -524,6 +524,10 @@ button, input, select, textarea, a, [role="button"] {
   color: var(--text-secondary);
   font-weight: 500;
 }
+.btn-s {
+  padding: 5px 10px;
+  font-size: 12px;
+}
 .btn-xs {
   padding: 3px 8px;
   font-size: 10.5px;
@@ -653,7 +657,7 @@ button, input, select, textarea, a, [role="button"] {
   display: flex;
   justify-content: flex-end;
   padding: 10px 16px;
-  border-top: 1px solid var(--border-subtle);
+  /* border-top: 1px solid var(--border-subtle); */
 }
 
 /* ===== Invertible icons (dark: invert, light: normal) ===== */
@@ -797,8 +801,8 @@ input.settings-opener-input:not([type="radio"]):not([type="checkbox"]),
 input.settings-opener-input:not([type="radio"]):not([type="checkbox"]):focus {
   padding: 10px 12px;
   font-size: 12px;
-  color: var(--text-primary);
-  background: var(--bg-base);
+  color: var(--btn-primary-text);
+  background: var(--btn-secondary-bg);
   border: 1.5px solid var(--border);
   border-top: none;
   border-radius: 0 0 var(--radius-sm) var(--radius-sm);
@@ -809,7 +813,7 @@ input.settings-opener-input:not([type="radio"]):not([type="checkbox"]):focus {
 /* ===== Settings Telemetry Section ===== */
 .settings-telemetry-section {
   padding: 10px 16px;
-  border-top: 1px solid var(--border-subtle);
+  border-top: 1px solid var(--border-strong);
 }
 .settings-telemetry-row {
   display: flex;
@@ -874,11 +878,30 @@ input.settings-opener-input:not([type="radio"]):not([type="checkbox"]):focus {
 .settings-toggle input:checked + .settings-toggle-slider::before {
   transform: translateX(14px);
 }
+.settings-toggle.is-disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+/* Contrail content section — visually joined to the telemetry section above */
+.settings-contrail-filters {
+  padding-top: 6px;
+  border-top: 1px solid var(--border-strong);
+  /* border-bottom: 1px solid var(--border-strong); */
+}
+.settings-contrail-filters-header {
+  font-size: 10.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
 
 /* ===== Settings Version Section ===== */
 .settings-version-section {
   padding: 10px 16px;
-  border-top: 1px solid var(--border-subtle);
+  border-top: 1px solid var(--border-strong);
 }
 .settings-version-row {
   display: flex;

@@ -112,7 +112,7 @@ func (app *App) startup(ctx context.Context) {
 			// Heal VSCode contrails with stale filenames (e.g., session ID instead of title)
 			if project.WatchDir != "" {
 				if vsDriver, ok := app.drivers[AgentSourceVSCode].(*vscode.Driver); ok {
-					if healed, _ := vsDriver.HealContrailNames(project.WatchDir, project.OutputDir); healed > 0 {
+					if healed, _ := vsDriver.HealContrailNames(project.WatchDir, project.OutputDir, app.getContrailFilters()); healed > 0 {
 						logInfof(app.logger, "Healed %d contrail filename(s) for %s", healed, project.Name)
 					}
 				}
@@ -221,6 +221,7 @@ func (app *App) FindProject(workingDirectory string) (projectID, outputDir strin
 // WriteContrail writes the parsed session as a markdown file and returns
 // the output path. Delegates to the shared WriteParsedSession function.
 func (app *App) WriteContrail(session *agent.ParsedSession, outputDir string) (string, error) {
+	agent.ApplyContrailFilters(session, app.getContrailFilters())
 	path, err := agent.WriteParsedSession(session, outputDir)
 	if err == nil && path != "" {
 		app.analytics.TrackContrailCreated(session.Agent, len(session.Messages))
@@ -585,16 +586,42 @@ func (app *App) makeProcessCallbacks(projectID string) agent.ProcessCallbacks {
 		ShouldSkip: func(filePath string) bool {
 			return app.IsChatIgnored(projectID, filePath)
 		},
+		Filters: app.getContrailFilters(),
 	}
 }
 
 // --- Analytics Settings ---
 
 // AppSettings holds app-level preferences, persisted alongside projects.json.
+//
+// ContrailFilter fields are pointers so that "field missing from settings.json"
+// (nil) defaults to enabled — users who had contrails working before this
+// setting was added keep the same behavior on upgrade.
 type AppSettings struct {
 	AnalyticsEnabled     bool   `json:"analyticsEnabled"`
 	DirectoryOpener      string `json:"directoryOpener,omitempty"`      // CLI command to open directories (e.g. "code", "cursor", "open")
 	SaveClaudeDebugFiles bool   `json:"saveClaudeDebugFiles,omitempty"` // Save raw transcript & signal files alongside contrails
+	SaveThinking         *bool  `json:"saveThinking,omitempty"`         // Include <thinking> blocks in saved contrails
+	SaveToolCalls        *bool  `json:"saveToolCalls,omitempty"`        // Include tool calls (and their results/edits) in saved contrails
+	SaveSubagentContent  *bool  `json:"saveSubagentContent,omitempty"`  // Include sub-agent conversation content nested under Agent tool calls
+}
+
+// contrailFilters returns the current contrail filter settings,
+// applying defaults (all enabled) for any missing fields and
+// enforcing the sub-agent cascade: when tool calls are disabled,
+// sub-agent content is implicitly disabled too.
+func (s AppSettings) contrailFilters() agent.ContrailFilters {
+	thinking := s.SaveThinking == nil || *s.SaveThinking
+	toolCalls := s.SaveToolCalls == nil || *s.SaveToolCalls
+	subagent := s.SaveSubagentContent == nil || *s.SaveSubagentContent
+	if !toolCalls {
+		subagent = false
+	}
+	return agent.ContrailFilters{
+		Thinking:        thinking,
+		ToolCalls:       toolCalls,
+		SubagentContent: subagent,
+	}
 }
 
 
@@ -677,6 +704,49 @@ func (app *App) SetSaveClaudeDebugFiles(enabled bool) error {
 	settings, _ := app.loadSettings()
 	settings.SaveClaudeDebugFiles = enabled
 	return app.saveSettings(settings)
+}
+
+// ContrailFilterSettings is the frontend-facing view of the three contrail
+// content toggles. All fields default to true for new installs.
+type ContrailFilterSettings struct {
+	SaveThinking        bool `json:"saveThinking"`
+	SaveToolCalls       bool `json:"saveToolCalls"`
+	SaveSubagentContent bool `json:"saveSubagentContent"`
+}
+
+// GetContrailFilterSettings returns the user's saved preferences for what
+// content to include in parsed contrails. Missing fields default to true.
+func (app *App) GetContrailFilterSettings() ContrailFilterSettings {
+	settings, _ := app.loadSettings()
+	filters := settings.contrailFilters()
+	// Report the stored sub-agent value (not the cascaded effective one) so
+	// the UI can show the toggle's own state while tool calls are off.
+	subagent := settings.SaveSubagentContent == nil || *settings.SaveSubagentContent
+	return ContrailFilterSettings{
+		SaveThinking:        filters.Thinking,
+		SaveToolCalls:       filters.ToolCalls,
+		SaveSubagentContent: subagent,
+	}
+}
+
+// SetContrailFilterSettings saves the user's contrail content preferences.
+func (app *App) SetContrailFilterSettings(s ContrailFilterSettings) error {
+	settings, _ := app.loadSettings()
+	t, tc, sub := s.SaveThinking, s.SaveToolCalls, s.SaveSubagentContent
+	settings.SaveThinking = &t
+	settings.SaveToolCalls = &tc
+	settings.SaveSubagentContent = &sub
+	return app.saveSettings(settings)
+}
+
+// getContrailFilters loads and returns the current contrail filter
+// configuration for internal use by the processing pipeline.
+func (app *App) getContrailFilters() agent.ContrailFilters {
+	settings, err := app.loadSettings()
+	if err != nil {
+		return agent.DefaultContrailFilters()
+	}
+	return settings.contrailFilters()
 }
 
 // IDEOption represents a detected IDE that can open directories.
@@ -967,6 +1037,8 @@ func (app *App) processFileWithSource(filePath, sourceType, outputDir string) (s
 		return "", time.Since(start), nil
 	}
 
+	agent.ApplyContrailFilters(parsed, app.getContrailFilters())
+
 	outPath, err := agent.WriteParsedSession(parsed, outputDir)
 	if err != nil {
 		return "", 0, err
@@ -992,6 +1064,8 @@ func (app *App) processFileReturn(filePath, outputDir string) (string, time.Dura
 	if len(parsed.Messages) == 0 {
 		return "", time.Since(start), nil
 	}
+
+	agent.ApplyContrailFilters(parsed, app.getContrailFilters())
 
 	outPath, err := agent.WriteParsedSession(parsed, outputDir)
 	if err != nil {
@@ -1549,6 +1623,8 @@ func (app *App) PreviewChatFile(filePath, sourceType string) (string, error) {
 	if parsed == nil || len(parsed.Messages) == 0 {
 		return "", nil
 	}
+
+	agent.ApplyContrailFilters(parsed, app.getContrailFilters())
 
 	return agent.RenderMarkdown(parsed), nil
 }

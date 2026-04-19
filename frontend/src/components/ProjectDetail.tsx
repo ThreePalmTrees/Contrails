@@ -398,13 +398,23 @@ export function ProjectDetail({ project, onToggle, onProcess, onEdit, onUpdatePr
   async function handleShowDetails(file: ChatFileInfo) {
     setPreview({ file, markdown: "", loading: true, processing: false, processed: false });
     try {
-      const md = await PreviewChatFile(file.filePath, file.sourceType);
-
+      let md: string;
       let oldMarkdown: string | undefined = undefined;
-      if (file.partiallyParsed) {
-        const oldMd = await ReadExistingContrail(file.fileName, project.outputDir);
-        if (oldMd) {
-          oldMarkdown = oldMd;
+
+      if (file.parsed && !file.partiallyParsed) {
+        // Already fully processed: read the saved contrail from disk exactly as written.
+        // This ensures the viewer always reflects what was saved (with whatever settings
+        // were active at processing time), not what current settings would produce.
+        md = await ReadExistingContrail(file.fileName, project.outputDir);
+      } else {
+        // Not yet processed (or partially): live-parse the source so the user
+        // sees a preview of what the contrail will look like with current settings.
+        md = await PreviewChatFile(file.filePath, file.sourceType);
+        if (file.partiallyParsed) {
+          const oldMd = await ReadExistingContrail(file.fileName, project.outputDir);
+          if (oldMd) {
+            oldMarkdown = oldMd;
+          }
         }
       }
 
@@ -431,7 +441,12 @@ export function ProjectDetail({ project, onToggle, onProcess, onEdit, onUpdatePr
 
     const refreshPreview = async () => {
       try {
-        const md = await PreviewChatFile(preview.file.filePath, preview.file.sourceType);
+        let md: string;
+        if (preview.file.parsed && !preview.file.partiallyParsed) {
+          md = await ReadExistingContrail(preview.file.fileName, project.outputDir);
+        } else {
+          md = await PreviewChatFile(preview.file.filePath, preview.file.sourceType);
+        }
         setPreview((prev) => prev ? { ...prev, markdown: md } : null);
       } catch {
         // Keep existing content on error

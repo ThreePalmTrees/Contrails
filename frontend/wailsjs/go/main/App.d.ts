@@ -33,6 +33,8 @@ export function FindProject(arg1:string):Promise<string>;
 
 export function GetAnalyticsEnabled():Promise<boolean>;
 
+export function GetContrailFilterSettings():Promise<main.ContrailFilterSettings>;
+
 export function GetDefaultOutputDir(arg1:string):Promise<string>;
 
 export function GetDirectoryOpener():Promise<string>;
@@ -90,6 +92,8 @@ export function SelectChatSessionsDir():Promise<string>;
 export function SelectOutputDir():Promise<string>;
 
 export function SetAnalyticsEnabled(arg1:boolean):Promise<void>;
+
+export function SetContrailFilterSettings(arg1:main.ContrailFilterSettings):Promise<void>;
 
 export function SetDirectoryOpener(arg1:string):Promise<void>;
 

@@ -108,6 +108,8 @@ func (d *Driver) ProcessAll(sourceDir, outputDir string, callbacks agent.Process
 			continue
 		}
 
+		agent.ApplyContrailFilters(session, callbacks.Filters)
+
 		outputPath, err := agent.WriteParsedSession(session, outputDir)
 		if err != nil {
 			agent.LogWarningf(d.logger, "Error writing contrail for %s: %v", entry.Name(), err)
@@ -123,7 +125,7 @@ func (d *Driver) ProcessAll(sourceDir, outputDir string, callbacks agent.Process
 	}
 
 	// Heal any stale filenames (session ID → title)
-	if healed, _ := d.HealContrailNames(sourceDir, outputDir); healed > 0 {
+	if healed, _ := d.HealContrailNames(sourceDir, outputDir, callbacks.Filters); healed > 0 {
 		agent.LogInfof(d.logger, "Healed %d contrail filename(s)", healed)
 	}
 
@@ -133,7 +135,7 @@ func (d *Driver) ProcessAll(sourceDir, outputDir string, callbacks agent.Process
 // HealContrailNames scans the output directory for .md files that use session IDs
 // as filenames and re-processes the corresponding chat session JSONL files so that
 // any available customTitle is picked up and the file is renamed accordingly.
-func (d *Driver) HealContrailNames(watchDir, outputDir string) (int, error) {
+func (d *Driver) HealContrailNames(watchDir, outputDir string, filters agent.ContrailFilters) (int, error) {
 	entries, err := os.ReadDir(outputDir)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -184,6 +186,8 @@ func (d *Driver) HealContrailNames(watchDir, outputDir string) (int, error) {
 		if len(session.Messages) == 0 {
 			continue
 		}
+
+		agent.ApplyContrailFilters(session, filters)
 
 		if _, err := agent.WriteParsedSession(session, outputDir); err != nil {
 			agent.LogWarningf(d.logger, "Heal: error writing %s: %v", sessionID, err)

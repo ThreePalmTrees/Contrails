@@ -58,6 +58,10 @@ export function GetAnalyticsEnabled() {
   return window['go']['main']['App']['GetAnalyticsEnabled']();
 }
 
+export function GetContrailFilterSettings() {
+  return window['go']['main']['App']['GetContrailFilterSettings']();
+}
+
 export function GetDefaultOutputDir(arg1) {
   return window['go']['main']['App']['GetDefaultOutputDir'](arg1);
 }
@@ -172,6 +176,10 @@ export function SelectOutputDir() {
 
 export function SetAnalyticsEnabled(arg1) {
   return window['go']['main']['App']['SetAnalyticsEnabled'](arg1);
+}
+
+export function SetContrailFilterSettings(arg1) {
+  return window['go']['main']['App']['SetContrailFilterSettings'](arg1);
 }
 
 export function SetDirectoryOpener(arg1) {

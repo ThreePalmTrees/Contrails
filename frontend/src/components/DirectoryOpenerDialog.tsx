@@ -18,6 +18,12 @@ interface UpdateInfo {
   releaseURL: string;
 }
 
+interface ContrailFilters {
+  saveThinking: boolean;
+  saveToolCalls: boolean;
+  saveSubagentContent: boolean;
+}
+
 interface DirectoryOpenerDialogProps {
   /** Directory path to open (null = settings mode, no directory to open) */
   dirPath: string | null;
@@ -32,13 +38,19 @@ interface DirectoryOpenerDialogProps {
   saveDebugFiles?: boolean;
   /** Callback to toggle debug file saving */
   onSaveDebugFilesToggle?: (enabled: boolean) => void;
+  /** Contrail content filter toggles (default true when omitted) */
+  saveThinking?: boolean;
+  saveToolCalls?: boolean;
+  saveSubagentContent?: boolean;
+  /** Persist all three filter toggles at once */
+  onContrailFiltersChange?: (filters: ContrailFilters) => void;
   /** Current theme */
   theme?: Theme;
   /** Callback to change theme */
   onThemeChange?: (theme: Theme) => void;
 }
 
-export function DirectoryOpenerDialog({ dirPath, onClose, updateInfo, analyticsEnabled, onAnalyticsToggle, saveDebugFiles, onSaveDebugFilesToggle, theme, onThemeChange }: DirectoryOpenerDialogProps) {
+export function DirectoryOpenerDialog({ dirPath, onClose, updateInfo, analyticsEnabled, onAnalyticsToggle, saveDebugFiles, onSaveDebugFilesToggle, saveThinking, saveToolCalls, saveSubagentContent, onContrailFiltersChange, theme, onThemeChange }: DirectoryOpenerDialogProps) {
   const [ides, setIdes] = useState<IDEChoice[]>([]);
   const [selected, setSelected] = useState("open");
   const [customCommand, setCustomCommand] = useState("");
@@ -54,6 +66,9 @@ export function DirectoryOpenerDialog({ dirPath, onClose, updateInfo, analyticsE
   const [draftTheme, setDraftTheme] = useState(theme);
   const [draftAnalytics, setDraftAnalytics] = useState(analyticsEnabled ?? true);
   const [draftSaveDebugFiles, setDraftSaveDebugFiles] = useState(saveDebugFiles ?? false);
+  const [draftSaveThinking, setDraftSaveThinking] = useState(saveThinking ?? true);
+  const [draftSaveToolCalls, setDraftSaveToolCalls] = useState(saveToolCalls ?? true);
+  const [draftSaveSubagentContent, setDraftSaveSubagentContent] = useState(saveSubagentContent ?? true);
 
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -135,6 +150,19 @@ export function DirectoryOpenerDialog({ dirPath, onClose, updateInfo, analyticsE
       }
       if (onSaveDebugFilesToggle && draftSaveDebugFiles !== (saveDebugFiles ?? false)) {
         onSaveDebugFilesToggle(draftSaveDebugFiles);
+      }
+      if (onContrailFiltersChange) {
+        const changed =
+          draftSaveThinking !== (saveThinking ?? true) ||
+          draftSaveToolCalls !== (saveToolCalls ?? true) ||
+          draftSaveSubagentContent !== (saveSubagentContent ?? true);
+        if (changed) {
+          onContrailFiltersChange({
+            saveThinking: draftSaveThinking,
+            saveToolCalls: draftSaveToolCalls,
+            saveSubagentContent: draftSaveSubagentContent,
+          });
+        }
       }
     }
     onClose();
@@ -244,22 +272,58 @@ export function DirectoryOpenerDialog({ dirPath, onClose, updateInfo, analyticsE
             </div>
           )}
         </div>
-        {isSettingsMode && onAnalyticsToggle && (
-          <div className="settings-telemetry-section">
+        {isSettingsMode && onContrailFiltersChange && (
+          <div className="settings-telemetry-section settings-contrail-filters">
+            <div className="settings-contrail-filters-header">
+              Contrail content
+            </div>
             <div className="settings-telemetry-row">
               <div className="settings-telemetry-info">
-                <span className="settings-telemetry-label">Anonymous telemetry</span>
+                <span className="settings-telemetry-label">Thinking</span>
                 <span className="settings-telemetry-hint">
-                  {draftAnalytics
-                    ? "Usage data is collected anonymously to help improve Contrails."
-                    : "Telemetry is off. Only basic, non-identifiable signals (app version, OS) are sent to help track adoption."}
+                  Include the thinking blocks in saved contrails.
                 </span>
               </div>
               <label className="settings-toggle">
                 <input
                   type="checkbox"
-                  checked={draftAnalytics}
-                  onChange={(e) => setDraftAnalytics(e.target.checked)}
+                  checked={draftSaveThinking}
+                  onChange={(e) => setDraftSaveThinking(e.target.checked)}
+                />
+                <span className="settings-toggle-slider" />
+              </label>
+            </div>
+            <div className="settings-telemetry-row" style={{ marginTop: 8 }}>
+              <div className="settings-telemetry-info">
+                <span className="settings-telemetry-label">Tool calls</span>
+                <span className="settings-telemetry-hint">
+                  Include tool calls in saved contrails.
+                </span>
+              </div>
+              <label className="settings-toggle">
+                <input
+                  type="checkbox"
+                  checked={draftSaveToolCalls}
+                  onChange={(e) => setDraftSaveToolCalls(e.target.checked)}
+                />
+                <span className="settings-toggle-slider" />
+              </label>
+            </div>
+            <div className="settings-telemetry-row" style={{ marginTop: 8 }}>
+              <div className="settings-telemetry-info">
+                <span className="settings-telemetry-label">Sub-agent content</span>
+                <span className="settings-telemetry-hint">
+                  {draftSaveToolCalls
+                    ? "Include activity of sub-agents in saved contrails."
+                    : "Disabled because sub-agents are tool calls - enable “Tool calls” to configure this."}
+                </span>
+              </div>
+              <label className={`settings-toggle${draftSaveToolCalls ? "" : " is-disabled"}`}>
+                <input
+                  type="checkbox"
+                  checked={draftSaveToolCalls && draftSaveSubagentContent}
+                  disabled={!draftSaveToolCalls}
+                  onChange={(e) => setDraftSaveSubagentContent(e.target.checked)}
                 />
                 <span className="settings-toggle-slider" />
               </label>
@@ -284,11 +348,33 @@ export function DirectoryOpenerDialog({ dirPath, onClose, updateInfo, analyticsE
             )}
           </div>
         )}
+        {isSettingsMode && onAnalyticsToggle && (
+          <div className="settings-telemetry-section">
+            <div className="settings-telemetry-row">
+              <div className="settings-telemetry-info">
+                <span className="settings-telemetry-label">Anonymous telemetry</span>
+                <span className="settings-telemetry-hint">
+                  {draftAnalytics
+                    ? "Usage data is collected anonymously to help improve Contrails."
+                    : "Telemetry is off. Only basic, non-identifiable signals (app version, OS) are sent to help track adoption."}
+                </span>
+              </div>
+              <label className="settings-toggle">
+                <input
+                  type="checkbox"
+                  checked={draftAnalytics}
+                  onChange={(e) => setDraftAnalytics(e.target.checked)}
+                />
+                <span className="settings-toggle-slider" />
+              </label>
+            </div>
+          </div>
+        )}
         {isSettingsMode && (
           <div className="settings-version-section">
             <div className="settings-version-row">
               <span className="settings-version-label">
-                Version {version || "…"}
+                Version: {version || "..."}
               </span>
               {(updateInfo || checkedUpdate) ? (
                 <button
@@ -310,7 +396,7 @@ export function DirectoryOpenerDialog({ dirPath, onClose, updateInfo, analyticsE
                 <span className="settings-version-uptodate">Up to date</span>
               ) : (
                 <button
-                  className="btn btn-secondary btn-xs"
+                  className="btn btn-primary btn-s"
                   disabled={checkingUpdate}
                   onClick={() => {
                     setCheckingUpdate(true);

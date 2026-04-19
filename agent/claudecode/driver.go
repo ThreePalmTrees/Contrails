@@ -136,6 +136,8 @@ func (d *Driver) ProcessAll(sourceDir, outputDir string, callbacks agent.Process
 			continue
 		}
 
+		agent.ApplyContrailFilters(session, callbacks.Filters)
+
 		outputPath, err := agent.WriteParsedSession(session, outputDir)
 		if err != nil {
 			agent.LogWarningf(d.logger, "Error writing contrail for %s: %v", filepath.Base(sessionFile), err)
