@@ -120,6 +120,8 @@ func (app *App) startup(ctx context.Context) {
 		}
 	}
 
+	app.syncClaudeThinkingSummaries()
+
 	// Guidelines: Don't fire-and-forget goroutines — track with WaitGroup (go-style-guide.md)
 	app.waitGroup.Add(1)
 	go func() {
@@ -274,6 +276,28 @@ func (app *App) SaveClaudeDebugFiles() bool {
 	return settings.SaveClaudeDebugFiles
 }
 
+// syncClaudeThinkingSummaries mirrors the "save thinking" preference into the
+// .claude/settings.local.json of every registered Claude Code project. Claude
+// Code only writes thinking text into its transcript when it asks the API for
+// summaries, so without this the toggle has nothing to keep. Silent by design:
+// it changes what lands in the contrail files, nothing the user has to answer.
+func (app *App) syncClaudeThinkingSummaries() {
+	enabled := app.getContrailFilters().Thinking
+
+	projects, err := app.GetProjects()
+	if err != nil {
+		return
+	}
+	for _, project := range projects {
+		if project.WorkspacePath == "" || !hasSource(project, AgentSourceClaudeCode) {
+			continue
+		}
+		if err := claudecode.SetThinkingSummaries(project.WorkspacePath, enabled); err != nil {
+			logWarningf(app.logger, "Failed to set Claude Code thinking summaries for %s: %v", project.Name, err)
+		}
+	}
+}
+
 // --- Project Management ---
 
 // Errors: Handle Errors Once — propagate instead of silently discarding (go-style-guide.md)
@@ -360,6 +384,8 @@ func (app *App) AddProject(project Project) error {
 			}
 		}
 	}
+
+	app.syncClaudeThinkingSummaries()
 
 	// Analytics: track project addition
 	agentTypes := make([]string, 0, len(project.Sources))
@@ -736,7 +762,11 @@ func (app *App) SetContrailFilterSettings(s ContrailFilterSettings) error {
 	settings.SaveThinking = &t
 	settings.SaveToolCalls = &tc
 	settings.SaveSubagentContent = &sub
-	return app.saveSettings(settings)
+	if err := app.saveSettings(settings); err != nil {
+		return err
+	}
+	app.syncClaudeThinkingSummaries()
+	return nil
 }
 
 // getContrailFilters loads and returns the current contrail filter

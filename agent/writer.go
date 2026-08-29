@@ -225,11 +225,12 @@ func writeInterleavedParts(markdown *strings.Builder, parts []MessagePart) {
 			// Tool results render as indented code blocks within tool groups
 			content := strings.TrimRight(part.Content, "\n\r\t ")
 			if content != "" {
-				markdown.WriteString("  ```\n")
+				fence := codeFenceFor(content)
+				markdown.WriteString(fmt.Sprintf("  %s\n", fence))
 				for _, resultLine := range strings.Split(content, "\n") {
 					markdown.WriteString(fmt.Sprintf("  %s\n", resultLine))
 				}
-				markdown.WriteString("  ```\n")
+				markdown.WriteString(fmt.Sprintf("  %s\n", fence))
 			}
 
 		case PartReference:
@@ -286,23 +287,25 @@ func writeSubagentParts(markdown *strings.Builder, subParts []MessagePart) {
 				}
 				markdown.WriteString("\n")
 			} else {
+				fence := codeFenceFor(resultContent)
 				markdown.WriteString(fmt.Sprintf("<details>\n<summary>%s</summary>\n\n", toolSummary))
-				markdown.WriteString("```\n")
+				markdown.WriteString(fence + "\n")
 				for _, line := range strings.Split(resultContent, "\n") {
 					markdown.WriteString(fmt.Sprintf("%s\n", line))
 				}
-				markdown.WriteString("```\n")
+				markdown.WriteString(fence + "\n")
 				markdown.WriteString("\n</details>\n")
 			}
 		case PartToolResult:
 			// Standalone result (not preceded by a tool call) — render inline
 			content := strings.TrimRight(sp.Content, "\n\r\t ")
 			if content != "" {
-				markdown.WriteString("```\n")
+				fence := codeFenceFor(content)
+				markdown.WriteString(fence + "\n")
 				for _, line := range strings.Split(content, "\n") {
 					markdown.WriteString(fmt.Sprintf("%s\n", line))
 				}
-				markdown.WriteString("```\n")
+				markdown.WriteString(fence + "\n")
 			}
 		}
 	}
@@ -361,4 +364,27 @@ func writeToolDetailPart(markdown *strings.Builder, part MessagePart) {
 	for _, f := range detail.ResultFiles {
 		markdown.WriteString(fmt.Sprintf("  - `%s`\n", f))
 	}
+}
+
+// codeFenceFor returns a backtick fence long enough to wrap content that may
+// itself contain fenced code blocks. A fence is closed only by a run of at
+// least as many backticks, so a result containing ``` would otherwise end the
+// block early and leak its remaining lines — including any HTML tags — into
+// the surrounding markdown, breaking the <details> section around it.
+func codeFenceFor(content string) string {
+	longest := 0
+	for _, line := range strings.Split(content, "\n") {
+		trimmed := strings.TrimLeft(line, " \t")
+		run := 0
+		for run < len(trimmed) && trimmed[run] == '`' {
+			run++
+		}
+		if run > longest {
+			longest = run
+		}
+	}
+	if longest < 3 {
+		return "```"
+	}
+	return strings.Repeat("`", longest+1)
 }

@@ -237,3 +237,105 @@ func TestConsumeSignalFile_DeletesAfterReading(t *testing.T) {
 		t.Error("Signal file should be deleted after consumption")
 	}
 }
+
+func readLocalSettings(t *testing.T, projectDirectory string) map[string]interface{} {
+	t.Helper()
+
+	data, err := os.ReadFile(filepath.Join(projectDirectory, ".claude", "settings.local.json"))
+	if err != nil {
+		t.Fatalf("Failed to read settings file: %v", err)
+	}
+	var settings map[string]interface{}
+	if err := json.Unmarshal(data, &settings); err != nil {
+		t.Fatalf("Failed to parse settings: %v", err)
+	}
+	return settings
+}
+
+func TestSetThinkingSummaries_EnablesInNewSettingsFile(t *testing.T) {
+	projectDirectory := t.TempDir()
+
+	if err := SetThinkingSummaries(projectDirectory, true); err != nil {
+		t.Fatalf("SetThinkingSummaries failed: %v", err)
+	}
+
+	settings := readLocalSettings(t, projectDirectory)
+	if enabled, _ := settings["showThinkingSummaries"].(bool); !enabled {
+		t.Errorf("Expected showThinkingSummaries=true, got %v", settings["showThinkingSummaries"])
+	}
+}
+
+func TestSetThinkingSummaries_PreservesTheStopHook(t *testing.T) {
+	projectDirectory := t.TempDir()
+
+	if err := InstallHook(projectDirectory); err != nil {
+		t.Fatalf("InstallHook failed: %v", err)
+	}
+	if err := SetThinkingSummaries(projectDirectory, true); err != nil {
+		t.Fatalf("SetThinkingSummaries failed: %v", err)
+	}
+
+	settings := readLocalSettings(t, projectDirectory)
+	if !hasContrailsHook(settings) {
+		t.Error("Expected the Stop hook to survive the settings write")
+	}
+	if enabled, _ := settings["showThinkingSummaries"].(bool); !enabled {
+		t.Error("Expected showThinkingSummaries=true alongside the hook")
+	}
+}
+
+func TestSetThinkingSummaries_DisableRemovesTheKeyAndKeepsTheHook(t *testing.T) {
+	projectDirectory := t.TempDir()
+
+	if err := InstallHook(projectDirectory); err != nil {
+		t.Fatalf("InstallHook failed: %v", err)
+	}
+	if err := SetThinkingSummaries(projectDirectory, true); err != nil {
+		t.Fatalf("SetThinkingSummaries(true) failed: %v", err)
+	}
+	if err := SetThinkingSummaries(projectDirectory, false); err != nil {
+		t.Fatalf("SetThinkingSummaries(false) failed: %v", err)
+	}
+
+	settings := readLocalSettings(t, projectDirectory)
+	if _, present := settings["showThinkingSummaries"]; present {
+		t.Errorf("Expected the key to be removed, got %v", settings["showThinkingSummaries"])
+	}
+	if !hasContrailsHook(settings) {
+		t.Error("Expected the Stop hook to survive")
+	}
+}
+
+func TestSetThinkingSummaries_DisableLeavesAnExplicitFalseAlone(t *testing.T) {
+	projectDirectory := t.TempDir()
+	settingsDirectory := filepath.Join(projectDirectory, ".claude")
+	if err := os.MkdirAll(settingsDirectory, 0755); err != nil {
+		t.Fatalf("Failed to create settings directory: %v", err)
+	}
+	settingsPath := filepath.Join(settingsDirectory, "settings.local.json")
+	if err := os.WriteFile(settingsPath, []byte(`{"showThinkingSummaries": false}`), 0644); err != nil {
+		t.Fatalf("Failed to write settings file: %v", err)
+	}
+
+	if err := SetThinkingSummaries(projectDirectory, false); err != nil {
+		t.Fatalf("SetThinkingSummaries failed: %v", err)
+	}
+
+	settings := readLocalSettings(t, projectDirectory)
+	value, present := settings["showThinkingSummaries"].(bool)
+	if !present || value {
+		t.Errorf("Expected the user's explicit false to stay, got %v", settings["showThinkingSummaries"])
+	}
+}
+
+func TestSetThinkingSummaries_DisableWithoutSettingsFileWritesNothing(t *testing.T) {
+	projectDirectory := t.TempDir()
+
+	if err := SetThinkingSummaries(projectDirectory, false); err != nil {
+		t.Fatalf("SetThinkingSummaries failed: %v", err)
+	}
+
+	if _, err := os.Stat(filepath.Join(projectDirectory, ".claude")); !os.IsNotExist(err) {
+		t.Error("Expected no .claude directory to be created when turning the setting off")
+	}
+}

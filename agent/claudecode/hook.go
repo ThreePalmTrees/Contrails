@@ -194,6 +194,67 @@ func isContrailsHookEntry(hook interface{}) bool {
 	return false
 }
 
+// thinkingSummariesSetting is the Claude Code setting that makes it ask the
+// API for thinking summaries. Current models return thinking blocks with an
+// empty text field unless the client asks for summaries, so without this
+// setting a transcript holds no thinking for a contrail to keep.
+const thinkingSummariesSetting = "showThinkingSummaries"
+
+// SetThinkingSummaries turns the Claude Code thinking-summary setting on or
+// off in the project's .claude/settings.local.json — the same file that holds
+// the Stop hook. Turning it off removes the key instead of writing false, so
+// Claude Code returns to its own default, and an explicit false the user wrote
+// themselves is left alone. Nothing is written when the file already says what
+// it should. The setting applies to Claude Code sessions started afterwards.
+func SetThinkingSummaries(projectPath string, enabled bool) error {
+	settingsDirectory := filepath.Join(projectPath, ".claude")
+	settingsPath := filepath.Join(settingsDirectory, "settings.local.json")
+
+	var settings map[string]interface{}
+	data, err := os.ReadFile(settingsPath)
+	if err != nil {
+		if !os.IsNotExist(err) {
+			return fmt.Errorf("reading settings file: %w", err)
+		}
+		if !enabled {
+			return nil // Nothing to turn off
+		}
+		settings = make(map[string]interface{})
+	} else {
+		if err := json.Unmarshal(data, &settings); err != nil {
+			return fmt.Errorf("parsing settings file: %w", err)
+		}
+	}
+
+	current, present := settings[thinkingSummariesSetting].(bool)
+	if enabled {
+		if present && current {
+			return nil // Already on
+		}
+		settings[thinkingSummariesSetting] = true
+	} else {
+		if !present || !current {
+			return nil // Not ours to remove
+		}
+		delete(settings, thinkingSummariesSetting)
+	}
+
+	if err := os.MkdirAll(settingsDirectory, 0755); err != nil {
+		return fmt.Errorf("creating .claude directory: %w", err)
+	}
+
+	output, err := json.MarshalIndent(settings, "", "  ")
+	if err != nil {
+		return fmt.Errorf("marshaling settings: %w", err)
+	}
+
+	if err := os.WriteFile(settingsPath, output, 0644); err != nil {
+		return fmt.Errorf("writing settings file: %w", err)
+	}
+
+	return nil
+}
+
 // EnsureSignalDirectory creates the signal directory if it doesn't exist.
 func EnsureSignalDirectory() (string, error) {
 	home, err := os.UserHomeDir()
