@@ -15,7 +15,7 @@
 <i>Contrails, short for "condensation trails", are the trails left behind by aircrafts at high altitudes.</i>
 
 Contrails is an opensource app (macOS, Windows and Linux) that:
-1. Watches your coding agent sessions _(VS Code Copilot, Claude Code, and Cursor)_
+1. Watches your coding agent sessions _(VS Code Copilot, Claude Code, Cursor, and OpenCode)_
 2. Parses them into readable Markdown
 3. Saves them into your project repositories.
 
@@ -40,6 +40,7 @@ When working on a related feature in the future, you can reference relevant cont
 | **VS Code Copilot** | Scans `workspaceStorage/` for workspaces with `chatSessions/` | `fsnotify` on `chatSessions/` directory | JSONL event log (v3) |
 | **Claude Code** | Scans `~/.claude/projects/` for session files | Signal watcher on `~/contrails/hook-signals/` via Stop hook | JSONL transcript |
 | **Cursor** | Scans `workspaceStorage/` for per-workspace `state.vscdb` files | `fsnotify` on per-workspace storage + global `globalStorage/` directory (debounced 2 s) | SQLite — per-workspace `ItemTable` for composer list + global `cursorDiskKV` for `composerData:*` + `bubbleId:*` keys |
+| **OpenCode** | Scans `~/.local/share/opencode/opencode.db` for sessions grouped by working directory | `fsnotify` on the OpenCode data directory (`opencode.db` + WAL sidecars, debounced 2 s) | SQLite — `session_v2` + `session_message` (message parts embedded in JSON) |
 
 ## Installation
 
@@ -75,12 +76,12 @@ When working on a related feature in the future, you can reference relevant cont
 
 ## Features
 
-- **Auto-discovery** - Finds projects with agent chat sessions automatically. VS Code and Cursor workspaces are resolved via `workspace.json`; Claude Code projects are discovered from `~/.claude/projects/`
+- **Auto-discovery** - Finds projects with agent chat sessions automatically. VS Code and Cursor workspaces are resolved via `workspace.json`; Claude Code projects are discovered from `~/.claude/projects/`; OpenCode projects are grouped from the working directory recorded in its database
 - **Filesystem watching** - Uses `fsnotify` to detect new or modified VS Code chat sessions instantly
 - **Signal-based capture** - Claude Code sessions are captured via a Stop hook that writes signal files when a session ends
 - **Deleted session handling** - When a chat session file is deleted, the corresponding Markdown is flagged with a deletion banner rather than removed
 - **Smart parsing** - Preserves the order of text, thinking blocks, tool calls, and file edits exactly as they occurred during the conversation
-- **Multi-agent projects** - A single project can have VS Code Copilot, Claude Code, and Cursor sources simultaneously
+- **Multi-agent projects** - A single project can have VS Code Copilot, Claude Code, Cursor, and OpenCode sources simultaneously
 - **Markdown output** - Generates clean `.md` files
 - **Project management** - Track multiple workspaces, rename them, pause/resume watching
 - **Persistent state** - Projects list persists across restarts; selected project stored in localStorage
@@ -116,11 +117,17 @@ contrails/
 │   │   ├── driver.go        # AgentDriver impl — fsnotify lifecycle + ProcessAll + HealContrailNames
 │   │   ├── parser.go        # VS Code JSONL event log → ParsedSession (materialize + walk)
 │   │   └── types.go         # VS Code raw types (chatSession, jsonlEvent, etc.)
-│   └── cursor/
-│       ├── driver.go        # AgentDriver impl — fsnotify on workspaceStorage (debounced), ProcessAll
-│       ├── parser.go        # Cursor SQLite cursorDiskKV → ParsedSession (composerData + bubbleId keys)
-│       ├── scanner.go       # Scan workspaceStorage for per-workspace state.vscdb files
-│       └── types.go         # Cursor raw types (composerData, bubble, capabilityType, etc.)
+│   ├── cursor/
+│   │   ├── driver.go        # AgentDriver impl — fsnotify on workspaceStorage (debounced), ProcessAll
+│   │   ├── parser.go        # Cursor SQLite cursorDiskKV → ParsedSession (composerData + bubbleId keys)
+│   │   ├── scanner.go       # Scan workspaceStorage for per-workspace state.vscdb files
+│   │   └── types.go         # Cursor raw types (composerData, bubble, capabilityType, etc.)
+│   └── opencode/
+│       ├── driver.go        # AgentDriver impl — fsnotify on the OpenCode data dir (debounced), ProcessAll
+│       ├── parser.go        # OpenCode SQLite (session_v2 + session_message) → ParsedSession
+│       ├── scanner.go       # Scan session_v2 for working directories and their sessions
+│       ├── types.go         # OpenCode v2 raw types (session row, message row, content parts)
+│       └── paths_darwin.go  # XDG data dir + opencode.db resolution (paths_linux.go / paths_windows.go)
 └── frontend/
     └── src/
         ├── App.tsx              # Root component: sidebar + main layout
@@ -155,6 +162,7 @@ contrails/
 | `agent/vscode/` | VS Code Copilot `AgentDriver` — manages fsnotify watching, batch processing with `HealContrailNames`, JSONL parser that materializes the event log (kind:0/1/2 patches with array splice semantics) and uses `toolCallRounds` as the authoritative text source |
 | `agent/claudecode/` | Claude Code `AgentDriver` — manages hook lifecycle and signal watching, JSONL transcript parser, project scanner (`~/.claude/projects/`), Stop hook installer, periodic hook enforcer |
 | `agent/cursor/` | Cursor `AgentDriver` — watches per-workspace + global `state.vscdb` via fsnotify (2 s debounce), SQLite parser that reads composer list from per-workspace `ItemTable` and conversation data (`composerData:*` + `bubbleId:*` keys) from global `cursorDiskKV`, workspace scanner |
+| `agent/opencode/` | OpenCode `AgentDriver` — watches the global OpenCode data directory (`opencode.db` + WAL sidecars) via fsnotify (2 s debounce), SQLite parser that reads `session_v2` + `session_message` (ordered by `seq`, compaction-aware, nested subagents), directory scanner, XDG/`OPENCODE_DB` path resolution |
 
 ### Frontend (React + TypeScript)
 
@@ -162,7 +170,7 @@ contrails/
 |------|---------------|
 | `useProjects.ts` | Centralized state hook — loads projects, listens for watcher events, auto-processes on file changes, persists selection to localStorage |
 | `ProjectList.tsx` | Sidebar list with inline rename, status dots (green = watching), context menu (rename, pause, process, remove) |
-| `AddProjectDialog.tsx` | Agent-aware project setup — browse auto-detected VS Code, Claude Code, and Cursor workspaces, configure name + output dir |
+| `AddProjectDialog.tsx` | Agent-aware project setup — browse auto-detected VS Code, Claude Code, Cursor, and OpenCode workspaces, configure name + output dir |
 | `ProjectDetail.tsx` | Shows watch/output paths, status badge, manual process button |
 
 ## How It Works

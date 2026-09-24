@@ -5,15 +5,17 @@ import {
   BrowseWorkspaceStorages,
   BrowseClaudeCodeProjects,
   BrowseCursorProjects,
+  BrowseOpenCodeProjects,
   SelectOutputDir,
   GetDefaultOutputDir,
   ValidateOutputDir,
   GetWorkspaceStoragePath,
 } from "../../wailsjs/go/main/App";
-import { claudecode, cursor } from "../../wailsjs/go/models";
+import { claudecode, cursor, opencode } from "../../wailsjs/go/models";
 import copilotLogo from "../assets/images/gh-copilot.png";
 import claudeLogo from "../assets/images/claude.png";
 import cursorLogo from "../assets/images/cursor.png";
+import opencodeLogo from "../assets/images/opencode.png";
 
 /** Show only the last 2 directory segments of a path (e.g. "/workspaceStorage/abc123") */
 function shortenPath(fullPath: string): string {
@@ -22,14 +24,14 @@ function shortenPath(fullPath: string): string {
   return "…/" + parts.slice(-2).join("/");
 }
 
-type AgentTab = "vscode" | "claudecode" | "cursor";
+type AgentTab = "vscode" | "claudecode" | "cursor" | "opencode";
 
 interface Props {
   onAdd: (project: Project) => void;
   onCancel: () => void;
   existingWatchDirs: string[];
   existingProject?: Project;
-  editTargetTab?: "vscode" | "claudecode" | "cursor" | "output";
+  editTargetTab?: "vscode" | "claudecode" | "cursor" | "opencode" | "output";
 }
 
 export function AddProjectDialog({ onAdd, onCancel, existingWatchDirs, existingProject, editTargetTab }: Props) {
@@ -57,6 +59,12 @@ export function AddProjectDialog({ onAdd, onCancel, existingWatchDirs, existingP
   const [cursorSearch, setCursorSearch] = useState("");
   const [selectedCursor, setSelectedCursor] = useState<cursor.ScannedProject | null>(null);
 
+  // OpenCode state
+  const [opencodeProjects, setOpencodeProjects] = useState<opencode.ScannedProject[]>([]);
+  const [opencodeLoading, setOpencodeLoading] = useState(false);
+  const [opencodeSearch, setOpencodeSearch] = useState("");
+  const [selectedOpenCode, setSelectedOpenCode] = useState<opencode.ScannedProject | null>(null);
+
   // Configure step
   const [name, setName] = useState("");
   const [defaultName, setDefaultName] = useState("");
@@ -74,6 +82,7 @@ export function AddProjectDialog({ onAdd, onCancel, existingWatchDirs, existingP
       const vscodeSource = existingProject.sources?.find(s => s.type === "vscode")?.watchDir || (!existingProject.sources ? existingProject.watchDir : undefined);
       const claudeSource = existingProject.sources?.find(s => s.type === "claudecode")?.watchDir;
       const cursorSource = existingProject.sources?.find(s => s.type === "cursor")?.watchDir;
+      const opencodeSource = existingProject.sources?.find(s => s.type === "opencode")?.watchDir;
 
       if (vscodeSource) {
         setSelectedVSCode({
@@ -100,6 +109,14 @@ export function AddProjectDialog({ onAdd, onCancel, existingWatchDirs, existingP
           lastActivityAt: 0,
         } as cursor.ScannedProject);
       }
+      if (opencodeSource) {
+        setSelectedOpenCode({
+          directory: opencodeSource,
+          displayName: existingProject.name,
+          sessionCount: 0,
+          lastActivityAt: 0,
+        } as opencode.ScannedProject);
+      }
 
       setName(existingProject.name);
       setDefaultName(existingProject.name);
@@ -110,11 +127,13 @@ export function AddProjectDialog({ onAdd, onCancel, existingWatchDirs, existingP
         // Just configure step
       } else if (editTargetTab) {
         handleTabClick(editTargetTab);
-      } else if (vscodeSource && !claudeSource && !cursorSource) {
+      } else if (vscodeSource && !claudeSource && !cursorSource && !opencodeSource) {
         handleTabClick("claudecode");
-      } else if (claudeSource && !vscodeSource && !cursorSource) {
+      } else if (claudeSource && !vscodeSource && !cursorSource && !opencodeSource) {
         handleTabClick("vscode");
-      } else if (cursorSource && !vscodeSource && !claudeSource) {
+      } else if (cursorSource && !vscodeSource && !claudeSource && !opencodeSource) {
+        handleTabClick("vscode");
+      } else if (opencodeSource && !vscodeSource && !claudeSource && !cursorSource) {
         handleTabClick("vscode");
       }
     }
@@ -162,14 +181,29 @@ export function AddProjectDialog({ onAdd, onCancel, existingWatchDirs, existingP
     }
   };
 
+  const loadOpenCodeProjects = async () => {
+    if (opencodeProjects.length > 0) return; // already loaded
+    setOpencodeLoading(true);
+    try {
+      const results = await BrowseOpenCodeProjects();
+      setOpencodeProjects(results || []);
+    } catch (err) {
+      console.error("Failed to browse OpenCode projects:", err);
+    } finally {
+      setOpencodeLoading(false);
+    }
+  };
+
   const handleTabClick = (tab: AgentTab) => {
     setActiveTab(tab);
     if (tab === "vscode") {
       loadVSCodeWorkspaces();
     } else if (tab === "claudecode") {
       loadClaudeProjects();
-    } else {
+    } else if (tab === "cursor") {
       loadCursorProjects();
+    } else {
+      loadOpenCodeProjects();
     }
   };
 
@@ -208,6 +242,24 @@ export function AddProjectDialog({ onAdd, onCancel, existingWatchDirs, existingP
     }
     return { available: avail, configured: conf };
   }, [cursorProjects, cursorSearch, existingWatchDirs]);
+
+  // Filtered OpenCode projects
+  const { available: opencodeAvailable, configured: opencodeConfigured } = useMemo(() => {
+    const existingSet = new Set(existingWatchDirs);
+    const filtered = opencodeProjects.filter((p) =>
+      p.displayName.toLowerCase().includes(opencodeSearch.toLowerCase())
+    );
+    const avail: opencode.ScannedProject[] = [];
+    const conf: opencode.ScannedProject[] = [];
+    for (const p of filtered) {
+      if (existingSet.has(p.directory)) {
+        conf.push(p);
+      } else {
+        avail.push(p);
+      }
+    }
+    return { available: avail, configured: conf };
+  }, [opencodeProjects, opencodeSearch, existingWatchDirs]);
 
   // Filtered Claude Code projects
   const { available: claudeAvailable, configured: claudeConfigured } = useMemo(() => {
@@ -254,33 +306,45 @@ export function AddProjectDialog({ onAdd, onCancel, existingWatchDirs, existingP
     }
   };
 
-  const hasAnySelection = selectedVSCode !== null || selectedClaude !== null || selectedCursor !== null;
+  const selectOpenCodeProject = (project: opencode.ScannedProject) => {
+    setSelectedOpenCode(project);
+    // Pre-fill name from first selection
+    if (!selectedVSCode && !selectedClaude && !selectedCursor) {
+      setDefaultName(project.displayName);
+      setWorkspacePath(project.directory);
+    }
+  };
+
+  const hasAnySelection = selectedVSCode !== null || selectedClaude !== null || selectedCursor !== null || selectedOpenCode !== null;
 
   const hasNewSelection = useMemo(() => {
     if (!existingProject) return false;
     const vscodeSource = existingProject.sources?.find(s => s.type === "vscode")?.watchDir || (!existingProject.sources ? existingProject.watchDir : undefined);
     const claudeSource = existingProject.sources?.find(s => s.type === "claudecode")?.watchDir;
     const cursorSource = existingProject.sources?.find(s => s.type === "cursor")?.watchDir;
+    const opencodeSource = existingProject.sources?.find(s => s.type === "opencode")?.watchDir;
 
     const currVscode = selectedVSCode?.chatSessionsDir;
     const currClaude = selectedClaude?.transcriptDirectory;
     const currCursor = selectedCursor?.workspacePath;
+    const currOpenCode = selectedOpenCode?.directory;
 
     const currName = name.trim() || defaultName;
     const sourcesChanged =
       (currVscode && currVscode !== vscodeSource) ||
       (currClaude && currClaude !== claudeSource) ||
-      (currCursor && currCursor !== cursorSource);
+      (currCursor && currCursor !== cursorSource) ||
+      (currOpenCode && currOpenCode !== opencodeSource);
     const configChanged = currName !== existingProject.name || outputDir !== existingProject.outputDir;
     return sourcesChanged || configChanged;
-  }, [existingProject, selectedVSCode, selectedClaude, selectedCursor, name, defaultName, outputDir]);
+  }, [existingProject, selectedVSCode, selectedClaude, selectedCursor, selectedOpenCode, name, defaultName, outputDir]);
 
   const goToConfigure = async () => {
     if (!hasAnySelection) return;
 
     // Derive name and workspace path from selections
-    const derivedName = selectedVSCode?.name || selectedClaude?.displayName || selectedCursor?.displayName || "";
-    const derivedWorkspace = selectedVSCode?.workspacePath || selectedClaude?.projectPath || selectedCursor?.workspacePath || "";
+    const derivedName = selectedVSCode?.name || selectedClaude?.displayName || selectedCursor?.displayName || selectedOpenCode?.displayName || "";
+    const derivedWorkspace = selectedVSCode?.workspacePath || selectedClaude?.projectPath || selectedCursor?.workspacePath || selectedOpenCode?.directory || "";
 
     setName("");
     setDefaultName(derivedName);
@@ -334,6 +398,9 @@ export function AddProjectDialog({ onAdd, onCancel, existingWatchDirs, existingP
     if (selectedCursor) {
       sources.push({ type: "cursor", watchDir: selectedCursor.workspacePath });
     }
+    if (selectedOpenCode) {
+      sources.push({ type: "opencode", watchDir: selectedOpenCode.directory });
+    }
 
     onAdd({
       id: existingProject ? existingProject.id : crypto.randomUUID(),
@@ -351,6 +418,7 @@ export function AddProjectDialog({ onAdd, onCancel, existingWatchDirs, existingP
   const vscodeNoResults = !vscodeLoading && vscodeAvailable.length === 0 && vscodeConfigured.length === 0;
   const claudeNoResults = !claudeLoading && claudeAvailable.length === 0 && claudeConfigured.length === 0;
   const cursorNoResults = !cursorLoading && cursorAvailable.length === 0 && cursorConfigured.length === 0;
+  const opencodeNoResults = !opencodeLoading && opencodeAvailable.length === 0 && opencodeConfigured.length === 0;
 
   return (
     <div className="dialog-overlay">
@@ -399,10 +467,19 @@ export function AddProjectDialog({ onAdd, onCancel, existingWatchDirs, existingP
                 <img src={cursorLogo} alt="Cursor" style={{ height: '34px', width: '34px', objectFit: 'contain', borderRadius: '4px' }} className="source-toggle-icon" />
                 <span className="source-toggle-label">Cursor</span>
               </button>
+
+              <button
+                className={`source-toggle ${activeTab === "opencode" ? "source-toggle-active" : ""} ${selectedOpenCode ? "source-toggle-selected" : ""}`}
+                onClick={() => handleTabClick("opencode")}
+              >
+                {selectedOpenCode && <Check size={14} className="source-toggle-check" />}
+                <img src={opencodeLogo} alt="OpenCode" style={{ height: '34px', width: '34px', objectFit: 'contain', borderRadius: '4px' }} className="source-toggle-icon" />
+                <span className="source-toggle-label">OpenCode</span>
+              </button>
             </div>
 
             {/* Selection summary */}
-            {(selectedVSCode || selectedClaude || selectedCursor) && (
+            {(selectedVSCode || selectedClaude || selectedCursor || selectedOpenCode) && (
               <div className="source-selections">
                 {selectedVSCode && (
                   <div className="source-selection-item">
@@ -420,6 +497,12 @@ export function AddProjectDialog({ onAdd, onCancel, existingWatchDirs, existingP
                   <div className="source-selection-item">
                     <CheckCircle2 size={12} className="configured-check" />
                     <span>Cursor: {selectedCursor.displayName}</span>
+                  </div>
+                )}
+                {selectedOpenCode && (
+                  <div className="source-selection-item">
+                    <CheckCircle2 size={12} className="configured-check" />
+                    <span>OpenCode: {selectedOpenCode.displayName}</span>
                   </div>
                 )}
               </div>
@@ -728,6 +811,99 @@ export function AddProjectDialog({ onAdd, onCancel, existingWatchDirs, existingP
               </>
             )}
 
+            {/* OpenCode project list */}
+            {activeTab === "opencode" && (
+              <>
+                <div className="search-box">
+                  <Search size={14} />
+                  <input
+                    placeholder="Search projects…"
+                    value={opencodeSearch}
+                    onChange={(e) => setOpencodeSearch(e.target.value)}
+                    autoFocus
+                  />
+                </div>
+
+                <div className="workspace-list">
+                  {opencodeLoading && (
+                    <div className="workspace-loading">Scanning OpenCode projects…</div>
+                  )}
+
+                  {opencodeNoResults && !opencodeLoading && (
+                    <div className="workspace-empty">
+                      <p>No OpenCode projects found</p>
+                      <p className="workspace-empty-hint">
+                        Make sure OpenCode has been used with at least one project.
+                      </p>
+                    </div>
+                  )}
+
+                  {opencodeAvailable.map((project) => (
+                    <button
+                      key={project.directory}
+                      className={`workspace-item ${selectedOpenCode?.directory === project.directory ? "workspace-item-active" : ""}`}
+                      onClick={() => selectOpenCodeProject(project)}
+                    >
+                      <div className="workspace-item-info">
+                        <span className="workspace-name">{project.displayName}</span>
+                        <span className="workspace-path" title={project.directory}>
+                          {project.sessionCount} session{project.sessionCount !== 1 ? "s" : ""}
+                          {" · "}
+                          {shortenPath(project.directory)}
+                        </span>
+                      </div>
+                      {selectedOpenCode?.directory === project.directory ? (
+                        <CheckCircle2 size={14} className="configured-check" />
+                      ) : (
+                        <ChevronRight size={16} />
+                      )}
+                    </button>
+                  ))}
+
+                  {opencodeConfigured.length > 0 && (
+                    <>
+                      <div className="workspace-section-label">
+                        <CheckCircle2 size={12} />
+                        Already Configured
+                      </div>
+                      {opencodeConfigured.map((project) => {
+                        const isCurrentConfigured = existingProject?.sources?.some(s => s.type === "opencode" && s.watchDir === project.directory);
+                        const isSelected = selectedOpenCode?.directory === project.directory;
+
+                        return (
+                          <div
+                            key={project.directory}
+                            className={`workspace-item ${isCurrentConfigured ? (isSelected ? "workspace-item-active" : "") : "workspace-item-disabled"}`}
+                            style={isCurrentConfigured ? { cursor: "pointer", opacity: 1 } : {}}
+                            onClick={() => isCurrentConfigured && selectOpenCodeProject(project)}
+                          >
+                            <div className="workspace-item-info">
+                              <span className="workspace-name">
+                                {project.displayName}
+                                {isCurrentConfigured && <span className="badge badge-inline" style={{ marginLeft: 6 }}>Current</span>}
+                              </span>
+                              <span className="workspace-path" title={project.directory}>
+                                {project.sessionCount} session{project.sessionCount !== 1 ? "s" : ""}
+                                {" · "}
+                                {shortenPath(project.directory)}
+                              </span>
+                            </div>
+                            {isSelected ? (
+                              <CheckCircle2 size={14} className="configured-check" />
+                            ) : isCurrentConfigured ? (
+                              <ChevronRight size={16} />
+                            ) : (
+                              <CheckCircle2 size={14} className="configured-check" />
+                            )}
+                          </div>
+                        );
+                      })}
+                    </>
+                  )}
+                </div>
+              </>
+            )}
+
             {/* Prompt to select a source if none active */}
             {activeTab === null && (
               <div className="workspace-empty">
@@ -794,6 +970,12 @@ export function AddProjectDialog({ onAdd, onCancel, existingWatchDirs, existingP
                 <div className="source-summary-item">
                   <img src={cursorLogo} alt="Cursor" title="Cursor" style={{ height: '24px', width: '24px', objectFit: 'contain', borderRadius: '4px' }} />
                   <span className="mono source-summary-path">{shortenPath(selectedCursor.workspacePath)}</span>
+                </div>
+              )}
+              {selectedOpenCode && (
+                <div className="source-summary-item">
+                  <img src={opencodeLogo} alt="OpenCode" title="OpenCode" style={{ height: '24px', width: '24px', objectFit: 'contain', borderRadius: '4px' }} />
+                  <span className="mono source-summary-path">{shortenPath(selectedOpenCode.directory)}</span>
                 </div>
               )}
             </div>

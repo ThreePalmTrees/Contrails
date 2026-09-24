@@ -39,7 +39,7 @@ function App() {
   const { theme, setTheme } = useTheme();
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [editProject, setEditProject] = useState<Project | null>(null);
-  const [editTab, setEditTab] = useState<"vscode" | "claudecode" | "cursor" | "output" | undefined>();
+  const [editTab, setEditTab] = useState<"vscode" | "claudecode" | "cursor" | "opencode" | "output" | undefined>();
   const [analyticsEnabled, setAnalyticsEnabled] = useState(true);
   const [saveDebugFiles, setSaveDebugFiles] = useState(false);
   const [saveThinking, setSaveThinking] = useState(true);

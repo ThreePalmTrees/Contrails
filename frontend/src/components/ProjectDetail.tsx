@@ -7,6 +7,7 @@ import { Project, ProcessingProgress, ChatFileInfo, Category } from "../types";
 import copilotLogo from "../assets/images/gh-copilot.png";
 import claudeLogo from "../assets/images/claude.png";
 import cursorLogo from "../assets/images/cursor.png";
+import opencodeLogo from "../assets/images/opencode.png";
 import { PreviewChatFile, ProcessSingleFile, ReadExistingContrail, IgnoreChat, UnignoreChat, CreateCategory, RenameCategory, DeleteCategory, AssignCategory, UnassignCategory } from "../../wailsjs/go/main/App";
 import { EventsOn } from "../../wailsjs/runtime/runtime";
 import type { useChatFilesCache } from "../hooks/useChatFilesCache";
@@ -290,7 +291,7 @@ interface Props {
   project: Project;
   onToggle: (project: Project) => void;
   onProcess: (project: Project) => void;
-  onEdit?: (project: Project, tab?: "vscode" | "claudecode" | "cursor" | "output") => void;
+  onEdit?: (project: Project, tab?: "vscode" | "claudecode" | "cursor" | "opencode" | "output") => void;
   onUpdateProject?: (project: Project) => void;
   onProjectDataChanged?: () => void;
   processing: string | null;
@@ -348,8 +349,9 @@ export function ProjectDetail({ project, onToggle, onProcess, onEdit, onUpdatePr
   const hasVSCode = useMemo(() => project.sources?.some((s) => s.type === "vscode") ?? (project.watchDir !== ""), [project]);
   const hasClaude = useMemo(() => project.sources?.some((s) => s.type === "claudecode") ?? false, [project]);
   const hasCursor = useMemo(() => project.sources?.some((s) => s.type === "cursor") ?? false, [project]);
+  const hasOpenCode = useMemo(() => project.sources?.some((s) => s.type === "opencode") ?? false, [project]);
 
-  const handleRemoveAgent = (type: "vscode" | "claudecode" | "cursor") => {
+  const handleRemoveAgent = (type: "vscode" | "claudecode" | "cursor" | "opencode") => {
     if (!onUpdateProject) return;
     const newSources = project.sources?.filter(s => s.type !== type) || [];
     const updated = { ...project, sources: newSources };
@@ -462,11 +464,15 @@ export function ProjectDetail({ project, onToggle, onProcess, onEdit, onUpdatePr
     const unbindCursor = EventsOn("cursor:changed", (event: { projectId: string }) => {
       if (event.projectId === project.id) refreshPreview();
     });
+    const unbindOpenCode = EventsOn("opencode:changed", (event: { projectId: string }) => {
+      if (event.projectId === project.id) refreshPreview();
+    });
 
     return () => {
       unbindProcessed();
       unbindWatcher();
       unbindCursor();
+      unbindOpenCode();
     };
   }, [preview?.file.filePath, preview?.loading, project.id]);
 
@@ -736,7 +742,35 @@ export function ProjectDetail({ project, onToggle, onProcess, onEdit, onUpdatePr
           </>
         )}
 
-        {(!hasVSCode || !hasClaude || !hasCursor) && onEdit && (
+        {hasOpenCode && project.sources?.find(s => s.type === "opencode")?.watchDir && (
+          <div className="detail-card">
+            <div className="detail-card-icon">
+              <FolderOpen size={18} />
+            </div>
+            <div className="detail-card-content" style={{ flex: 1 }}>
+              <span className="detail-card-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                Watching Directory
+                <img src={opencodeLogo} alt="OpenCode" style={{ height: '20px', width: '20px', objectFit: 'contain', borderRadius: '4px' }} title="OpenCode" />
+              </span>
+              <span className="detail-card-value mono">{project.sources?.find(s => s.type === "opencode")?.watchDir}</span>
+            </div>
+
+            {onEdit && (
+              <div style={{ display: 'flex', gap: '4px', opacity: 0.7 }}>
+                <button className="btn btn-ghost btn-sm" style={{ padding: '0 6px' }} onClick={() => onEdit(project, 'opencode')} title="Edit watching directory">
+                  <Pencil size={14} />
+                </button>
+                {(hasVSCode || hasClaude || hasCursor) && onUpdateProject && (
+                  <button className="btn btn-ghost btn-sm" style={{ padding: '0 6px', color: 'var(--red)' }} onClick={() => handleRemoveAgent('opencode')} title="Remove OpenCode">
+                    <Trash2 size={14} />
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {(!hasVSCode || !hasClaude || !hasCursor || !hasOpenCode) && onEdit && (
             <button className="btn btn-outline btn-sm" style={{ width: 'fit-content', alignSelf: 'center' }} onClick={() => onEdit(project)}>+ Configure new agent</button>
         )}
 
@@ -1136,10 +1170,11 @@ function ChatFileRow({ file, onShowDetails, onProcessed, outputDir, onIgnore, on
           ? <CheckCircle2 size={14} style={{ color: "orange" }} />
           : null}
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', marginLeft: '2px', marginRight: '6px' }} title={file.sourceType === 'vscode' ? 'GitHub Copilot' : file.sourceType === 'claudecode' ? 'Claude Code' : ''}>
+      <div style={{ display: 'flex', alignItems: 'center', marginLeft: '2px', marginRight: '6px' }} title={file.sourceType === 'vscode' ? 'GitHub Copilot' : file.sourceType === 'claudecode' ? 'Claude Code' : file.sourceType === 'opencode' ? 'OpenCode' : ''}>
         {file.sourceType === 'vscode' && <img src={copilotLogo} alt="GitHub Copilot" className="icon-invert" style={{ height: '20px', width: '20px', objectFit: 'contain' }} />}
         {file.sourceType === 'claudecode' && <img src={claudeLogo} alt="Claude Code" style={{ height: '18px', width: '26px', objectFit: 'contain' }} />}
         {file.sourceType === 'cursor' && <img src={cursorLogo} alt="Cursor" style={{ height: '18px', width: '18px', objectFit: 'contain', borderRadius: '4px' }} />}
+        {file.sourceType === 'opencode' && <img src={opencodeLogo} alt="OpenCode" style={{ height: '18px', width: '18px', objectFit: 'contain', borderRadius: '4px' }} />}
       </div>
       <span className="chat-file-name chat-file-name-clickable" title={file.filePath} onClick={onShowDetails}>{getFileDisplayName(file)}</span>
 

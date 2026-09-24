@@ -13,6 +13,7 @@ import { Project } from "../types";
 import copilotLogo from "../assets/images/gh-copilot.png";
 import claudeLogo from "../assets/images/claude.png";
 import cursorLogo from "../assets/images/cursor.png";
+import opencodeLogo from "../assets/images/opencode.png";
 
 interface Props {
   projects: Project[];
@@ -95,6 +96,7 @@ export function ProjectList({
           const hasVSCode = project.sources?.some((s) => s.type === "vscode") ?? (project.watchDir !== "");
           const hasClaude = project.sources?.some((s) => s.type === "claudecode") ?? false;
           const hasCursor = project.sources?.some((s) => s.type === "cursor") ?? false;
+          const hasOpenCode = project.sources?.some((s) => s.type === "opencode") ?? false;
 
           return (
             <div
@@ -194,6 +196,7 @@ export function ProjectList({
                 {hasVSCode && <img className="icon-invert" style={{ height: '20px', width: '20px', objectFit: 'contain' }} src={copilotLogo} alt="VSCode" />}
                 {hasClaude && <img style={{ height: '18px', width: '28px', objectFit: 'contain' }} src={claudeLogo} alt="ClaudeCode" />}
                 {hasCursor && <img style={{ height: '18px', width: '18px', objectFit: 'contain', borderRadius: '4px' }} src={cursorLogo} alt="Cursor" />}
+                {hasOpenCode && <img style={{ height: '18px', width: '18px', objectFit: 'contain', borderRadius: '4px' }} src={opencodeLogo} alt="OpenCode" />}
               </div>
             </div>
           );
