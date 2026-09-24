@@ -24,11 +24,12 @@ type sessionRow struct {
 
 // messageRow mirrors a row in the session_message table. Ordering is by Seq.
 type messageRow struct {
-	ID        string
-	SessionID string
-	Type      string // "user" | "assistant" | skipped types
-	Seq       int64
-	Data      json.RawMessage
+	ID          string
+	SessionID   string
+	Type        string // "user" | "assistant" | skipped types
+	Seq         int64
+	TimeUpdated int64
+	Data        json.RawMessage
 }
 
 // userData is the decoded JSON payload of a message row with type "user".

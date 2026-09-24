@@ -73,13 +73,19 @@ func parseSession(db *sql.DB, sessionID string) (*agent.ParsedSession, error) {
 		session.CreatedAt = agent.FormatTimestamp(row.TimeCreated)
 		session.CreatedAtMs = row.TimeCreated
 	}
-	if row.TimeUpdated > 0 {
-		session.LastMessageAt = agent.FormatTimestamp(row.TimeUpdated)
-	}
 
 	rows, err := fetchMessages(db, sessionID)
 	if err != nil {
 		return nil, err
+	}
+
+	// session_v2.time_updated only moves on session-metadata events
+	// (title, agent/model switch, archive) — message writes never touch
+	// it. The newest fetched message row is the real last activity.
+	if last := lastMessageTime(rows); last > 0 {
+		session.LastMessageAt = agent.FormatTimestamp(last)
+	} else if row.TimeUpdated > 0 {
+		session.LastMessageAt = agent.FormatTimestamp(row.TimeUpdated)
 	}
 
 	drafts := buildDrafts(rows)
@@ -568,7 +574,7 @@ func fetchSession(db *sql.DB, sessionID string) (sessionRow, error) {
 // boundary, ordered by seq. History before the latest compaction row is not
 // current, so only rows with a greater seq are returned.
 func fetchMessages(db *sql.DB, sessionID string) ([]messageRow, error) {
-	const query = `SELECT id, session_id, type, seq, data
+	const query = `SELECT id, session_id, type, seq, time_updated, data
 		FROM session_message
 		WHERE session_id = ? AND seq > COALESCE((
 			SELECT MAX(seq) FROM session_message
@@ -588,7 +594,7 @@ func fetchMessages(db *sql.DB, sessionID string) ([]messageRow, error) {
 			row  messageRow
 			data string
 		)
-		if err := rows.Scan(&row.ID, &row.SessionID, &row.Type, &row.Seq, &data); err != nil {
+		if err := rows.Scan(&row.ID, &row.SessionID, &row.Type, &row.Seq, &row.TimeUpdated, &data); err != nil {
 			return nil, fmt.Errorf("scanning message: %w", err)
 		}
 		row.Data = json.RawMessage(data)
@@ -598,6 +604,18 @@ func fetchMessages(db *sql.DB, sessionID string) ([]messageRow, error) {
 		return nil, fmt.Errorf("iterating messages: %w", err)
 	}
 	return messages, nil
+}
+
+// lastMessageTime returns the newest message-row time_updated in a fetched
+// message set, 0 when there are none.
+func lastMessageTime(rows []messageRow) int64 {
+	var last int64
+	for _, row := range rows {
+		if row.TimeUpdated > last {
+			last = row.TimeUpdated
+		}
+	}
+	return last
 }
 
 // fetchChildren returns the ids of the sessions whose parent_id is
