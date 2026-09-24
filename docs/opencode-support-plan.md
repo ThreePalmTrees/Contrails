@@ -1,7 +1,7 @@
 # OpenCode Support Plan
 
 **Original spike date:** 2026-05-12
-**Revised:** 2026-09-24 — verified against the OpenCode source repo (`/Users/admin/Documents/projects/opencode`, HEAD `0f549842ee`) and a live OpenCode database (`~/.local/share/opencode/opencode.db`). The original spike's storage claims were partly stale; this revision replaces every storage-shape claim with what the source and the live DB show.
+**Revised:** 2026-09-24 — verified against the OpenCode source repo (`/Users/admin/Documents/projects/opencode`, HEAD `0f549842ee`) and a live OpenCode database (`~/.local/share/opencode/opencode.db`). The original spike's storage claims were partly stale; this revision replaces every storage-shape claim with what the source and the live DB show. A QA pass (z.ai GLM-5.3, same day) re-verified every section against both sources and produced the corrections in §3 (tool part shape), §4 (dedup key, watcher pattern, `parent_id` exclusion, compaction boundary) and §6.
 **Source repo:** https://github.com/anomalyco/opencode
 **Status:** Research verified, implementation not started
 
@@ -25,7 +25,7 @@ OpenCode uses a single **SQLite database in WAL mode** — not per-session files
 |------|--------|
 | Default path | `~/.local/share/opencode/opencode.db` (XDG data dir; **not** `~/.opencode/` — that directory holds only `bin/`) |
 | Data dir resolution | `$XDG_DATA_HOME` if set, else `~/.local/share` (all platforms — see `packages/core/src/global.ts:10-11`) |
-| Default filename | `opencode.db` for channels `latest/dev/beta/next/prod` (or `OPENCODE_DISABLE_CHANNEL_DB` set), else `opencode-<channel>.db` (`packages/core/src/database/database.ts:43-55`) |
+| Default filename | `opencode.db` for channels `latest/beta/prod` (or when `OPENCODE_DISABLE_CHANNEL_DB` equals `"1"` or `"true"`), else `opencode-<channel>.db` — `dev`, `next` and source builds (channel `local`) get the suffixed name (`packages/core/src/database/database.ts:43-55`, `installation/version.ts:7`) |
 | Override | `OPENCODE_DB` — a **relative** value is joined to the data dir, absolute paths and `:memory:` are used as-is (`database.ts:44-46`, `flag.ts:47`). `dbPath()` must replicate this, not use the value as-is. |
 | Sidecars | `opencode.db-wal` and `opencode.db-shm` — the WAL holds recent writes, so the watcher must cover all three names |
 | Per-session files? | No — all sessions in one DB |
@@ -51,7 +51,8 @@ model           TEXT (JSON)         -- { id, providerID, variant }
 cost            REAL
 tokens_input / tokens_output / tokens_reasoning / tokens_cache_read / tokens_cache_write
 time_created    INTEGER             -- Unix ms
-time_updated    INTEGER             -- Unix ms — grouping + dedup key
+time_updated    INTEGER             -- Unix ms — grouping only; does NOT move on
+                                    -- message writes (dedup keys on messages)
 time_archived   INTEGER             -- Unix ms (null if active)
 ```
 
@@ -143,19 +144,28 @@ In the live v2 data model, assistant messages carry `content` arrays with parts 
 {
   "type": "tool",
   "id": "4173e20a-…",
-  "tool": "shell",
+  "name": "shell",
+  "executed": false,
   "state": {
     "status": "completed",           // pending | running | completed | error
     "input":  { "command": "…" },
-    "output": "…",                    // string, ToolStateCompleted only
-    "title":  "…",
-    "metadata": { },
-    "time":   { "start": 1790274738012, "end": 1790274740459, "compacted": null }
-  }
+    "content": [
+      { "type": "text", "text": "…output line…" },
+      { "type": "text", "text": "Command exited with code 0." }
+    ],
+    "metadata": { "status": "completed", "truncated": false, "exit": 0 }
+  },
+  "time": { "created": 1789807944205, "ran": 1789807944228, "completed": 1789807944266 }
 }
 ```
 
-Key differences from the original spike: `state` is an object (not a flat status string), `input`/`output` live **inside** `state`, `output` is a string (`state.output`), and completed-tool metadata can carry nested `content` arrays.
+Key facts verified against the live DB (all 3,692 tool parts) and `packages/schema/src/session-message.ts:81-125`:
+
+- The tool-name key on a tool part is **`name`**, not `tool` — `$.tool` is absent in every live tool part. A struct tagged `json:"tool"` reads an empty name for every call.
+- `state` carries exactly `{status, input, content, metadata}` on completed tools. There is **no** `output` string, `title`, or `time` inside `state`.
+- Tool output text is `state.content` — an array of typed items (`{type: "text", text: …}`); join their `text` fields for the result. Exit info lives in `state.metadata` (`exit`, `truncated`).
+- Timestamps sit at the **part level**: `time.created`, `time.ran`, `time.completed`.
+- The part field keying the tool name in Go: `Name string \`json:"name"\``.
 
 ### §3b Subagents — resolved, unlike the original spike's guess
 
@@ -296,22 +306,25 @@ type userData struct {
 type partData struct {
     Type  string           `json:"type"`
     ID    string           `json:"id"`
-    Tool  string           `json:"tool"`
+    Name  string           `json:"name"` // tool parts key on "name", not "tool"
     State *toolState       `json:"state"`
     Text  string           `json:"text"`
+    Time  struct {
+        Created   int64 `json:"created"`
+        Ran       int64 `json:"ran"`
+        Completed int64 `json:"completed"`
+    } `json:"time"`
 }
 
 type toolState struct {
     Status   string          `json:"status"` // pending | running | completed | error
     Input    json.RawMessage `json:"input"`
-    Output   string          `json:"output"`
-    Title    string          `json:"title"`
-    Metadata json.RawMessage `json:"metadata"`
+    Content  []struct {
+        Type string `json:"type"`
+        Text string `json:"text"`
+    } `json:"content"`   // joined text is the tool output; no "output" field exists
+    Metadata json.RawMessage `json:"metadata"` // exit, truncated, …
     Error    json.RawMessage `json:"error"`
-    Time     struct {
-        Start int64 `json:"start"`
-        End   int64 `json:"end"`
-    } `json:"time"`
 }
 ```
 
@@ -333,13 +346,19 @@ func (p *Parser) ParseFile(sessionID string) (*agent.ParsedSession, error) {
 // so tests can supply an in-memory database (same pattern as Cursor).
 func parseSession(db *sql.DB, sessionID string) (*agent.ParsedSession, error) {
     // 1. Fetch session row from session_v2
-    // 2. Fetch message rows WHERE session_id = ? ORDER BY seq ASC
+    // 2. Find the compaction boundary: seq of the last message row with
+    //    type='compaction' for this session; fetch message rows
+    //    WHERE session_id = ? AND seq > boundary ORDER BY seq ASC
+    //    (no compaction row → all rows). history.ts latestCompaction.
     // 3. Skip rows whose type is not user/assistant
     // 4. Walk data.content: text → PartText, reasoning → PartThinking,
-    //    tool (status completed/error) → PartToolCall + PartToolResult,
-    //    write/edit/apply_patch input → PartFileEdit + FilesEdited
-    // 5. Optional (v1): children via SELECT id FROM session_v2 WHERE parent_id = ?
-    //    → parse each recursively into SubParts (depth-limited to 1)
+    //    tool (status completed/error) → PartToolCall + PartToolResult
+    //    (tool name from part "name", output text joined from
+    //    state.content[].text, exit from state.metadata),
+    //    write/edit/apply_patch input path → PartFileEdit + FilesEdited
+    // 5. Children via SELECT id FROM session_v2 WHERE parent_id = ?
+    //    → parse each recursively into SubParts (depth-limited to 1;
+    //    grandchildren wait for v2)
     // 6. Populate ParsedSession metadata (title from session_v2.title,
     //    model from session_v2.model, directory, times, cost, tokens)
 }
@@ -386,9 +405,12 @@ type ScannedProject struct {
 func BrowseProjects() ([]ScannedProject, error) {
     db, err := openDB()
     // SELECT directory, COUNT(*), MAX(time_updated) FROM session_v2
-    // WHERE time_archived IS NULL
+    // WHERE time_archived IS NULL AND parent_id IS NULL
     // GROUP BY directory
     // ORDER BY MAX(time_updated) DESC
+    // parent_id IS NULL excludes subagent sessions — 56 of 114 live rows,
+    // all sharing their parent's directory; without it they double-count
+    // and parse twice (once as a session, once as SubParts).
     // Normalise symlinks (filepath.EvalSymlinks) so /tmp and /private/tmp
     // (macOS) group as one project.
 }
@@ -398,7 +420,7 @@ func BrowseProjects() ([]ScannedProject, error) {
 func ListSessions(directory string) ([]SessionInfo, error) {
     db, err := openDB()
     // SELECT id, title, time_created, time_updated FROM session_v2
-    // WHERE directory = ? AND time_archived IS NULL
+    // WHERE directory = ? AND time_archived IS NULL AND parent_id IS NULL
     // ORDER BY time_updated DESC
     // Match against the normalised directory too.
 }
@@ -423,7 +445,8 @@ type Driver struct {
     fsWatcher      *fsnotify.Watcher
     stopCh         chan struct{}
     doneCh         chan struct{}
-    lastTimestamps map[string]int64     // sessionID → last processed time_updated
+    lastTimestamps map[string]int64     // sessionID → last processed
+                                        // MAX(session_message.time_updated)
     changeHandler  ChangeHandler
     logger         agent.Logger
 }
@@ -439,12 +462,13 @@ func (d *Driver) Activate(_, workspacePath, _ string) error { … }
 func (d *Driver) Deactivate(workspacePath, _ string) { … }
 
 // ProcessAll enumerates sessions for the directory (sourceDir), skips
-// sessions whose time_updated hasn't changed, parses and writes the rest.
-// Mirrors cursor.Driver.ProcessAll() including lastTimestamps deduplication.
+// sessions whose latest message time hasn't changed, parses and writes
+// the rest. Mirrors cursor.Driver.ProcessAll() including lastTimestamps
+// deduplication.
 func (d *Driver) ProcessAll(sourceDir, outputDir string, callbacks agent.ProcessCallbacks) (int, error) { … }
 ```
 
-**Watcher file targets** — watch the data directory (`~/.local/share/opencode/`), and match all three DB names, plus channel-suffixed variants:
+**Watcher file targets** — watch the data directory (`~/.local/share/opencode/`). Match by prefix and suffix so channel-suffixed DBs and their WAL sidecars all land:
 
 ```go
 func isOpenCodeDBEvent(event fsnotify.Event) bool {
@@ -452,14 +476,28 @@ func isOpenCodeDBEvent(event fsnotify.Event) bool {
         return false
     }
     name := filepath.Base(event.Name)
-    return name == "opencode.db" ||
-        name == "opencode.db-wal" ||
-        name == "opencode.db-shm" ||
-        strings.HasPrefix(name, "opencode-") && strings.HasSuffix(name, ".db")
+    for _, suffix := range []string{".db", ".db-wal", ".db-shm"} {
+        if strings.HasPrefix(name, "opencode") && strings.HasSuffix(name, suffix) {
+            return true
+        }
+    }
+    return false
 }
 ```
 
-**`lastTimestamps` deduplication** — on each `ProcessAll` call, sessions whose `time_updated` hasn't advanced since last run are skipped, avoiding re-parsing on every DB write. Same strategy as Cursor.
+The suffix list matters: on non-stable channels (and source builds, channel `local`) the files are `opencode-<channel>.db{,-wal,-shm}` — a pattern matching only `opencode.db` starves on those builds, because most writes land in the unmatched `-wal` sidecar.
+
+**`lastTimestamps` deduplication — key on messages, not the session row.** `session_v2.time_updated` is only rewritten by session-metadata events (title, agent/model switch, archive); message inserts never touch it — verified live: 104 of 114 sessions have their newest user/assistant message *newer* than `session.time_updated` (worst lag ~4 minutes), and the projector explicitly preserves the session row on usage writes (`projector.ts`). Deduping on it silently skips new turns. Key `lastTimestamps` on the per-session `MAX(session_message.time_updated)` (or `event_sequence.seq`) instead:
+
+```sql
+SELECT id,
+       (SELECT MAX(time_updated) FROM session_message
+        WHERE session_id = session_v2.id) AS last_activity
+FROM session_v2
+WHERE directory = ? AND time_archived IS NULL AND parent_id IS NULL
+```
+
+A turn that goes through `session_pending` is covered too: promotion writes a `session_message` row without touching the session row, so the message-keyed dedup picks it up.
 
 ### Step 5 — `parser_test.go`
 
@@ -521,7 +559,7 @@ Sessions aren't deleted from the filesystem — they're archived (`time_archived
 | **List sessions in a project** | `ListSessionFiles(transcriptDir)` | `ListComposers(workspacePath)` | n/a | `ListSessions(directory)` |
 | **Real-time change detection** | fsnotify on transcript dir + signal-file hook | fsnotify on `state.vscdb` dir, debounced 2s | n/a | fsnotify on the XDG data dir, debounced 2s, matching `opencode.db`, `-wal`, `-shm` |
 | **Hook installation** | Yes — Stop hook into `.claude/settings.local.json` | No-op | No-op | No-op (OpenCode has no hook system) |
-| **Dedup / skip unchanged** | By file mtime | `lastTimestamps` (time_updated per composer) | n/a | `lastTimestamps` (time_updated per session) |
+| **Dedup / skip unchanged** | By file mtime | `lastTimestamps` (time_updated per composer) | n/a | `lastTimestamps` (per-session `MAX(session_message.time_updated)` — the session row's own `time_updated` never moves on message writes) |
 | **Message ordering** | File append order | Composer bubble order | n/a | `session_message.seq` ASC (not `time_created`) |
 | **Thinking / reasoning** | `PartThinking` from `thinking` blocks | `PartThinking` from bubble type | `PartThinking` from toolCallRounds | `PartThinking` from `reasoning` content parts |
 | **Tool calls** | `PartToolCall` from `tool_use` blocks | `PartToolCall` from bubble content | `PartToolCall` from toolCallRounds | `PartToolCall` from `tool` content parts (`state.status` completed/error) |
@@ -546,7 +584,9 @@ Sessions aren't deleted from the filesystem — they're archived (`time_archived
 | Windows path for `opencode.db` | Unverified. `global.ts` suggests XDG-only (`~/.local/share`), but a Windows-specific override may exist elsewhere in the binary. | Verify on a real Windows install before writing `paths_windows.go`. |
 | Legacy rows with empty `directory` | Comment exists in `packages/core/src/database/path.ts`. | Skip empty-directory rows in the scanner, or bucket as "unknown". |
 | Symlinked directories (`/tmp` vs `/private/tmp`) | Live DB contains both spellings as distinct projects. | Normalise with `filepath.EvalSymlinks` before grouping and before `ListSessions` matching. |
-| Compaction / `session_context_epoch` | History before the latest compaction row is not current (`history.ts` `latestCompaction`). | Parse from the latest compaction boundary forward; verify against real compacted sessions before shipping. |
+| Compaction / `session_context_epoch` | History before the latest compaction row is not current (`history.ts` `latestCompaction`); wired into `parseSession` (fetch only rows past the last compaction row's `seq`). | Verify against a real compacted session before shipping. |
+| Depth-1 nesting misses grandchildren | 56 of 114 live sessions are children; all children observed are depth-1. | v1 ships depth-1; a `parent_id` chain query is the v2 fix if deeper nesting appears. |
+| `fork_session_id` | 1 live forked session; a fork shares history with its parent. | Ship as-is in v1 (a fork parses as its own session); re-check if duplicate contrails appear. |
 | In-flight writes (`session_pending`) | Pending rows exist for messages not yet committed. | Read only `session_message`; pending rows surface on the next WAL event anyway. |
 | Do tool names stay stable? | New tools appear (`execute`, `skill`, MCP-provided names). | Passthrough fallback in `summarizeTool` — unknown tools show the tool name. |
 | OpenCode icon asset | Not yet in `website/icons/` or `frontend/src/assets/images/` | Source the official OpenCode logo before the frontend/website update. |
