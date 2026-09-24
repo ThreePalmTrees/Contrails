@@ -31,12 +31,13 @@ const (
 	AgentSourceVSCode     AgentSourceType = "vscode"
 	AgentSourceClaudeCode AgentSourceType = "claudecode"
 	AgentSourceCursor     AgentSourceType = "cursor"
+	AgentSourceOpenCode   AgentSourceType = "opencode"
 )
 
 // AgentSource describes one agent data source attached to a project.
 type AgentSource struct {
-	Type     AgentSourceType `json:"type"`               // "vscode" | "claudecode" | "cursor"
-	WatchDir string          `json:"watchDir,omitempty"` // VS Code: chatSessions/ dir; Claude Code: empty (signal-based)
+	Type     AgentSourceType `json:"type"`               // "vscode" | "claudecode" | "cursor" | "opencode"
+	WatchDir string          `json:"watchDir,omitempty"` // VS Code: chatSessions/ dir; Claude Code: empty (signal-based); Cursor/OpenCode: workspace directory
 }
 
 // Category represents a user-defined category for organizing processed contrails.
@@ -93,7 +94,7 @@ type FileProcessedEvent struct {
 type ChatFileInfo struct {
 	FileName        string `json:"fileName"`
 	FilePath        string `json:"filePath"`
-	SourceType      string `json:"sourceType"` // "vscode" | "claudecode" | "cursor"
+	SourceType      string `json:"sourceType"` // "vscode" | "claudecode" | "cursor" | "opencode"
 	Parsed          bool   `json:"parsed"`
 	PartiallyParsed bool   `json:"partiallyParsed"`
 	Title           string `json:"title"`
