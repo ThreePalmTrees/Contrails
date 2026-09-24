@@ -425,3 +425,26 @@ export namespace main {
 
 }
 
+export namespace opencode {
+	
+	export class ScannedProject {
+	    directory: string;
+	    displayName: string;
+	    sessionCount: number;
+	    lastActivityAt: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new ScannedProject(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.directory = source["directory"];
+	        this.displayName = source["displayName"];
+	        this.sessionCount = source["sessionCount"];
+	        this.lastActivityAt = source["lastActivityAt"];
+	    }
+	}
+
+}
+

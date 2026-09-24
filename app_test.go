@@ -1,6 +1,7 @@
 package main
 
 import (
+	"contrails/agent"
 	"contrails/agent/vscode"
 	"os"
 	"path/filepath"
@@ -1269,4 +1270,115 @@ func TestContrailFilterSettings_ToolCallsOff_SubagentReportsStoredValue(t *testi
 	if got != want {
 		t.Errorf("expected stored sub-agent value preserved, got %+v", got)
 	}
+}
+
+// --- OpenCode change handler ---
+
+// recordingDriver is a test double that captures ProcessAll calls.
+type recordingDriver struct {
+	processAllCalls []processAllCall
+	processAllCount int
+}
+
+type processAllCall struct {
+	sourceDir string
+	outputDir string
+}
+
+func (d *recordingDriver) Setup(string) error    { return nil }
+func (d *recordingDriver) Teardown(string) error { return nil }
+
+func (d *recordingDriver) Activate(_, _, _ string) error { return nil }
+func (d *recordingDriver) Deactivate(_, _ string)        {}
+
+func (d *recordingDriver) ProcessAll(sourceDir, outputDir string, _ agent.ProcessCallbacks) (int, error) {
+	d.processAllCalls = append(d.processAllCalls, processAllCall{sourceDir: sourceDir, outputDir: outputDir})
+	return d.processAllCount, nil
+}
+
+func TestAppOpenCodeChangeHandler_ProcessesActiveOpenCodeProjects(t *testing.T) {
+	app, _, emitter := newTestAppWithRecorders(t)
+	driver := &recordingDriver{processAllCount: 2}
+	app.drivers[AgentSourceOpenCode] = driver
+
+	outputDir := t.TempDir()
+	if err := app.SaveProjects([]Project{{
+		ID:            "project-opencode",
+		Name:          "OpenCode project",
+		Active:        true,
+		WorkspacePath: "/tmp/opencode-project",
+		OutputDir:     outputDir,
+		Sources: []AgentSource{{
+			Type:     AgentSourceOpenCode,
+			WatchDir: "/tmp/opencode-project",
+		}},
+	}}); err != nil {
+		t.Fatalf("SaveProjects: %v", err)
+	}
+
+	app.OnOpenCodeDatabaseChanged()
+	app.waitGroup.Wait()
+
+	if len(driver.processAllCalls) != 1 {
+		t.Fatalf("ProcessAll called %d times, want 1", len(driver.processAllCalls))
+	}
+	call := driver.processAllCalls[0]
+	if call.sourceDir != "/tmp/opencode-project" {
+		t.Errorf("sourceDir = %q, want the source watch dir", call.sourceDir)
+	}
+	if call.outputDir != outputDir {
+		t.Errorf("outputDir = %q, want %q", call.outputDir, outputDir)
+	}
+
+	var changed bool
+	for _, event := range emitter.Events {
+		if event.Name == "opencode:changed" {
+			changed = true
+		}
+	}
+	if !changed {
+		t.Error("expected an opencode:changed event")
+	}
+}
+
+func TestAppOpenCodeChangeHandler_SkipsInactiveAndForeignSources(t *testing.T) {
+	app, _, _ := newTestAppWithRecorders(t)
+	driver := &recordingDriver{}
+	app.drivers[AgentSourceOpenCode] = driver
+
+	if err := app.SaveProjects([]Project{
+		{
+			ID:     "project-inactive",
+			Name:   "Inactive",
+			Active: false,
+			Sources: []AgentSource{{
+				Type:     AgentSourceOpenCode,
+				WatchDir: "/tmp/inactive",
+			}},
+		},
+		{
+			ID:     "project-cursor",
+			Name:   "Cursor only",
+			Active: true,
+			Sources: []AgentSource{{
+				Type:     AgentSourceCursor,
+				WatchDir: "/tmp/cursor-only",
+			}},
+		},
+	}); err != nil {
+		t.Fatalf("SaveProjects: %v", err)
+	}
+
+	app.OnOpenCodeDatabaseChanged()
+	app.waitGroup.Wait()
+
+	if len(driver.processAllCalls) != 0 {
+		t.Errorf("ProcessAll called %d times, want 0", len(driver.processAllCalls))
+	}
+}
+
+func TestAppOpenCodeChangeHandler_NoDriverRegistered(t *testing.T) {
+	app, _, _ := newTestAppWithRecorders(t)
+	// No OpenCode driver registered: must return without panicking.
+	app.OnOpenCodeDatabaseChanged()
 }

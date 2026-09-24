@@ -3,6 +3,7 @@
 import {main} from '../models';
 import {claudecode} from '../models';
 import {cursor} from '../models';
+import {opencode} from '../models';
 import {agent} from '../models';
 
 export function AddProject(arg1:main.Project):Promise<void>;
@@ -14,6 +15,8 @@ export function AssignCategory(arg1:string,arg2:string,arg3:string):Promise<void
 export function BrowseClaudeCodeProjects():Promise<Array<claudecode.ScannedProject>>;
 
 export function BrowseCursorProjects():Promise<Array<cursor.ScannedProject>>;
+
+export function BrowseOpenCodeProjects():Promise<Array<opencode.ScannedProject>>;
 
 export function BrowseWorkspaceStorages():Promise<Array<Record<string, string>>>;
 

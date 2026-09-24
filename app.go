@@ -14,6 +14,7 @@ import (
 	"contrails/agent"
 	"contrails/agent/claudecode"
 	"contrails/agent/cursor"
+	"contrails/agent/opencode"
 	"contrails/agent/vscode"
 
 	"github.com/google/uuid"
@@ -86,6 +87,7 @@ func (app *App) startup(ctx context.Context) {
 	app.drivers[AgentSourceVSCode] = vscode.NewDriver(app.watcher, app.logger)
 	app.drivers[AgentSourceClaudeCode] = claudecode.NewDriver(app.signalWatcher, app.hookEnforcer, app.watcher, app.logger)
 	app.drivers[AgentSourceCursor] = cursor.NewDriver(app, app.logger)
+	app.drivers[AgentSourceOpenCode] = opencode.NewDriver(app, app.logger)
 
 	// Initialize analytics (no-ops if PostHogAPIKey is empty)
 	app.analytics = NewAnalytics(PostHogAPIKey, app.logger, app.GetProjects)
@@ -896,7 +898,7 @@ func (app *App) ProcessChatSessions(projectID, watchDir, outputDir string) (int,
 }
 
 // ProcessSingleFile processes a single chat session file.
-// sourceType must be "vscode", "claudecode", or "cursor".
+// sourceType must be "vscode", "claudecode", "cursor", or "opencode".
 func (app *App) ProcessSingleFile(filePath, sourceType, outputDir string) (string, error) {
 	result, _, err := app.processFileWithSource(filePath, sourceType, outputDir)
 	return result, err
@@ -1042,7 +1044,7 @@ func (app *App) processFile(filePath, outputDir string) (time.Duration, error) {
 }
 
 // processFileWithSource parses and writes a session using the correct parser
-// for the given sourceType ("vscode", "claudecode", or "cursor").
+// for the given sourceType ("vscode", "claudecode", "cursor", or "opencode").
 func (app *App) processFileWithSource(filePath, sourceType, outputDir string) (string, time.Duration, error) {
 	start := time.Now()
 
@@ -1054,6 +1056,9 @@ func (app *App) processFileWithSource(filePath, sourceType, outputDir string) (s
 		parsed, err = p.ParseFile(filePath)
 	case AgentSourceCursor:
 		p := &cursor.Parser{}
+		parsed, err = p.ParseFile(filePath)
+	case AgentSourceOpenCode:
+		p := &opencode.Parser{}
 		parsed, err = p.ParseFile(filePath)
 	default:
 		p := &vscode.Parser{}
@@ -1432,6 +1437,38 @@ func (app *App) ListChatFiles(projectID string) ([]ChatFileInfo, error) {
 				}
 				files = append(files, info)
 			}
+
+		case AgentSourceOpenCode:
+			sessions, err := opencode.ListSessions(watchDir)
+			if err != nil {
+				continue
+			}
+			for _, s := range sessions {
+				title := s.Title
+				if title == "" {
+					title = agent.FormatTimestamp(s.CreatedAt)
+				}
+
+				mdMtime := parsedAt[s.ID]
+
+				isParsed := mdMtime > 0
+				// LastActivityAt is the newest message time — the session
+				// row's time_updated does not move on message writes.
+				isPartiallyParsed := isParsed && s.LastActivityAt > mdMtime
+
+				info := ChatFileInfo{
+					FileName:        s.ID,
+					FilePath:        s.ID, // session ID used as identifier
+					SourceType:      string(AgentSourceOpenCode),
+					Parsed:          isParsed && !isPartiallyParsed,
+					PartiallyParsed: isPartiallyParsed,
+					ProcessedAt:     mdMtime,
+					Title:           title,
+					LastMessageAt:   agent.FormatTimestamp(s.LastActivityAt),
+					CreatedAt:       s.CreatedAt,
+				}
+				files = append(files, info)
+			}
 		}
 	}
 
@@ -1642,6 +1679,9 @@ func (app *App) PreviewChatFile(filePath, sourceType string) (string, error) {
 		parsed, err = p.ParseFile(filePath)
 	case AgentSourceCursor:
 		p := &cursor.Parser{}
+		parsed, err = p.ParseFile(filePath)
+	case AgentSourceOpenCode:
+		p := &opencode.Parser{}
 		parsed, err = p.ParseFile(filePath)
 	default:
 		p := &vscode.Parser{}
@@ -1860,6 +1900,77 @@ func (app *App) OnCursorDatabaseChanged() {
 				app.analytics.TrackProcessAll("cursor", count)
 			}
 		}(project, *cursorSource)
+	}
+}
+
+// --- OpenCode Integration ---
+
+// BrowseOpenCodeProjects scans the OpenCode database for working directories
+// that have at least one top-level session. Results are sorted by
+// most-recent activity first.
+func (app *App) BrowseOpenCodeProjects() ([]opencode.ScannedProject, error) {
+	return opencode.BrowseProjects()
+}
+
+// OnOpenCodeDatabaseChanged is called by the OpenCode driver whenever the
+// global OpenCode database changes. It triggers incremental processing for
+// every active project that has an OpenCode source.
+//
+// This method satisfies the opencode.ChangeHandler interface.
+// Guidelines: Don't fire-and-forget goroutines — track with WaitGroup (go-style-guide.md)
+func (app *App) OnOpenCodeDatabaseChanged() {
+	projects, err := app.GetProjects()
+	if err != nil {
+		logWarningf(app.logger, "OpenCode change handler: failed to load projects: %v", err)
+		return
+	}
+
+	opencodeDriver, ok := app.drivers[AgentSourceOpenCode]
+	if !ok {
+		return
+	}
+
+	for _, project := range projects {
+		if !project.Active {
+			continue
+		}
+
+		// Only process OpenCode sources — other agents have their own
+		// watchers and should not be triggered here.
+		var opencodeSource *AgentSource
+		for i := range project.Sources {
+			if project.Sources[i].Type == AgentSourceOpenCode {
+				opencodeSource = &project.Sources[i]
+				break
+			}
+		}
+		if opencodeSource == nil {
+			continue
+		}
+
+		app.waitGroup.Add(1)
+		go func(p Project, source AgentSource) {
+			defer app.waitGroup.Done()
+			// Notify the frontend so it can refresh the chat file list even
+			// when no new files are written (e.g. new empty session).
+			app.emitter.Emit("opencode:changed", map[string]string{"projectId": p.ID})
+
+			watchDir := effectiveWatchDir(source, p)
+			if watchDir == "" {
+				return
+			}
+
+			count, err := opencodeDriver.ProcessAll(watchDir, p.OutputDir, app.makeProcessCallbacks(p.ID))
+			if err != nil {
+				logWarningf(app.logger, "OpenCode: processing error for %s: %v", p.Name, err)
+			} else if count > 0 {
+				logInfof(app.logger, "OpenCode: processed %d session(s) for %s", count, p.Name)
+				if err := app.updateLastProcessed(p.ID); err != nil {
+					logWarningf(app.logger, "Failed to update lastProcessed: %v", err)
+				}
+				app.analytics.TrackProcessAll("opencode", count)
+			}
+		}(project, *opencodeSource)
 	}
 }
 

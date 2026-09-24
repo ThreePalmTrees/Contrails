@@ -22,6 +22,10 @@ export function BrowseCursorProjects() {
   return window['go']['main']['App']['BrowseCursorProjects']();
 }
 
+export function BrowseOpenCodeProjects() {
+  return window['go']['main']['App']['BrowseOpenCodeProjects']();
+}
+
 export function BrowseWorkspaceStorages() {
   return window['go']['main']['App']['BrowseWorkspaceStorages']();
 }

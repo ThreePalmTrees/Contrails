@@ -65,10 +65,15 @@ export function useChatFilesCache() {
       scheduleRefetch(event.projectId);
     });
 
+    const unbindOpenCode = EventsOn("opencode:changed", (event: { projectId: string }) => {
+      scheduleRefetch(event.projectId);
+    });
+
     return () => {
       unbindProcessed();
       unbindWatcher();
       unbindCursor();
+      unbindOpenCode();
       // Clean up any pending timers
       for (const timer of debounceTimers.current.values()) {
         clearTimeout(timer);
