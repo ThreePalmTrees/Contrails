@@ -24,6 +24,7 @@ const (
 	PartFileEdit   MessagePartType = "file_edit"    // A file was created or modified
 	PartCodeBlock  MessagePartType = "code_block"   // Inline code block
 	PartReference  MessagePartType = "reference"    // Reference to a file or symbol
+	PartCompaction MessagePartType = "compaction"   // The agent compacted its context here; Content holds its summary
 )
 
 // ParsedSession is the agent-agnostic representation of a chat session.
@@ -64,7 +65,7 @@ type ParsedMessage struct {
 // MessagePart represents a single element in the interleaved response stream.
 type MessagePart struct {
 	Type       MessagePartType `json:"type"`
-	Title      string          `json:"title,omitempty"` // Optional Thinking title (e.g. Copilot generatedTitle)
+	Title      string          `json:"title,omitempty"` // Optional label: Thinking title (e.g. Copilot generatedTitle), Compaction note (e.g. "auto")
 	Content    string          `json:"content,omitempty"`
 	Tool       string          `json:"tool,omitempty"`
 	ToolArgs   string          `json:"toolArgs,omitempty"`

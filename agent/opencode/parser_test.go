@@ -509,7 +509,11 @@ func TestParseSession_NestedSubagent(t *testing.T) {
 	}
 }
 
-func TestParseSession_CompactionBoundary(t *testing.T) {
+// Compaction only trims what OpenCode sends the model. The contrail keeps
+// the history before it and marks each compaction where it happened: at the
+// end of an assistant turn, at the start of one (right after a user turn),
+// and mid-turn. A compaction that did not finish has no summary block.
+func TestParseSession_CompactionKeepsHistory(t *testing.T) {
 	db := setupTestDB(t)
 	defer db.Close()
 
@@ -517,46 +521,94 @@ func TestParseSession_CompactionBoundary(t *testing.T) {
 	insertTestSession(t, db, id, "", "compacted", 1700000000000, 1700000000000)
 
 	insertTestMessage(t, db, "msg_c1", id, "user", 1,
-		`{"time":{"created":1700000000000},"text":"before the first compaction"}`)
+		`{"time":{"created":1700000000000},"text":"first question"}`)
 	insertTestMessage(t, db, "msg_c2", id, "assistant", 2,
-		`{"time":{"created":1700000000001},"content":[{"type":"text","id":"p1","text":"before-both"}]}`)
-	// The compaction row's payload shape is from the live database; only its
-	// seq matters to the boundary.
+		`{"time":{"created":1700000000001},"model":{"id":"m1"},"content":[{"type":"text","text":"answer-one"}]}`)
+	// The compaction payload shape is from the live database.
 	insertTestMessage(t, db, "msg_c3", id, "compaction", 3,
-		`{"time":{"created":1700000000002},"status":"completed","reason":"auto","summary":"first"}`)
+		`{"time":{"created":1700000000002},"status":"completed","reason":"auto","model":{"id":"m1"},"summary":"## Objective\n- first summary","recent":"kept tail","cost":0,"tokens":{}}`)
 	insertTestMessage(t, db, "msg_c4", id, "user", 4,
-		`{"time":{"created":1700000000003},"text":"still before the last compaction"}`)
-	insertTestMessage(t, db, "msg_c5", id, "assistant", 5,
-		`{"time":{"created":1700000000004},"content":[{"type":"text","id":"p2","text":"also-before"}]}`)
-	insertTestMessage(t, db, "msg_c6", id, "compaction", 6,
-		`{"time":{"created":1700000000005},"status":"completed","reason":"auto","summary":"second"}`)
-	insertTestMessage(t, db, "msg_c7", id, "user", 7,
-		`{"time":{"created":1700000000006},"text":"after both compactions"}`)
+		`{"time":{"created":1700000000003},"text":"second question"}`)
+	insertTestMessage(t, db, "msg_c5", id, "compaction", 5,
+		`{"time":{"created":1700000000004},"status":"completed","reason":"manual","summary":"second summary"}`)
+	insertTestMessage(t, db, "msg_c6", id, "assistant", 6,
+		`{"time":{"created":1700000000005},"model":{"id":"m2"},"content":[{"type":"text","text":"answer-two"}]}`)
+	insertTestMessage(t, db, "msg_c7", id, "compaction", 7,
+		`{"time":{"created":1700000000006},"status":"failed","reason":"auto"}`)
 	insertTestMessage(t, db, "msg_c8", id, "assistant", 8,
-		`{"time":{"created":1700000000007},"content":[{"type":"text","id":"p3","text":"after-both"}]}`)
+		`{"time":{"created":1700000000007},"model":{"id":"m2"},"content":[{"type":"text","text":"answer-three"}]}`)
 
 	session, err := parseSession(db, id)
 	if err != nil {
 		t.Fatalf("parseSession: %v", err)
 	}
 
-	if len(session.Messages) != 2 {
-		t.Fatalf("len(Messages) = %d, want 2", len(session.Messages))
+	var roles []string
+	for _, message := range session.Messages {
+		roles = append(roles, message.Role)
 	}
-	if session.Messages[0].Content != "after both compactions" {
-		t.Errorf("Messages[0].Content = %q, want only post-compaction content", session.Messages[0].Content)
+	if strings.Join(roles, ",") != "user,assistant,user,assistant" {
+		t.Fatalf("roles = %v, want [user assistant user assistant]", roles)
 	}
-	text, ok := findPart(session.Messages[1:], func(p agent.MessagePart) bool {
-		return p.Type == agent.PartText
+
+	type want struct {
+		typ   agent.MessagePartType
+		title string
+		body  string
+	}
+	checkParts := func(index int, wants []want) {
+		t.Helper()
+		parts := session.Messages[index].Parts
+		if len(parts) != len(wants) {
+			t.Fatalf("Messages[%d] has %d parts, want %d: %+v", index, len(parts), len(wants), parts)
+		}
+		for i, w := range wants {
+			if parts[i].Type != w.typ || parts[i].Title != w.title || parts[i].Content != w.body {
+				t.Errorf("Messages[%d].Parts[%d] = {%s %q %q}, want {%s %q %q}",
+					index, i, parts[i].Type, parts[i].Title, parts[i].Content, w.typ, w.title, w.body)
+			}
+		}
+	}
+	checkParts(1, []want{
+		{agent.PartText, "", "answer-one"},
+		{agent.PartCompaction, "auto", "## Objective\n- first summary"},
 	})
-	if !ok || text.Content != "after-both" {
-		t.Errorf("post-compaction assistant text = %+v, want \"after-both\"", text)
+	checkParts(3, []want{
+		{agent.PartCompaction, "manual", "second summary"},
+		{agent.PartText, "", "answer-two"},
+		{agent.PartCompaction, "auto, failed", ""},
+		{agent.PartText, "", "answer-three"},
+	})
+	// The turn started by a compaction row takes the model of its first
+	// assistant row.
+	if session.Messages[3].Model != "m2" {
+		t.Errorf("Messages[3].Model = %q, want m2", session.Messages[3].Model)
 	}
 
 	rendered := agent.RenderMarkdown(session)
-	for _, gone := range []string{"before-both", "also-before", "still before"} {
-		if strings.Contains(rendered, gone) {
-			t.Errorf("pre-compaction content %q leaked into the rendered session", gone)
+	order := []string{
+		"first question",
+		"answer-one",
+		"**📦 Context compacted** *(auto)*\n\n<details>\n<summary>Compaction summary</summary>\n\n## Objective\n- first summary\n\n</details>",
+		"second question",
+		"**📦 Context compacted** *(manual)*",
+		"answer-two",
+		"**📦 Context compacted** *(auto, failed)*\n\nanswer-three",
+	}
+	last := -1
+	for _, text := range order {
+		at := strings.Index(rendered, text)
+		if at < 0 {
+			t.Fatalf("rendered session is missing %q:\n%s", text, rendered)
 		}
+		if at < last {
+			t.Errorf("%q is out of order in:\n%s", text, rendered)
+		}
+		last = at
+	}
+	// "recent" is the tail OpenCode keeps for the model, already in the
+	// history above; it must not be repeated.
+	if strings.Contains(rendered, "kept tail") {
+		t.Error("compaction \"recent\" field leaked into the rendered session")
 	}
 }

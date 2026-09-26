@@ -191,3 +191,16 @@ func TestApplyContrailFilters_MultipleMessages_FiltersEach(t *testing.T) {
 		}
 	}
 }
+
+func TestApplyContrailFilters_KeepsCompactionMarkers(t *testing.T) {
+	session := makeSession(
+		MessagePart{Type: PartThinking, Content: "t"},
+		MessagePart{Type: PartToolCall, Tool: "Bash"},
+		MessagePart{Type: PartCompaction, Title: "auto", Content: "summary"},
+	)
+	ApplyContrailFilters(session, ContrailFilters{})
+
+	if got := countParts(session, PartCompaction); got != 1 {
+		t.Errorf("compaction parts = %d, want 1 with every filter off", got)
+	}
+}

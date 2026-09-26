@@ -56,6 +56,18 @@ type assistantData struct {
 	Tokens  tokenUsage `json:"tokens"`
 }
 
+// compactionData is the decoded JSON payload of a message row with type
+// "compaction": the point where OpenCode summarised the conversation so far
+// to free up the model's context window.
+type compactionData struct {
+	Time struct {
+		Created int64 `json:"created"`
+	} `json:"time"`
+	Status  string `json:"status"` // "completed" once the summary is written
+	Reason  string `json:"reason"` // "auto" | "manual"
+	Summary string `json:"summary"`
+}
+
 // modelRef is the nested model reference carried by assistant messages and
 // the session row: {id, providerID, variant}.
 type modelRef struct {

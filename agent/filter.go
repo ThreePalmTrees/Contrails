@@ -29,6 +29,8 @@ func DefaultContrailFilters() ContrailFilters {
 //     summary would claim edits that no longer appear in the output).
 //   - SubagentContent=false → keep the Agent tool call line itself,
 //     but drop its nested SubParts (the sub-agent's own conversation).
+//
+// Text and compaction markers are always kept.
 func ApplyContrailFilters(session *ParsedSession, filters ContrailFilters) {
 	if session == nil {
 		return

@@ -42,8 +42,8 @@ func openDB() (*sql.DB, error) {
 
 // ParseFile reads and parses an OpenCode session identified by its
 // session id. It opens a fresh read-only connection, resolves the
-// session, walks the post-compaction messages in seq order, and nests
-// subagent sessions found by parent_id.
+// session, walks its messages in seq order, and nests subagent sessions
+// found by parent_id.
 func (p *Parser) ParseFile(sessionID string) (*agent.ParsedSession, error) {
 	db, err := openDB()
 	if err != nil {
@@ -56,6 +56,10 @@ func (p *Parser) ParseFile(sessionID string) (*agent.ParsedSession, error) {
 
 // parseSession is the testable core: it accepts an already-open *sql.DB so
 // tests can supply an in-memory database.
+//
+// Every message row is read, including the history before a compaction:
+// OpenCode only drops that history from what it sends the model, and a
+// contrail is a record of the whole conversation.
 func parseSession(db *sql.DB, sessionID string) (*agent.ParsedSession, error) {
 	table, err := sessionTable(db)
 	if err != nil {
@@ -122,8 +126,9 @@ type partDraft struct {
 
 // buildDrafts walks the message rows in seq order and groups them into
 // turns: a user row starts a user turn, and consecutive assistant rows are
-// merged into one assistant turn until the next user row. Every other row
-// type is skipped.
+// merged into one assistant turn until the next user row. A compaction row
+// becomes a marker part at its position in the assistant turn (starting one
+// when it follows a user turn). Every other row type is skipped.
 func buildDrafts(rows []messageRow) []draftMessage {
 	var drafts []draftMessage
 	current := -1
@@ -154,15 +159,49 @@ func buildDrafts(rows []messageRow) []draftMessage {
 				drafts = append(drafts, draftMessage{
 					role:      "assistant",
 					timestamp: agent.FormatTimestamp(data.Time.Created),
-					model:     data.Model.ID,
 				})
 				current = len(drafts) - 1
 			}
+			// A turn started by a compaction row has no model yet.
+			if drafts[current].model == "" {
+				drafts[current].model = data.Model.ID
+			}
 			drafts[current].parts = append(drafts[current].parts, buildParts(data.Content)...)
+
+		case "compaction":
+			var data compactionData
+			if err := json.Unmarshal(row.Data, &data); err != nil {
+				continue
+			}
+			if current < 0 {
+				drafts = append(drafts, draftMessage{
+					role:      "assistant",
+					timestamp: agent.FormatTimestamp(data.Time.Created),
+				})
+				current = len(drafts) - 1
+			}
+			drafts[current].parts = append(drafts[current].parts, partDraft{part: compactionPart(data)})
 		}
 	}
 
 	return drafts
+}
+
+// compactionPart builds the marker for a compaction row. The note says how
+// it was triggered and, when the summary was not written, how it ended.
+func compactionPart(data compactionData) agent.MessagePart {
+	var notes []string
+	if data.Reason != "" {
+		notes = append(notes, data.Reason)
+	}
+	if data.Status != "" && data.Status != "completed" {
+		notes = append(notes, data.Status)
+	}
+	return agent.MessagePart{
+		Type:    agent.PartCompaction,
+		Title:   strings.Join(notes, ", "),
+		Content: data.Summary,
+	}
 }
 
 // materialize converts the draft turns into agent.ParsedMessage values,
@@ -575,19 +614,14 @@ func fetchSession(db *sql.DB, table, sessionID string) (sessionRow, error) {
 	return row, nil
 }
 
-// fetchMessages loads a session's message rows past the last compaction
-// boundary, ordered by seq. History before the latest compaction row is not
-// current, so only rows with a greater seq are returned.
+// fetchMessages loads all of a session's message rows, ordered by seq.
 func fetchMessages(db *sql.DB, sessionID string) ([]messageRow, error) {
 	const query = `SELECT id, session_id, type, seq, time_updated, data
 		FROM session_message
-		WHERE session_id = ? AND seq > COALESCE((
-			SELECT MAX(seq) FROM session_message
-			WHERE session_id = ? AND type = 'compaction'
-		), 0)
+		WHERE session_id = ?
 		ORDER BY seq ASC`
 
-	rows, err := db.Query(query, sessionID, sessionID)
+	rows, err := db.Query(query, sessionID)
 	if err != nil {
 		return nil, fmt.Errorf("fetching messages: %w", err)
 	}

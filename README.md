@@ -163,7 +163,7 @@ contrails/
 | `agent/vscode/` | VS Code Copilot `AgentDriver` — manages fsnotify watching, batch processing with `HealContrailNames`, JSONL parser that materializes the event log (kind:0/1/2 patches with array splice semantics) and uses `toolCallRounds` as the authoritative text source |
 | `agent/claudecode/` | Claude Code `AgentDriver` — manages hook lifecycle and signal watching, JSONL transcript parser, project scanner (`~/.claude/projects/`), Stop hook installer, periodic hook enforcer |
 | `agent/cursor/` | Cursor `AgentDriver` — watches per-workspace + global `state.vscdb` via fsnotify (2 s debounce), SQLite parser that reads composer list from per-workspace `ItemTable` and conversation data (`composerData:*` + `bubbleId:*` keys) from global `cursorDiskKV`, workspace scanner |
-| `agent/opencode/` | OpenCode `AgentDriver` — watches the global OpenCode data directory (`opencode.db` + WAL sidecars) via fsnotify (2 s debounce), SQLite parser that reads `session` (or `session_v2`) + `session_message` (ordered by `seq`, compaction-aware, nested subagents), directory scanner, XDG/`OPENCODE_DB` path resolution |
+| `agent/opencode/` | OpenCode `AgentDriver` — watches the global OpenCode data directory (`opencode.db` + WAL sidecars) via fsnotify (2 s debounce), SQLite parser that reads `session` (or `session_v2`) + `session_message` (ordered by `seq`, full history with compaction markers, nested subagents), directory scanner, XDG/`OPENCODE_DB` path resolution |
 
 ### Frontend (React + TypeScript)
 

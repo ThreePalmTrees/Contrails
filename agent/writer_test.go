@@ -110,6 +110,39 @@ func TestRenderMarkdown_ThinkingTitleEscaped(t *testing.T) {
 	}
 }
 
+// A compaction marker ends an open tool group, so it is not hidden inside the
+// collapsed tool calls, and an empty summary renders no summary section.
+func TestRenderMarkdown_Compaction(t *testing.T) {
+	session := &ParsedSession{
+		Agent: "OpenCode",
+		Messages: []ParsedMessage{
+			{
+				Role: "assistant",
+				Parts: []MessagePart{
+					{Type: PartToolCall, Tool: "shell", ToolArgs: "ls"},
+					{Type: PartCompaction, Title: "auto", Content: "\n## Goal\n- keep going\n"},
+					{Type: PartText, Content: "after"},
+					{Type: PartCompaction},
+				},
+			},
+		},
+	}
+
+	markdown := RenderMarkdown(session)
+
+	want := "- **shell**: `ls`\n\n</details>\n\n" +
+		"**📦 Context compacted** *(auto)*\n\n" +
+		"<details>\n<summary>Compaction summary</summary>\n\n## Goal\n- keep going\n\n</details>\n\n" +
+		"after\n\n" +
+		"**📦 Context compacted**\n\n"
+	if !strings.Contains(markdown, want) {
+		t.Errorf("Expected compaction markers, got:\n%s", markdown)
+	}
+	if strings.Count(markdown, "<summary>Compaction summary</summary>") != 1 {
+		t.Errorf("Expected exactly one summary section, got:\n%s", markdown)
+	}
+}
+
 // outsideCodeFences drops every fenced code block from markdown so that tags
 // quoted inside a tool result are not mistaken for markup of the document.
 // A fence closes only on a run of backticks at least as long as the one that

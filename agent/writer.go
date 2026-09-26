@@ -226,6 +226,13 @@ func writeInterleavedParts(markdown *strings.Builder, parts []MessagePart) {
 			markdown.WriteString(part.Content)
 			markdown.WriteString("\n</thinking>\n\n")
 
+		case PartCompaction:
+			if inToolGroup {
+				markdown.WriteString("\n</details>\n\n")
+				inToolGroup = false
+			}
+			writeCompactionPart(markdown, part)
+
 		case PartToolResult:
 			// Tool results render as indented code blocks within tool groups
 			content := strings.TrimRight(part.Content, "\n\r\t ")
@@ -247,6 +254,25 @@ func writeInterleavedParts(markdown *strings.Builder, parts []MessagePart) {
 	if inToolGroup {
 		markdown.WriteString("\n</details>\n\n")
 	}
+}
+
+// writeCompactionPart renders the point where the agent compacted its
+// context: a marker line, then the summary it wrote (if any) in a collapsed
+// section. The history before the marker stays in the document as is.
+func writeCompactionPart(markdown *strings.Builder, part MessagePart) {
+	markdown.WriteString("**📦 Context compacted**")
+	if part.Title != "" {
+		markdown.WriteString(fmt.Sprintf(" *(%s)*", part.Title))
+	}
+	markdown.WriteString("\n\n")
+
+	summary := strings.TrimSpace(part.Content)
+	if summary == "" {
+		return
+	}
+	markdown.WriteString("<details>\n<summary>Compaction summary</summary>\n\n")
+	markdown.WriteString(summary)
+	markdown.WriteString("\n\n</details>\n\n")
 }
 
 // thinkingTitleAttr makes a thinking title safe to place inside a
