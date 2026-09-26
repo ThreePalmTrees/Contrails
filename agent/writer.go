@@ -2,6 +2,7 @@ package agent
 
 import (
 	"fmt"
+	"html"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -218,7 +219,7 @@ func writeInterleavedParts(markdown *strings.Builder, parts []MessagePart) {
 				inToolGroup = false
 			}
 			if part.Title != "" {
-				markdown.WriteString(fmt.Sprintf("<thinking title=\"%s\">\n", part.Title))
+				markdown.WriteString(fmt.Sprintf("<thinking title=\"%s\">\n", thinkingTitleAttr(part.Title)))
 			} else {
 				markdown.WriteString("<thinking>\n")
 			}
@@ -246,6 +247,14 @@ func writeInterleavedParts(markdown *strings.Builder, parts []MessagePart) {
 	if inToolGroup {
 		markdown.WriteString("\n</details>\n\n")
 	}
+}
+
+// thinkingTitleAttr makes a thinking title safe to place inside a
+// double-quoted tag attribute. Titles are model-generated, so a quote would
+// otherwise end the attribute early and a newline would split the tag; both
+// break the <thinking> markup that previews and markdown viewers look for.
+func thinkingTitleAttr(title string) string {
+	return html.EscapeString(strings.Join(strings.Fields(title), " "))
 }
 
 // writeSubagentParts renders a subagent's conversation as a nested collapsed section.

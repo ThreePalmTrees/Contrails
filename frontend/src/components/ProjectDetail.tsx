@@ -1170,7 +1170,7 @@ function ChatFileRow({ file, onShowDetails, onProcessed, outputDir, onIgnore, on
           ? <CheckCircle2 size={14} style={{ color: "orange" }} />
           : null}
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', marginLeft: '2px', marginRight: '6px' }} title={file.sourceType === 'vscode' ? 'GitHub Copilot' : file.sourceType === 'claudecode' ? 'Claude Code' : file.sourceType === 'opencode' ? 'OpenCode' : ''}>
+      <div style={{ display: 'flex', alignItems: 'center', marginLeft: '2px', marginRight: '6px' }} title={file.sourceType === 'vscode' ? 'GitHub Copilot' : file.sourceType === 'claudecode' ? 'Claude Code' : file.sourceType === 'cursor' ? 'Cursor' : file.sourceType === 'opencode' ? 'OpenCode' : ''}>
         {file.sourceType === 'vscode' && <img src={copilotLogo} alt="GitHub Copilot" className="icon-invert" style={{ height: '20px', width: '20px', objectFit: 'contain' }} />}
         {file.sourceType === 'claudecode' && <img src={claudeLogo} alt="Claude Code" style={{ height: '18px', width: '26px', objectFit: 'contain' }} />}
         {file.sourceType === 'cursor' && <img src={cursorLogo} alt="Cursor" style={{ height: '18px', width: '18px', objectFit: 'contain', borderRadius: '4px' }} />}

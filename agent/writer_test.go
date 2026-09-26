@@ -86,6 +86,30 @@ func TestRenderMarkdown_ThinkingTitle(t *testing.T) {
 	}
 }
 
+// A model-generated title may contain quotes, angle brackets or newlines.
+// They must not end the title attribute early or split the tag, or the
+// <thinking> block is no longer recognised as one.
+func TestRenderMarkdown_ThinkingTitleEscaped(t *testing.T) {
+	session := &ParsedSession{
+		Agent: "GitHub Copilot",
+		Messages: []ParsedMessage{
+			{
+				Role: "assistant",
+				Parts: []MessagePart{
+					{Type: PartThinking, Title: "Fixing \"parse\" <err> & retry\nsecond line", Content: "thought"},
+				},
+			},
+		},
+	}
+
+	markdown := RenderMarkdown(session)
+
+	want := "<thinking title=\"Fixing &#34;parse&#34; &lt;err&gt; &amp; retry second line\">\nthought\n</thinking>"
+	if !strings.Contains(markdown, want) {
+		t.Errorf("Expected escaped title %q, got:\n%s", want, markdown)
+	}
+}
+
 // outsideCodeFences drops every fenced code block from markdown so that tags
 // quoted inside a tool result are not mistaken for markup of the document.
 // A fence closes only on a run of backticks at least as long as the one that
