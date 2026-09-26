@@ -52,8 +52,8 @@ func TestCodeFenceFor(t *testing.T) {
 
 	for _, testCase := range cases {
 		t.Run(testCase.name, func(t *testing.T) {
-			if got := codeFenceFor(testCase.content); got != testCase.want {
-				t.Errorf("codeFenceFor(%q) = %q, want %q", testCase.content, got, testCase.want)
+			if got := CodeFenceFor(testCase.content); got != testCase.want {
+				t.Errorf("CodeFenceFor(%q) = %q, want %q", testCase.content, got, testCase.want)
 			}
 		})
 	}

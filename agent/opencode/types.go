@@ -38,7 +38,41 @@ type userData struct {
 	Time struct {
 		Created int64 `json:"created"`
 	} `json:"time"`
-	Text string `json:"text"`
+	Text  string     `json:"text"`
+	Files []fileData `json:"files"`
+}
+
+// fileData is one file the user attached to a message. Inline attachments
+// (pasted images) carry their bytes in data, which the parser never reads;
+// only the name and, when there is one, the path are kept.
+type fileData struct {
+	Name   string `json:"name"`
+	Mime   string `json:"mime"`
+	Path   string `json:"path"`
+	URL    string `json:"url"`
+	Source struct {
+		Type string `json:"type"`
+		Path string `json:"path"`
+	} `json:"source"`
+}
+
+// shellData is the decoded JSON payload of a message row with type
+// "shell": a command the user ran themselves with !command.
+type shellData struct {
+	Time struct {
+		Created int64 `json:"created"`
+	} `json:"time"`
+	Command string `json:"command"`
+	Status  string `json:"status"` // "exited" once finished; "running" for background commands
+	Exit    *int   `json:"exit"`
+	// Output is an object {output, truncated} in the live database.
+	Output json.RawMessage `json:"output"`
+}
+
+// shellOutput is the object form of shellData.Output.
+type shellOutput struct {
+	Output    string `json:"output"`
+	Truncated bool   `json:"truncated"`
 }
 
 // assistantData is the decoded JSON payload of a message row with type

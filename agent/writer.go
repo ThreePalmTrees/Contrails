@@ -237,7 +237,7 @@ func writeInterleavedParts(markdown *strings.Builder, parts []MessagePart) {
 			// Tool results render as indented code blocks within tool groups
 			content := strings.TrimRight(part.Content, "\n\r\t ")
 			if content != "" {
-				fence := codeFenceFor(content)
+				fence := CodeFenceFor(content)
 				markdown.WriteString(fmt.Sprintf("  %s\n", fence))
 				for _, resultLine := range strings.Split(content, "\n") {
 					markdown.WriteString(fmt.Sprintf("  %s\n", resultLine))
@@ -326,7 +326,7 @@ func writeSubagentParts(markdown *strings.Builder, subParts []MessagePart) {
 				}
 				markdown.WriteString("\n")
 			} else {
-				fence := codeFenceFor(resultContent)
+				fence := CodeFenceFor(resultContent)
 				markdown.WriteString(fmt.Sprintf("<details>\n<summary>%s</summary>\n\n", toolSummary))
 				markdown.WriteString(fence + "\n")
 				for _, line := range strings.Split(resultContent, "\n") {
@@ -339,7 +339,7 @@ func writeSubagentParts(markdown *strings.Builder, subParts []MessagePart) {
 			// Standalone result (not preceded by a tool call) — render inline
 			content := strings.TrimRight(sp.Content, "\n\r\t ")
 			if content != "" {
-				fence := codeFenceFor(content)
+				fence := CodeFenceFor(content)
 				markdown.WriteString(fence + "\n")
 				for _, line := range strings.Split(content, "\n") {
 					markdown.WriteString(fmt.Sprintf("%s\n", line))
@@ -405,12 +405,12 @@ func writeToolDetailPart(markdown *strings.Builder, part MessagePart) {
 	}
 }
 
-// codeFenceFor returns a backtick fence long enough to wrap content that may
+// CodeFenceFor returns a backtick fence long enough to wrap content that may
 // itself contain fenced code blocks. A fence is closed only by a run of at
 // least as many backticks, so a result containing ``` would otherwise end the
 // block early and leak its remaining lines — including any HTML tags — into
 // the surrounding markdown, breaking the <details> section around it.
-func codeFenceFor(content string) string {
+func CodeFenceFor(content string) string {
 	longest := 0
 	for _, line := range strings.Split(content, "\n") {
 		trimmed := strings.TrimLeft(line, " \t")

@@ -110,11 +110,12 @@ func parseSession(db *sql.DB, sessionID string) (*agent.ParsedSession, error) {
 // message rows. Consecutive assistant rows are merged into a single
 // assistant turn.
 type draftMessage struct {
-	role      string
-	timestamp string
-	content   string // user turns
-	model     string // assistant turns
-	parts     []partDraft
+	role        string
+	timestamp   string
+	content     string   // user turns
+	attachments []string // user turns
+	model       string   // assistant turns
+	parts       []partDraft
 }
 
 // partDraft is a MessagePart plus the child session it links to, if any.
@@ -126,7 +127,8 @@ type partDraft struct {
 
 // buildDrafts walks the message rows in seq order and groups them into
 // turns: a user row starts a user turn, and consecutive assistant rows are
-// merged into one assistant turn until the next user row. A compaction row
+// merged into one assistant turn until the next user row. A shell row (a
+// command the user ran with !command) is a user turn too. A compaction row
 // becomes a marker part at its position in the assistant turn (starting one
 // when it follows a user turn). Every other row type is skipped.
 func buildDrafts(rows []messageRow) []draftMessage {
@@ -140,14 +142,31 @@ func buildDrafts(rows []messageRow) []draftMessage {
 			if err := json.Unmarshal(row.Data, &data); err != nil {
 				continue
 			}
-			if strings.TrimSpace(data.Text) == "" {
+			attachments := attachmentNames(data.Files)
+			if strings.TrimSpace(data.Text) == "" && len(attachments) == 0 {
+				continue
+			}
+			current = -1
+			drafts = append(drafts, draftMessage{
+				role:        "user",
+				timestamp:   agent.FormatTimestamp(data.Time.Created),
+				content:     data.Text,
+				attachments: attachments,
+			})
+
+		case "shell":
+			var data shellData
+			if err := json.Unmarshal(row.Data, &data); err != nil {
+				continue
+			}
+			if strings.TrimSpace(data.Command) == "" {
 				continue
 			}
 			current = -1
 			drafts = append(drafts, draftMessage{
 				role:      "user",
 				timestamp: agent.FormatTimestamp(data.Time.Created),
-				content:   data.Text,
+				content:   shellContent(data),
 			})
 
 		case "assistant":
@@ -187,6 +206,124 @@ func buildDrafts(rows []messageRow) []draftMessage {
 	return drafts
 }
 
+// attachmentNames describes the files attached to a user message: the file
+// name, followed by its path when OpenCode recorded one. The file contents
+// are never included.
+func attachmentNames(files []fileData) []string {
+	var names []string
+	for _, file := range files {
+		path := file.Path
+		if path == "" {
+			path = file.Source.Path
+		}
+		if path == "" && file.URL != "" && !strings.HasPrefix(file.URL, "data:") {
+			path = file.URL
+		}
+
+		name := file.Name
+		switch {
+		case name != "" && path != "" && path != name:
+			names = append(names, name+" ("+path+")")
+		case name != "":
+			names = append(names, name)
+		case path != "":
+			names = append(names, path)
+		case file.Mime != "":
+			names = append(names, "unnamed "+file.Mime)
+		}
+	}
+	return names
+}
+
+// shellContent renders a command the user ran with !command as the text of
+// a user turn: the command, then its output (capped like tool output) in a
+// collapsed section.
+func shellContent(data shellData) string {
+	var b strings.Builder
+
+	command := strings.TrimSpace(data.Command)
+	fence := agent.CodeFenceFor(command)
+	b.WriteString("**Shell command:**\n\n")
+	b.WriteString(fence + "sh\n" + command + "\n" + fence)
+
+	output, truncated := decodeShellOutput(data.Output)
+	output = capOutput(strings.TrimRight(output, "\n\r\t "))
+	if truncated {
+		output = appendLine(output, "[output truncated]")
+	}
+
+	var notes []string
+	if data.Exit != nil {
+		notes = append(notes, fmt.Sprintf("exit %d", *data.Exit))
+	}
+	if data.Status != "" && data.Status != "exited" {
+		notes = append(notes, data.Status)
+	}
+	summary := "Shell output"
+	if len(notes) > 0 {
+		summary += " (" + strings.Join(notes, ", ") + ")"
+	}
+
+	if output == "" {
+		if len(notes) > 0 {
+			b.WriteString("\n\n*" + summary + "*")
+		}
+		return b.String()
+	}
+
+	fence = agent.CodeFenceFor(output)
+	b.WriteString("\n\n<details>\n<summary>" + summary + "</summary>\n\n")
+	b.WriteString(fence + "\n" + output + "\n" + fence)
+	b.WriteString("\n\n</details>")
+	return b.String()
+}
+
+// decodeShellOutput reads a shell row's output, which is an object
+// {output, truncated}; a plain string is accepted as well.
+func decodeShellOutput(raw json.RawMessage) (string, bool) {
+	var object shellOutput
+	if err := json.Unmarshal(raw, &object); err == nil {
+		return object.Output, object.Truncated
+	}
+	var text string
+	if err := json.Unmarshal(raw, &text); err == nil {
+		return text, false
+	}
+	return "", false
+}
+
+// Output caps, matching the Claude Code parser's 20-line limit on tool
+// results. The character cap covers output with very long lines (minified
+// JSON, a fetched web page). Both keep a contrail readable: a skill's or a
+// file's full text belongs in the repository, not in every call to it.
+const (
+	maxOutputLines = 20
+	maxOutputChars = 4000
+)
+
+// capOutput shortens output to maxOutputLines lines and maxOutputChars
+// characters, ending it with "..." when anything was cut.
+func capOutput(output string) string {
+	cut := false
+	lines := strings.Split(output, "\n")
+	if len(lines) > maxOutputLines {
+		lines = lines[:maxOutputLines]
+		cut = true
+	}
+	output = strings.Join(lines, "\n")
+
+	if len(output) > maxOutputChars {
+		// Dropping invalid bytes removes a character cut in half.
+		output = strings.ToValidUTF8(output[:maxOutputChars], "")
+		cut = true
+	}
+
+	if cut {
+		output = strings.TrimRight(output, "\n\r\t ") + "\n..."
+	}
+	return output
+}
+
 // compactionPart builds the marker for a compaction row. The note says how
 // it was triggered and, when the summary was not written, how it ended.
 func compactionPart(data compactionData) agent.MessagePart {
@@ -211,9 +348,10 @@ func materialize(drafts []draftMessage) []agent.ParsedMessage {
 	for _, draft := range drafts {
 		if draft.role == "user" {
 			messages = append(messages, agent.ParsedMessage{
-				Timestamp: draft.timestamp,
-				Role:      "user",
-				Content:   draft.content,
+				Timestamp:   draft.timestamp,
+				Role:        "user",
+				Content:     draft.content,
+				Attachments: draft.attachments,
 			})
 			continue
 		}

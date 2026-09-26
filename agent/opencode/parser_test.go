@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"unicode/utf8"
 
 	"contrails/agent"
 
@@ -610,5 +611,157 @@ func TestParseSession_CompactionKeepsHistory(t *testing.T) {
 	// history above; it must not be repeated.
 	if strings.Contains(rendered, "kept tail") {
 		t.Error("compaction \"recent\" field leaked into the rendered session")
+	}
+}
+
+// Attachments keep only the file name and, when recorded, its path; the
+// inline bytes of a pasted image never reach the contrail. A message with
+// attachments but no text is still a user turn.
+func TestParseSession_UserAttachments(t *testing.T) {
+	db := setupTestDB(t)
+	defer db.Close()
+
+	const id = "ses_attachments-fixture"
+	insertTestSession(t, db, id, "", "attachments", 1700000000000, 1700000000000)
+
+	// The first file is the live shape of a pasted screenshot.
+	insertTestMessage(t, db, "msg_a1", id, "user", 1, `{"time":{"created":1700000000000},"text":"see [Image 1]","files":[
+		{"data":"iVBORw0KGgoAAAANSUhEUgBASE64BYTES","mime":"image/png","source":{"type":"inline"},"name":"Screenshot 1.png","mention":{"start":4,"end":13,"text":"[Image 1]"}},
+		{"mime":"text/markdown","source":{"type":"file","path":"/repo/notes.md"},"name":"notes.md"},
+		{"mime":"text/plain","path":"/repo/a.txt","name":"/repo/a.txt"},
+		{"mime":"image/jpeg","url":"data:image/jpeg;base64,DATAURLBYTES","name":"photo.jpg"},
+		{"mime":"application/pdf","url":"https://example.com/spec.pdf"},
+		{"mime":"image/gif"}
+	]}`)
+	insertTestMessage(t, db, "msg_a2", id, "user", 2, `{"time":{"created":1700000000001},"text":"","files":[
+		{"mime":"image/png","source":{"type":"inline"},"name":"only-file.png","data":"MOREBYTES"}
+	]}`)
+	insertTestMessage(t, db, "msg_a3", id, "user", 3, `{"time":{"created":1700000000002},"text":"  ","files":[]}`)
+
+	session, err := parseSession(db, id)
+	if err != nil {
+		t.Fatalf("parseSession: %v", err)
+	}
+	if len(session.Messages) != 2 {
+		t.Fatalf("len(Messages) = %d, want 2 (the blank message is skipped)", len(session.Messages))
+	}
+
+	want := []string{
+		"Screenshot 1.png",
+		"notes.md (/repo/notes.md)",
+		"/repo/a.txt",
+		"photo.jpg",
+		"https://example.com/spec.pdf",
+		"unnamed image/gif",
+	}
+	if got := session.Messages[0].Attachments; strings.Join(got, "|") != strings.Join(want, "|") {
+		t.Errorf("Attachments = %q, want %q", got, want)
+	}
+	if got := session.Messages[1].Attachments; len(got) != 1 || got[0] != "only-file.png" {
+		t.Errorf("attachment-only message Attachments = %q, want [only-file.png]", got)
+	}
+
+	rendered := agent.RenderMarkdown(session)
+	if !strings.Contains(rendered, "**Attachments:** `Screenshot 1.png`, `notes.md (/repo/notes.md)`") {
+		t.Errorf("rendered session is missing the attachment list:\n%s", rendered)
+	}
+	for _, bytes := range []string{"BASE64BYTES", "DATAURLBYTES", "MOREBYTES"} {
+		if strings.Contains(rendered, bytes) {
+			t.Errorf("attachment data %q leaked into the rendered session", bytes)
+		}
+	}
+}
+
+// A command the user ran with !command is its own user turn: it ends the
+// assistant turn before it, shows the command, and shows its output (capped)
+// in a collapsed section with the exit code.
+func TestParseSession_ShellRows(t *testing.T) {
+	db := setupTestDB(t)
+	defer db.Close()
+
+	const id = "ses_shell-fixture"
+	insertTestSession(t, db, id, "", "shell", 1700000000000, 1700000000000)
+
+	var long strings.Builder
+	for i := 1; i <= 30; i++ {
+		fmt.Fprintf(&long, "line %d\n", i)
+	}
+	longOutput, _ := json.Marshal(long.String())
+
+	insertTestMessage(t, db, "msg_s1", id, "user", 1, `{"time":{"created":1700000000000},"text":"hi"}`)
+	insertTestMessage(t, db, "msg_s2", id, "assistant", 2,
+		`{"time":{"created":1700000000001},"content":[{"type":"text","text":"before"}]}`)
+	// The live shape of a finished shell row.
+	insertTestMessage(t, db, "msg_s3", id, "shell", 3, `{"metadata":{"background":true},
+		"time":{"created":1700000000002,"completed":1700000000003},"shellID":"sh_1","command":"haring-model",
+		"status":"exited","exit":0,"output":{"output":"worker glm\nqa glm\n","cursor":16,"size":16,"truncated":false}}`)
+	insertTestMessage(t, db, "msg_s4", id, "assistant", 4,
+		`{"time":{"created":1700000000004},"content":[{"type":"text","text":"after"}]}`)
+	insertTestMessage(t, db, "msg_s5", id, "shell", 5, `{"time":{"created":1700000000005},
+		"command":"make build","status":"exited","exit":2,"output":{"output":`+string(longOutput)+`,"truncated":true}}`)
+	insertTestMessage(t, db, "msg_s6", id, "shell", 6, `{"time":{"created":1700000000006},
+		"command":"sleep 100","status":"running"}`)
+	insertTestMessage(t, db, "msg_s7", id, "shell", 7, `{"time":{"created":1700000000007},"command":"  "}`)
+
+	session, err := parseSession(db, id)
+	if err != nil {
+		t.Fatalf("parseSession: %v", err)
+	}
+
+	var roles []string
+	for _, message := range session.Messages {
+		roles = append(roles, message.Role)
+	}
+	if got := strings.Join(roles, ","); got != "user,assistant,user,assistant,user,user" {
+		t.Fatalf("roles = %s, want user,assistant,user,assistant,user,user", got)
+	}
+
+	finished := session.Messages[2].Content
+	want := "**Shell command:**\n\n```sh\nharing-model\n```\n\n" +
+		"<details>\n<summary>Shell output (exit 0)</summary>\n\n```\nworker glm\nqa glm\n```\n\n</details>"
+	if finished != want {
+		t.Errorf("finished shell content =\n%s\nwant\n%s", finished, want)
+	}
+
+	failed := session.Messages[4].Content
+	if !strings.Contains(failed, "<summary>Shell output (exit 2)</summary>") {
+		t.Errorf("failed shell content is missing the exit code:\n%s", failed)
+	}
+	if !strings.Contains(failed, "line 20\n...\n[output truncated]") || strings.Contains(failed, "line 21") {
+		t.Errorf("long shell output is not capped at 20 lines:\n%s", failed)
+	}
+
+	running := session.Messages[5].Content
+	if running != "**Shell command:**\n\n```sh\nsleep 100\n```\n\n*Shell output (running)*" {
+		t.Errorf("running shell content = %q", running)
+	}
+}
+
+func TestCapOutput(t *testing.T) {
+	short := "one\ntwo"
+	if got := capOutput(short); got != short {
+		t.Errorf("capOutput(short) = %q, want it unchanged", got)
+	}
+
+	var lines []string
+	for i := 1; i <= maxOutputLines+5; i++ {
+		lines = append(lines, fmt.Sprintf("l%d", i))
+	}
+	got := capOutput(strings.Join(lines, "\n"))
+	if want := strings.Join(lines[:maxOutputLines], "\n") + "\n..."; got != want {
+		t.Errorf("capOutput(long lines) = %q, want %q", got, want)
+	}
+
+	// One very long line of multi-byte characters: cut at the character
+	// cap without splitting a character.
+	wide := strings.Repeat("é", maxOutputChars)
+	got = capOutput(wide)
+	if !strings.HasSuffix(got, "\n...") {
+		t.Errorf("capOutput(wide) does not end with the cut marker: %q", got[len(got)-10:])
+	}
+	body := strings.TrimSuffix(got, "\n...")
+	if len(body) > maxOutputChars || !utf8.ValidString(body) {
+		t.Errorf("capOutput(wide) body has %d bytes (valid UTF-8: %v), want at most %d valid bytes",
+			len(body), utf8.ValidString(body), maxOutputChars)
 	}
 }
