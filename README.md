@@ -40,7 +40,7 @@ When working on a related feature in the future, you can reference relevant cont
 | **VS Code Copilot** | Scans `workspaceStorage/` for workspaces with `chatSessions/` | `fsnotify` on `chatSessions/` directory | JSONL event log (v3) |
 | **Claude Code** | Scans `~/.claude/projects/` for session files | Signal watcher on `~/contrails/hook-signals/` via Stop hook | JSONL transcript |
 | **Cursor** | Scans `workspaceStorage/` for per-workspace `state.vscdb` files | `fsnotify` on per-workspace storage + global `globalStorage/` directory (debounced 2 s) | SQLite — per-workspace `ItemTable` for composer list + global `cursorDiskKV` for `composerData:*` + `bubbleId:*` keys |
-| **OpenCode** | Scans `~/.local/share/opencode/opencode.db` for sessions grouped by working directory | `fsnotify` on the OpenCode data directory (`opencode.db` + WAL sidecars, debounced 2 s) | SQLite — `session_v2` + `session_message` (message parts embedded in JSON) |
+| **OpenCode** | Scans `~/.local/share/opencode/opencode.db` for sessions grouped by working directory | `fsnotify` on the OpenCode data directory (`opencode.db` + WAL sidecars, debounced 2 s) | SQLite — `session` (or `session_v2` on 2.0.x) + `session_message` (message parts embedded in JSON) |
 
 ## Installation
 
@@ -124,9 +124,10 @@ contrails/
 │   │   └── types.go         # Cursor raw types (composerData, bubble, capabilityType, etc.)
 │   └── opencode/
 │       ├── driver.go        # AgentDriver impl — fsnotify on the OpenCode data dir (debounced), ProcessAll
-│       ├── parser.go        # OpenCode SQLite (session_v2 + session_message) → ParsedSession
-│       ├── scanner.go       # Scan session_v2 for working directories and their sessions
+│       ├── parser.go        # OpenCode SQLite (session + session_message) → ParsedSession
+│       ├── scanner.go       # Scan the session table for working directories and their sessions
 │       ├── types.go         # OpenCode v2 raw types (session row, message row, content parts)
+│       ├── schema.go        # Picks the session table: session or session_v2
 │       └── paths.go         # XDG data dir + opencode.db resolution
 └── frontend/
     └── src/
@@ -162,7 +163,7 @@ contrails/
 | `agent/vscode/` | VS Code Copilot `AgentDriver` — manages fsnotify watching, batch processing with `HealContrailNames`, JSONL parser that materializes the event log (kind:0/1/2 patches with array splice semantics) and uses `toolCallRounds` as the authoritative text source |
 | `agent/claudecode/` | Claude Code `AgentDriver` — manages hook lifecycle and signal watching, JSONL transcript parser, project scanner (`~/.claude/projects/`), Stop hook installer, periodic hook enforcer |
 | `agent/cursor/` | Cursor `AgentDriver` — watches per-workspace + global `state.vscdb` via fsnotify (2 s debounce), SQLite parser that reads composer list from per-workspace `ItemTable` and conversation data (`composerData:*` + `bubbleId:*` keys) from global `cursorDiskKV`, workspace scanner |
-| `agent/opencode/` | OpenCode `AgentDriver` — watches the global OpenCode data directory (`opencode.db` + WAL sidecars) via fsnotify (2 s debounce), SQLite parser that reads `session_v2` + `session_message` (ordered by `seq`, compaction-aware, nested subagents), directory scanner, XDG/`OPENCODE_DB` path resolution |
+| `agent/opencode/` | OpenCode `AgentDriver` — watches the global OpenCode data directory (`opencode.db` + WAL sidecars) via fsnotify (2 s debounce), SQLite parser that reads `session` (or `session_v2`) + `session_message` (ordered by `seq`, compaction-aware, nested subagents), directory scanner, XDG/`OPENCODE_DB` path resolution |
 
 ### Frontend (React + TypeScript)
 

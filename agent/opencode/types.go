@@ -1,13 +1,13 @@
 // Package opencode implements the OpenCode agent session parser.
-// It reads sessions from OpenCode's global SQLite database (session_v2 and
-// session_message) and produces agent.ParsedSession values via the
+// It reads sessions from OpenCode's global SQLite database (the session
+// table and session_message) and produces agent.ParsedSession values via the
 // agent.SessionParser interface.
 package opencode
 
 import "encoding/json"
 
-// sessionRow mirrors a row in the session_v2 table (the live, installed
-// schema — not HEAD of the OpenCode repository).
+// sessionRow mirrors a row in the session table: session_v2 on released
+// 2.0.x builds, session in the OpenCode source (see sessionTable).
 type sessionRow struct {
 	ID           string
 	ParentID     *string

@@ -158,14 +158,19 @@ func listSessions(db *sql.DB, directory string) ([]SessionInfo, error) {
 // row's time_updated does not move on message writes, so it is only the
 // fallback for a session with no messages.
 func fetchSessionSummaries(db *sql.DB) ([]sessionSummary, error) {
-	const query = `SELECT id, title, directory, time_created,
+	table, err := sessionTable(db)
+	if err != nil {
+		return nil, err
+	}
+
+	query := `SELECT s.id, s.title, s.directory, s.time_created,
 		COALESCE((
 			SELECT MAX(m.time_updated) FROM session_message m
-			WHERE m.session_id = session_v2.id
-		), session_v2.time_updated)
-		FROM session_v2
-		WHERE time_archived IS NULL AND parent_id IS NULL AND directory <> ''
-		ORDER BY time_created ASC`
+			WHERE m.session_id = s.id
+		), s.time_updated)
+		FROM ` + table + ` s
+		WHERE s.time_archived IS NULL AND s.parent_id IS NULL AND s.directory <> ''
+		ORDER BY s.time_created ASC`
 
 	rows, err := db.Query(query)
 	if err != nil {

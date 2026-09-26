@@ -214,13 +214,6 @@ func findPart(messages []agent.ParsedMessage, match func(agent.MessagePart) bool
 	return agent.MessagePart{}, false
 }
 
-func TestParser_ImplementsSessionParser(t *testing.T) {
-	var parser agent.SessionParser = &Parser{}
-	if parser == nil {
-		t.Fatal("Parser does not implement agent.SessionParser")
-	}
-}
-
 func TestParseSession_Basic(t *testing.T) {
 	db := setupTestDB(t)
 	defer db.Close()

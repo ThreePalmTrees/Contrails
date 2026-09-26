@@ -17,7 +17,7 @@ import (
 var _ agent.SessionParser = (*Parser)(nil)
 
 // Parser implements agent.SessionParser for OpenCode sessions.
-// The sessionID argument to ParseFile is a session_v2 row id (e.g.
+// The sessionID argument to ParseFile is a session row id (e.g.
 // "ses_f469f4a93ffeVN4pqdjACuePWC"), not a filesystem path — OpenCode keeps
 // every session in one database.
 type Parser struct{}
@@ -41,7 +41,7 @@ func openDB() (*sql.DB, error) {
 }
 
 // ParseFile reads and parses an OpenCode session identified by its
-// session_v2 id. It opens a fresh read-only connection, resolves the
+// session id. It opens a fresh read-only connection, resolves the
 // session, walks the post-compaction messages in seq order, and nests
 // subagent sessions found by parent_id.
 func (p *Parser) ParseFile(sessionID string) (*agent.ParsedSession, error) {
@@ -57,7 +57,12 @@ func (p *Parser) ParseFile(sessionID string) (*agent.ParsedSession, error) {
 // parseSession is the testable core: it accepts an already-open *sql.DB so
 // tests can supply an in-memory database.
 func parseSession(db *sql.DB, sessionID string) (*agent.ParsedSession, error) {
-	row, err := fetchSession(db, sessionID)
+	table, err := sessionTable(db)
+	if err != nil {
+		return nil, err
+	}
+
+	row, err := fetchSession(db, table, sessionID)
 	if err != nil {
 		return nil, err
 	}
@@ -79,7 +84,7 @@ func parseSession(db *sql.DB, sessionID string) (*agent.ParsedSession, error) {
 		return nil, err
 	}
 
-	// session_v2.time_updated only moves on session-metadata events
+	// The session row's time_updated only moves on session-metadata events
 	// (title, agent/model switch, archive) — message writes never touch
 	// it. The newest fetched message row is the real last activity.
 	if last := lastMessageTime(rows); last > 0 {
@@ -89,7 +94,7 @@ func parseSession(db *sql.DB, sessionID string) (*agent.ParsedSession, error) {
 	}
 
 	drafts := buildDrafts(rows)
-	if err := attachChildren(db, sessionID, drafts); err != nil {
+	if err := attachChildren(db, table, sessionID, drafts); err != nil {
 		return nil, err
 	}
 	session.Messages = materialize(drafts)
@@ -210,11 +215,11 @@ func materializeParts(drafts []partDraft) ([]agent.MessagePart, []string) {
 	return parts, files
 }
 
-// attachChildren resolves subagent sessions (session_v2 rows whose parent_id
+// attachChildren resolves subagent sessions (session rows whose parent_id
 // is this session) and attaches their parts to the matching subagent tool
 // call. Nesting is depth-limited to one: grandchildren wait for v2.
-func attachChildren(db *sql.DB, sessionID string, drafts []draftMessage) error {
-	childIDs, err := fetchChildren(db, sessionID)
+func attachChildren(db *sql.DB, table, sessionID string, drafts []draftMessage) error {
+	childIDs, err := fetchChildren(db, table, sessionID)
 	if err != nil {
 		return err
 	}
@@ -530,11 +535,11 @@ func appendLine(result, line string) string {
 	return strings.TrimRight(result, "\n") + "\n" + line
 }
 
-// fetchSession loads one session_v2 row.
-func fetchSession(db *sql.DB, sessionID string) (sessionRow, error) {
-	const query = `SELECT id, parent_id, directory, title, agent, model,
+// fetchSession loads one session row from table (see sessionTable).
+func fetchSession(db *sql.DB, table, sessionID string) (sessionRow, error) {
+	query := `SELECT id, parent_id, directory, title, agent, model,
 		cost, tokens_input, tokens_output, time_created, time_updated
-		FROM session_v2 WHERE id = ?`
+		FROM ` + table + ` WHERE id = ?`
 
 	var (
 		row      sessionRow
@@ -618,11 +623,11 @@ func lastMessageTime(rows []messageRow) int64 {
 	return last
 }
 
-// fetchChildren returns the ids of the sessions whose parent_id is
+// fetchChildren returns the ids of the sessions in table whose parent_id is
 // sessionID, oldest first.
-func fetchChildren(db *sql.DB, sessionID string) ([]string, error) {
+func fetchChildren(db *sql.DB, table, sessionID string) ([]string, error) {
 	rows, err := db.Query(
-		"SELECT id FROM session_v2 WHERE parent_id = ? ORDER BY time_created ASC",
+		"SELECT id FROM "+table+" WHERE parent_id = ? ORDER BY time_created ASC",
 		sessionID,
 	)
 	if err != nil {
