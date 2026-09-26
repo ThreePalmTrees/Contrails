@@ -5,3 +5,4 @@ frontend/dist
 # build artifact executable
 contrails
 .haring/
+agent_contrails

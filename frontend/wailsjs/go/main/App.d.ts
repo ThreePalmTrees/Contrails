@@ -64,6 +64,8 @@ export function ListChatFiles(arg1:string):Promise<Array<main.ChatFileInfo>>;
 
 export function OnCursorDatabaseChanged():Promise<void>;
 
+export function OnOpenCodeDatabaseChanged():Promise<void>;
+
 export function OpenDirectoryWith(arg1:string,arg2:string):Promise<void>;
 
 export function PreviewChatFile(arg1:string,arg2:string):Promise<string>;

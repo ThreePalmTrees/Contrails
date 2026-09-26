@@ -118,6 +118,10 @@ export function OnCursorDatabaseChanged() {
   return window['go']['main']['App']['OnCursorDatabaseChanged']();
 }
 
+export function OnOpenCodeDatabaseChanged() {
+  return window['go']['main']['App']['OnOpenCodeDatabaseChanged']();
+}
+
 export function OpenDirectoryWith(arg1, arg2) {
   return window['go']['main']['App']['OpenDirectoryWith'](arg1, arg2);
 }

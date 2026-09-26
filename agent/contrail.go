@@ -64,6 +64,7 @@ type ParsedMessage struct {
 // MessagePart represents a single element in the interleaved response stream.
 type MessagePart struct {
 	Type       MessagePartType `json:"type"`
+	Title      string          `json:"title,omitempty"` // Optional Thinking title (e.g. Copilot generatedTitle)
 	Content    string          `json:"content,omitempty"`
 	Tool       string          `json:"tool,omitempty"`
 	ToolArgs   string          `json:"toolArgs,omitempty"`

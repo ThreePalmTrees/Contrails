@@ -429,14 +429,10 @@ func buildFromToolCallRounds(request *chatRequest, assistantMessage *agent.Parse
 				value = strings.TrimSpace(value)
 				if value != "" {
 					title, _ := responseMap["generatedTitle"].(string)
-					content := "<thinking"
-					if title != "" {
-						content += fmt.Sprintf(` title="%s"`, title)
-					}
-					content += ">\n" + value + "\n</thinking>"
 					thinkingBlocks = append(thinkingBlocks, agent.MessagePart{
-						Type:    agent.PartText,
-						Content: content,
+						Type:    agent.PartThinking,
+						Title:   title,
+						Content: value,
 					})
 				}
 			}
@@ -549,10 +545,9 @@ func buildFromToolCallRounds(request *chatRequest, assistantMessage *agent.Parse
 		if round.Thinking != nil {
 			thinkingText := strings.TrimSpace(string(round.Thinking.Text))
 			if thinkingText != "" {
-				content := "<thinking>\n" + thinkingText + "\n</thinking>"
 				assistantMessage.Parts = append(assistantMessage.Parts, agent.MessagePart{
-					Type:    agent.PartText,
-					Content: content,
+					Type:    agent.PartThinking,
+					Content: thinkingText,
 				})
 			}
 		}
@@ -702,14 +697,10 @@ func buildFromResponseArray(request *chatRequest, assistantMessage *agent.Parsed
 				if value != "" {
 					flushText()
 					title, _ := responseMap["generatedTitle"].(string)
-					content := "<thinking"
-					if title != "" {
-						content += fmt.Sprintf(` title="%s"`, title)
-					}
-					content += ">\n" + value + "\n</thinking>"
 					assistantMessage.Parts = append(assistantMessage.Parts, agent.MessagePart{
-						Type:    agent.PartText,
-						Content: content,
+						Type:    agent.PartThinking,
+						Title:   title,
+						Content: value,
 					})
 				}
 			}

@@ -135,12 +135,10 @@ func TestParser_ParseFile_ThinkingAndEdits(t *testing.T) {
 	for _, message := range parsed.Messages {
 		for _, part := range message.Parts {
 			switch part.Type {
+			case agent.PartThinking:
+				foundThinking = true
 			case agent.PartText:
-				if strings.Contains(part.Content, "<thinking") {
-					foundThinking = true
-				} else {
-					foundText = true
-				}
+				foundText = true
 			case agent.PartToolCall:
 				foundToolCall = true
 			case agent.PartFileEdit:
@@ -323,10 +321,10 @@ func TestParser_ParseFile_MultiRoundThinking(t *testing.T) {
 		t.Fatal("No assistant message found")
 	}
 
-	// Collect thinking parts (they are PartText containing "<thinking>")
+	// Collect thinking parts
 	var thinkingParts []agent.MessagePart
 	for _, p := range assistantMsg.Parts {
-		if p.Type == agent.PartText && strings.Contains(p.Content, "<thinking>") {
+		if p.Type == agent.PartThinking {
 			thinkingParts = append(thinkingParts, p)
 		}
 	}
@@ -353,7 +351,7 @@ func TestParser_ParseFile_MultiRoundThinking(t *testing.T) {
 	// (thinking → tool → thinking → text+tool → thinking → text)
 	var partTypes []string
 	for _, p := range assistantMsg.Parts {
-		if p.Type == agent.PartText && strings.Contains(p.Content, "<thinking>") {
+		if p.Type == agent.PartThinking {
 			partTypes = append(partTypes, "thinking")
 		} else if p.Type == agent.PartText {
 			partTypes = append(partTypes, "text")
@@ -395,7 +393,7 @@ func TestParser_ParseFile_MultiThinkingNoRounds(t *testing.T) {
 	// Collect thinking parts
 	var thinkingParts []agent.MessagePart
 	for _, p := range assistantMsg.Parts {
-		if p.Type == agent.PartText && strings.Contains(p.Content, "<thinking>") {
+		if p.Type == agent.PartThinking {
 			thinkingParts = append(thinkingParts, p)
 		}
 	}

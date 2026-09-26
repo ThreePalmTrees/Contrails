@@ -217,7 +217,11 @@ func writeInterleavedParts(markdown *strings.Builder, parts []MessagePart) {
 				markdown.WriteString("\n</details>\n\n")
 				inToolGroup = false
 			}
-			markdown.WriteString("<thinking>\n")
+			if part.Title != "" {
+				markdown.WriteString(fmt.Sprintf("<thinking title=\"%s\">\n", part.Title))
+			} else {
+				markdown.WriteString("<thinking>\n")
+			}
 			markdown.WriteString(part.Content)
 			markdown.WriteString("\n</thinking>\n\n")
 

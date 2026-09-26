@@ -128,7 +128,7 @@ function renderSectionContent(markdown: string, keyOffset: number): React.ReactN
   }
 
   // Thinking blocks
-  const thinkingPattern = /<thinking>\n([\s\S]*?)\n<\/thinking>/g;
+  const thinkingPattern = /<thinking(?: title="[^"]*")?>\n([\s\S]*?)\n<\/thinking>/g;
   let m: RegExpExecArray | null;
   while ((m = thinkingPattern.exec(markdown)) !== null) {
     allBlocks.push({ start: m.index, end: m.index + m[0].length, type: 'thinking', inner: m[0] });

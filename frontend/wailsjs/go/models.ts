@@ -68,6 +68,7 @@ export namespace agent {
 	}
 	export class MessagePart {
 	    type: string;
+	    title?: string;
 	    content?: string;
 	    tool?: string;
 	    toolArgs?: string;
@@ -83,6 +84,7 @@ export namespace agent {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.type = source["type"];
+	        this.title = source["title"];
 	        this.content = source["content"];
 	        this.tool = source["tool"];
 	        this.toolArgs = source["toolArgs"];

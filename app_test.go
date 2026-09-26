@@ -385,7 +385,10 @@ func TestProcessFileReturn_UntitledSession(t *testing.T) {
 }
 
 func TestProcessFileReturn_ToolCalls(t *testing.T) {
-	app := NewApp()
+	// Isolated config dir: the assertion depends on default filters, so the
+	// developer's real settings.json (e.g. tool calls disabled) must not
+	// influence this test.
+	app := newTestApp(t)
 	outputDir := t.TempDir()
 
 	result, _, err := app.processFileReturn("testdata/fixtures/vscode/tool_calls.jsonl", outputDir)

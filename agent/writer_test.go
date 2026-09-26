@@ -59,6 +59,33 @@ func TestCodeFenceFor(t *testing.T) {
 	}
 }
 
+// A thinking part carrying a Title renders it as a tag attribute, while an
+// untitled thinking part keeps the plain tag. Copilot supplies generatedTitle
+// on response-array thinking items; other agents leave it empty.
+func TestRenderMarkdown_ThinkingTitle(t *testing.T) {
+	session := &ParsedSession{
+		Agent: "GitHub Copilot",
+		Messages: []ParsedMessage{
+			{
+				Role: "assistant",
+				Parts: []MessagePart{
+					{Type: PartThinking, Title: "Analyzing the bug", Content: "first thought"},
+					{Type: PartThinking, Content: "second thought"},
+				},
+			},
+		},
+	}
+
+	markdown := RenderMarkdown(session)
+
+	if !strings.Contains(markdown, "<thinking title=\"Analyzing the bug\">\nfirst thought\n</thinking>") {
+		t.Errorf("Expected titled thinking block, got:\n%s", markdown)
+	}
+	if !strings.Contains(markdown, "<thinking>\nsecond thought\n</thinking>") {
+		t.Errorf("Expected plain thinking block, got:\n%s", markdown)
+	}
+}
+
 // outsideCodeFences drops every fenced code block from markdown so that tags
 // quoted inside a tool result are not mistaken for markup of the document.
 // A fence closes only on a run of backticks at least as long as the one that
