@@ -133,8 +133,6 @@ type partData struct {
 	ID   string `json:"id"`
 	Name string `json:"name"` // tool parts only
 	Text string `json:"text"` // text and reasoning parts
-	// Files is the list of paths touched by a "patch" part.
-	Files []string `json:"files"`
 	// Time sits at the part level: time.created, time.ran, time.completed.
 	Time  partTime   `json:"time"`
 	State *toolState `json:"state"`
@@ -180,16 +178,4 @@ type toolMetadata struct {
 type toolError struct {
 	Type    string `json:"type"`
 	Message string `json:"message"`
-}
-
-// toolInput is a minimal union of the input shapes the parser reads. Unknown
-// fields are ignored.
-type toolInput struct {
-	Command string `json:"command"` // shell / bash / execute
-	Path    string `json:"path"`    // read / write / edit / apply_patch
-	Pattern string `json:"pattern"` // grep / glob
-	Todos   []struct {
-		Content string `json:"content"`
-		Status  string `json:"status"`
-	} `json:"todos"` // todowrite
 }

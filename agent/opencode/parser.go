@@ -479,27 +479,20 @@ func buildParts(content []partData) []partDraft {
 
 		case "tool":
 			drafts = append(drafts, buildToolParts(part)...)
-
-		case "patch":
-			for _, path := range part.Files {
-				if path == "" {
-					continue
-				}
-				drafts = append(drafts, partDraft{part: agent.MessagePart{
-					Type:     agent.PartFileEdit,
-					FilePath: path,
-					IsEdit:   true,
-				}})
-			}
 		}
 	}
 	return drafts
 }
 
 // buildToolParts maps a single tool part to a tool-call part, its result,
-// and — for file-editing tools — a file-edit part. Only completed and errored
-// tools are emitted; a tool that is still pending or running has no output
-// worth rendering.
+// and a file-edit part per file it changed. Only completed and errored tools
+// are emitted; a tool that is still pending or running has no output worth
+// rendering.
+//
+// Nothing here depends on a tool's name: every tool is shown by its name,
+// and what is shown with it is read from the shape of its input and
+// metadata. OpenCode can add or rename tools (and plugins and MCP servers
+// add their own) without this code knowing about them.
 func buildToolParts(part partData) []partDraft {
 	state := part.State
 	if state == nil || (state.Status != "completed" && state.Status != "error") {
@@ -511,15 +504,12 @@ func buildToolParts(part partData) []partDraft {
 		name = "unknown"
 	}
 
+	input := decodeObject(state.Input)
 	call := agent.MessagePart{
 		Type:       agent.PartToolCall,
 		Tool:       name,
-		ToolDetail: toolDetail(name, state.Input),
-	}
-	// The tool name is the passthrough fallback, so only set ToolArgs when
-	// the summary adds information beyond the name.
-	if args := summarizeTool(name, state.Input); args != name {
-		call.ToolArgs = args
+		ToolArgs:   toolSummary(input),
+		ToolDetail: toolDetail(input),
 	}
 
 	drafts := []partDraft{{
@@ -534,8 +524,8 @@ func buildToolParts(part partData) []partDraft {
 		}})
 	}
 
-	if isFileEditTool(name) {
-		if path := inputString(state.Input, "path"); path != "" {
+	if state.Status == "completed" {
+		for _, path := range editedFiles(input, state.Metadata) {
 			drafts = append(drafts, partDraft{part: agent.MessagePart{
 				Type:     agent.PartFileEdit,
 				FilePath: path,
@@ -547,30 +537,171 @@ func buildToolParts(part partData) []partDraft {
 	return drafts
 }
 
-// toolDetail returns rich ToolDetail for the tool kinds contrails renders
-// natively, or nil for everything else.
-func toolDetail(name string, input json.RawMessage) *agent.ToolDetail {
-	switch name {
-	case "bash", "shell", "execute":
-		if command := inputString(input, "command"); command != "" {
-			return &agent.ToolDetail{Kind: "terminal", Command: command}
+// summaryKeys are the input fields that best describe a tool call, most
+// telling first. They are common argument names, not tool names: a shell
+// tool's command, a search's pattern or query, a fetch's url, a file tool's
+// path, a subagent's description, a skill's id, a code runner's code.
+var summaryKeys = []string{
+	"command", "pattern", "query", "url",
+	"path", "filePath", "file_path",
+	"description", "name", "id", "code",
+}
+
+// maxSummaryRunes caps the one-line summary shown next to a tool name.
+const maxSummaryRunes = 120
+
+// toolSummary returns the one-line argument shown next to a tool's name:
+// the first non-empty summaryKeys field of its input, on one line and
+// shortened to maxSummaryRunes. Only that field is shown, so a large input
+// (a file's new content, a subagent's full prompt) never is.
+func toolSummary(input map[string]json.RawMessage) string {
+	for _, key := range summaryKeys {
+		value := oneLine(stringField(input, key))
+		if value == "" {
+			continue
 		}
-	case "todowrite":
-		if todos := parseTodos(input); len(todos) > 0 {
-			return &agent.ToolDetail{Kind: "todoList", Todos: todos}
+		if runes := []rune(value); len(runes) > maxSummaryRunes {
+			value = string(runes[:maxSummaryRunes]) + "…"
 		}
+		return value
+	}
+	return ""
+}
+
+// toolDetail returns rich ToolDetail when the input has a shape contrails
+// renders natively: a shell command, or a todo list. It returns nil for
+// everything else.
+func toolDetail(input map[string]json.RawMessage) *agent.ToolDetail {
+	if command := stringField(input, "command"); strings.TrimSpace(command) != "" {
+		return &agent.ToolDetail{Kind: "terminal", Command: command}
+	}
+	if todos := parseTodos(input["todos"]); len(todos) > 0 {
+		return &agent.ToolDetail{Kind: "todoList", Todos: todos}
 	}
 	return nil
 }
 
-// toolResult assembles the rendered output of a tool: the joined text items,
-// falling back to the error message, plus exit and truncation notes drawn
-// from state.metadata.
+// editBodyKeys are the input fields that carry new file content. A tool
+// whose input names a path and one of these writes that file; a path alone
+// (a read, a search scope) does not.
+var editBodyKeys = []string{"content", "newString", "new_string", "patch", "diff", "edits"}
+
+// editedFiles returns the files a completed tool changed. A tool whose input
+// has a path and new content changed that path. Otherwise the files are read
+// from metadata.files, where OpenCode lists the files an edit touched
+// (relative to the project, so the input path is preferred when there is
+// one).
+func editedFiles(input map[string]json.RawMessage, metadata json.RawMessage) []string {
+	path := firstString(input, "path", "filePath", "file_path")
+	if path != "" {
+		for _, key := range editBodyKeys {
+			if _, ok := input[key]; ok {
+				return []string{path}
+			}
+		}
+	}
+
+	var meta struct {
+		Files []struct {
+			File string `json:"file"`
+			Path string `json:"path"`
+		} `json:"files"`
+	}
+	if err := json.Unmarshal(metadata, &meta); err != nil {
+		return nil
+	}
+	var files []string
+	for _, file := range meta.Files {
+		if file.File != "" {
+			files = append(files, file.File)
+		} else if file.Path != "" {
+			files = append(files, file.Path)
+		}
+	}
+	return files
+}
+
+// decodeObject decodes a JSON object into its raw fields, or returns nil
+// when raw is not an object.
+func decodeObject(raw json.RawMessage) map[string]json.RawMessage {
+	var object map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &object); err != nil {
+		return nil
+	}
+	return object
+}
+
+// stringField returns object[key] when it is a JSON string, else "".
+func stringField(object map[string]json.RawMessage, key string) string {
+	raw, ok := object[key]
+	if !ok {
+		return ""
+	}
+	var value string
+	if err := json.Unmarshal(raw, &value); err != nil {
+		return ""
+	}
+	return value
+}
+
+// firstString returns the first non-empty string field among keys.
+func firstString(object map[string]json.RawMessage, keys ...string) string {
+	for _, key := range keys {
+		if value := stringField(object, key); value != "" {
+			return value
+		}
+	}
+	return ""
+}
+
+// oneLine collapses all whitespace, including newlines, to single spaces.
+func oneLine(s string) string {
+	return strings.Join(strings.Fields(s), " ")
+}
+
+// parseTodos converts a todo list input ([{content, status}]) into
+// contrails todo items.
+func parseTodos(raw json.RawMessage) []agent.TodoItem {
+	var input []struct {
+		Content string `json:"content"`
+		Status  string `json:"status"`
+	}
+	if err := json.Unmarshal(raw, &input); err != nil {
+		return nil
+	}
+	todos := make([]agent.TodoItem, 0, len(input))
+	for i, todo := range input {
+		todos = append(todos, agent.TodoItem{
+			ID:     strconv.Itoa(i + 1),
+			Title:  todo.Content,
+			Status: normalizeTodoStatus(todo.Status),
+		})
+	}
+	return todos
+}
+
+// normalizeTodoStatus maps OpenCode todo statuses (pending, in_progress,
+// completed, cancelled) to the values agent.ToolDetail expects.
+func normalizeTodoStatus(status string) string {
+	switch status {
+	case "completed":
+		return "completed"
+	case "in_progress", "in-progress":
+		return "in-progress"
+	default:
+		return "not-started"
+	}
+}
+
+// toolResult assembles the rendered output of a tool: the joined text items
+// (capped, see capOutput), falling back to the error message, plus exit and
+// truncation notes drawn from state.metadata.
 func toolResult(state *toolState) string {
 	result := joinToolContent(state.Content)
 	if result == "" {
 		result = toolErrorMessage(state.Error)
 	}
+	result = capOutput(strings.TrimRight(result, "\n\r\t "))
 
 	meta := parseMetadata(state.Metadata)
 	if meta.Exit != nil && !strings.Contains(strings.ToLower(result), "exit") {
@@ -602,77 +733,6 @@ func linkedSessionID(state *toolState) string {
 		return ""
 	}
 	return rest[:end]
-}
-
-// summarizeTool renders the human-readable argument shown next to a tool
-// call. Unknown tools fall back to the tool name itself.
-func summarizeTool(tool string, input json.RawMessage) string {
-	switch tool {
-	case "bash", "shell", "execute":
-		return inputString(input, "command")
-	case "read", "write", "edit", "apply_patch":
-		return inputString(input, "path")
-	case "grep", "glob":
-		return inputString(input, "pattern")
-	default:
-		return tool
-	}
-}
-
-// isFileEditTool reports whether a tool modifies a file at input.path.
-func isFileEditTool(name string) bool {
-	switch name {
-	case "write", "edit", "apply_patch":
-		return true
-	}
-	return false
-}
-
-// inputString reads a single string field from a tool's input object.
-func inputString(raw json.RawMessage, field string) string {
-	var input toolInput
-	if err := json.Unmarshal(raw, &input); err != nil {
-		return ""
-	}
-	switch field {
-	case "command":
-		return input.Command
-	case "path":
-		return input.Path
-	case "pattern":
-		return input.Pattern
-	}
-	return ""
-}
-
-// parseTodos converts a todowrite input into contrails todo items.
-func parseTodos(raw json.RawMessage) []agent.TodoItem {
-	var input toolInput
-	if err := json.Unmarshal(raw, &input); err != nil {
-		return nil
-	}
-	todos := make([]agent.TodoItem, 0, len(input.Todos))
-	for i, todo := range input.Todos {
-		todos = append(todos, agent.TodoItem{
-			ID:     strconv.Itoa(i + 1),
-			Title:  todo.Content,
-			Status: normalizeTodoStatus(todo.Status),
-		})
-	}
-	return todos
-}
-
-// normalizeTodoStatus maps OpenCode todo statuses (pending, in_progress,
-// completed, cancelled) to the values agent.ToolDetail expects.
-func normalizeTodoStatus(status string) string {
-	switch status {
-	case "completed":
-		return "completed"
-	case "in_progress", "in-progress":
-		return "in-progress"
-	default:
-		return "not-started"
-	}
 }
 
 // joinToolContent concatenates the text items of a tool's output.
