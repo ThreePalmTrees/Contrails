@@ -22,7 +22,7 @@ var _ agent.SessionParser = (*Parser)(nil)
 // every session in one database.
 type Parser struct{}
 
-// dbPath is defined in paths_darwin.go / paths_linux.go / paths_windows.go.
+// dbPath is defined in paths.go.
 
 // openDB opens the OpenCode database read-only. Read-only plus a busy
 // timeout means a running OpenCode instance is never blocked. WAL content is

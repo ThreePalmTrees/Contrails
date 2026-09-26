@@ -127,7 +127,7 @@ contrails/
 │       ├── parser.go        # OpenCode SQLite (session_v2 + session_message) → ParsedSession
 │       ├── scanner.go       # Scan session_v2 for working directories and their sessions
 │       ├── types.go         # OpenCode v2 raw types (session row, message row, content parts)
-│       └── paths_darwin.go  # XDG data dir + opencode.db resolution (paths_linux.go / paths_windows.go)
+│       └── paths.go         # XDG data dir + opencode.db resolution
 └── frontend/
     └── src/
         ├── App.tsx              # Root component: sidebar + main layout

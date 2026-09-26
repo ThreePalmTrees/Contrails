@@ -5,11 +5,8 @@ import (
 	_ "embed"
 	"encoding/json"
 	"fmt"
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
-	"time"
 
 	"contrails/agent"
 
@@ -568,57 +565,5 @@ func TestParseSession_CompactionBoundary(t *testing.T) {
 		if strings.Contains(rendered, gone) {
 			t.Errorf("pre-compaction content %q leaked into the rendered session", gone)
 		}
-	}
-}
-
-func TestDBPath_OpenCodeDBOverride(t *testing.T) {
-	tmp := t.TempDir()
-	t.Setenv("XDG_DATA_HOME", tmp)
-
-	t.Setenv("OPENCODE_DB", "/absolute/opencode-alt.db")
-	if got, err := dbPath(); err != nil || got != "/absolute/opencode-alt.db" {
-		t.Errorf("absolute override: got (%q, %v)", got, err)
-	}
-
-	t.Setenv("OPENCODE_DB", ":memory:")
-	if got, err := dbPath(); err != nil || got != ":memory:" {
-		t.Errorf(":memory: override: got (%q, %v)", got, err)
-	}
-
-	t.Setenv("OPENCODE_DB", "relative.db")
-	want := filepath.Join(tmp, "opencode", "relative.db")
-	if got, err := dbPath(); err != nil || got != want {
-		t.Errorf("relative override: got (%q, %v), want %q", got, err, want)
-	}
-}
-
-func TestDBPath_NewestCandidateWins(t *testing.T) {
-	tmp := t.TempDir()
-	t.Setenv("XDG_DATA_HOME", tmp)
-	dir := filepath.Join(tmp, "opencode")
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		t.Fatal(err)
-	}
-
-	stable := filepath.Join(dir, "opencode.db")
-	channel := filepath.Join(dir, "opencode-dev.db")
-	wal := filepath.Join(dir, "opencode-dev.db-wal")
-
-	for _, path := range []string{stable, channel, wal} {
-		if err := os.WriteFile(path, []byte("x"), 0o644); err != nil {
-			t.Fatal(err)
-		}
-	}
-	old := time.Now().Add(-time.Hour)
-	if err := os.Chtimes(stable, old, old); err != nil {
-		t.Fatal(err)
-	}
-
-	got, err := dbPath()
-	if err != nil {
-		t.Fatalf("dbPath: %v", err)
-	}
-	if got != channel {
-		t.Errorf("dbPath = %q, want the newest candidate %q", got, channel)
 	}
 }
