@@ -72,11 +72,11 @@ export function ProjectList({
       <div className="project-list-header">
         <span className="project-list-title">Projects</span>
         <button
-          className="icon-btn"
+          className="btn btn-outline btn-sm"
           onClick={onAdd}
           title="Add project"
         >
-          <FolderPlus size={16} />
+          Add project <FolderPlus size={13} />
         </button>
       </div>
 

@@ -194,6 +194,9 @@ p {
   color: var(--btn-secondary-text);
 }
 .btn-outline {
+  /* Keep the button on its own layer so the hover brightness filter doesn't
+     re-rasterize it and shift the icon by a subpixel */
+  will-change: filter;
   background: transparent;
   color: var(--text-primary);
   border: 1px solid var(--border);

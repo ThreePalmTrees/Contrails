@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
-import { ExternalLink, X, AlertCircle, Download, Settings } from "lucide-react";
+import { X, AlertCircle, Download, Settings } from "lucide-react";
 import { ContrailsIcon } from "./components/ContrailsIcon";
+import { GithubIcon } from "./components/GithubIcon";
 import { ProjectList } from "./components/ProjectList";
 import { ProjectDetail } from "./components/ProjectDetail";
 import { AddProjectDialog } from "./components/AddProjectDialog";
@@ -180,16 +181,16 @@ function App() {
           <button
             className="footer-link"
             onClick={() => BrowserOpenURL("https://github.com/ThreePalmTrees/Contrails")}
+            title="GitHub"
           >
-            Documentation <ExternalLink size={11} />
+            <GithubIcon size={18} />
           </button>
           <button
-            className="icon-btn icon-btn-sm"
+            className="btn btn-outline btn-sm"
             onClick={() => setShowOpenerSettings(true)}
             title="Settings"
-            style={{ opacity: 0.5 }}
           >
-            <Settings size={13} />
+            Settings <Settings size={13} />
           </button>
         </footer>
       </aside>

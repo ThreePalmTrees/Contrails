@@ -667,8 +667,8 @@ export function ProjectDetail({ project, onToggle, onProcess, onEdit, onUpdatePr
             </div>
             {onEdit && (
               <div style={{ display: 'flex', gap: '4px', opacity: 0.7 }}>
-                <button className="btn btn-ghost btn-sm" style={{ padding: '0 6px' }} onClick={() => onEdit(project, 'vscode')} title="Edit watching directory">
-                  <Pencil size={14} />
+                <button className="btn btn-outline btn-sm" onClick={() => onEdit(project, 'vscode')} title="Edit watching directory">
+                  Edit <Pencil size={13} />
                 </button>
                 {(hasClaude || hasCursor) && onUpdateProject && (
                   <button className="btn btn-ghost btn-sm" style={{ padding: '0 6px', color: 'var(--red)' }} onClick={() => handleRemoveAgent('vscode')} title="Remove GitHub Copilot">
@@ -694,8 +694,8 @@ export function ProjectDetail({ project, onToggle, onProcess, onEdit, onUpdatePr
             </div>
             {onEdit && (
               <div style={{ display: 'flex', gap: '4px', opacity: 0.7 }}>
-                <button className="btn btn-ghost btn-sm" style={{ padding: '0 6px' }} onClick={() => onEdit(project, 'claudecode')} title="Edit watching directory">
-                  <Pencil size={14} />
+                <button className="btn btn-outline btn-sm" onClick={() => onEdit(project, 'claudecode')} title="Edit watching directory">
+                  Edit <Pencil size={13} />
                 </button>
                 {(hasVSCode || hasCursor) && onUpdateProject && (
                   <button className="btn btn-ghost btn-sm" style={{ padding: '0 6px', color: 'var(--red)' }} onClick={() => handleRemoveAgent('claudecode')} title="Remove Claude Code">
@@ -723,8 +723,8 @@ export function ProjectDetail({ project, onToggle, onProcess, onEdit, onUpdatePr
 
             {onEdit && (
               <div style={{ display: 'flex', gap: '4px', opacity: 0.7 }}>
-                <button className="btn btn-ghost btn-sm" style={{ padding: '0 6px' }} onClick={() => onEdit(project, 'cursor')} title="Edit watching directory">
-                  <Pencil size={14} />
+                <button className="btn btn-outline btn-sm" onClick={() => onEdit(project, 'cursor')} title="Edit watching directory">
+                  Edit <Pencil size={13} />
                 </button>
                 {(hasVSCode || hasClaude) && onUpdateProject && (
                   <button className="btn btn-ghost btn-sm" style={{ padding: '0 6px', color: 'var(--red)' }} onClick={() => handleRemoveAgent('cursor')} title="Remove Cursor">
@@ -757,8 +757,8 @@ export function ProjectDetail({ project, onToggle, onProcess, onEdit, onUpdatePr
 
             {onEdit && (
               <div style={{ display: 'flex', gap: '4px', opacity: 0.7 }}>
-                <button className="btn btn-ghost btn-sm" style={{ padding: '0 6px' }} onClick={() => onEdit(project, 'opencode')} title="Edit watching directory">
-                  <Pencil size={14} />
+                <button className="btn btn-outline btn-sm" onClick={() => onEdit(project, 'opencode')} title="Edit watching directory">
+                  Edit <Pencil size={13} />
                 </button>
                 {(hasVSCode || hasClaude || hasCursor) && onUpdateProject && (
                   <button className="btn btn-ghost btn-sm" style={{ padding: '0 6px', color: 'var(--red)' }} onClick={() => handleRemoveAgent('opencode')} title="Remove OpenCode">
@@ -781,18 +781,16 @@ export function ProjectDetail({ project, onToggle, onProcess, onEdit, onUpdatePr
           <div className="detail-card-content" style={{ flex: 1 }}>
             <span className="detail-card-label">
               Output Directory
-              <span style={{ display: 'inline-flex', marginLeft: '6px', verticalAlign: 'middle' }}>
-                <button className="btn btn-ghost btn-sm" style={{ padding: '0 4px', height: '20px', minHeight: 'unset' }} onClick={() => handleOpenDir(project.outputDir.replace(/\/[^/]*\/?$/, ''))} title="Open directory">
-                  <ExternalLink size={12} />
-                </button>
-              </span>
             </span>
             <span className="detail-card-value mono">{project.outputDir}</span>
           </div>
           {onEdit && (
             <div style={{ display: 'flex', gap: '4px', opacity: 0.7 }}>
-              <button className="btn btn-ghost btn-sm" style={{ padding: '0 6px' }} onClick={() => onEdit(project, 'output')} title="Edit output directory">
-                <Pencil size={14} />
+              <button className="btn btn-outline btn-sm" onClick={() => handleOpenDir(project.outputDir.replace(/\/[^/]*\/?$/, ''))} title="Open directory">
+                Open dir <ExternalLink size={13} />
+              </button>
+              <button className="btn btn-outline btn-sm" onClick={() => onEdit(project, 'output')} title="Edit output directory">
+                Edit <Pencil size={13} />
               </button>
             </div>
           )}
